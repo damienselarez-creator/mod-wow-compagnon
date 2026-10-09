@@ -2,6 +2,8 @@
 #include "pbc_world.h"
 #include "pbc_config.h"
 #include "pbc_character.h"
+#include "pbc_archetype.h"
+#include "pbc_companion_language.h"
 #include "pbc_event_dispatch.h"
 #include "pbc_poll.h"
 #include "pbc_event_processor.h"
@@ -477,6 +479,23 @@ void PBC_WorldScript::OnUpdate(uint32_t diff)
         {
             if (eventWorker.joinable())
                 eventWorker.join();
+            if (nextEvent.type == PBC_EventType::Regen && nextEvent.regenRecord)
+            {
+                // Retain the original event facts; refresh only its presentation language.
+                auto record = std::make_shared<PBC_LastEventRecord>(*nextEvent.regenRecord);
+                for (auto& snap : record->respondingChars)
+                {
+                    auto* bot = ObjectAccessor::FindPlayer(snap.charObjGuid);
+                    if (!bot || !bot->IsInWorld())
+                        continue;
+                    auto* listener = snap.whisperTargetGuid.IsEmpty()
+                        ? nullptr : ObjectAccessor::FindPlayer(snap.whisperTargetGuid);
+                    snap.clientLocale = PBC_CompanionClientLocale(bot, listener);
+                    snap.characterCard = PBC_ArchetypeCard(snap.archetypeRace, snap.archetypeClass,
+                        snap.archetypeSpecialization, snap.charGuidRaw, snap.clientLocale);
+                }
+                nextEvent.regenRecord = std::move(record);
+            }
             if (nextEvent.type == PBC_EventType::Normal ||
                 nextEvent.type == PBC_EventType::QuestSummarization ||
                 nextEvent.type == PBC_EventType::CombatSummarization)
