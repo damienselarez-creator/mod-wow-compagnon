@@ -333,14 +333,16 @@ namespace
                         if (faction && !bot->GetFactionTemplateEntry()->IsFriendlyTo(*faction))
                         {
                             auto const* loot = LootTemplates_Creature.GetLootFor(creature->lootid);
-                            if (loot && CompanionLootSources::Has(CompanionLootSourceIndex::Kind::Creature, creature->lootid, item))
+                            if (loot && CompanionLootSources::Has(CompanionLootSourceIndex::Kind::Creature,
+                                creature->lootid, item))
                                 kinds |= 2;
                             uint32 required = creature->GetRequiredLootSkill();
                             uint32 rank = creature->maxlevel < 10 ? 0 :
                                 (creature->maxlevel < 20 ? (creature->maxlevel - 10) * 10 : creature->maxlevel * 5);
                             loot = LootTemplates_Skinning.GetLootFor(creature->SkinLootId);
                             if (bot->HasSkill(required) && bot->GetSkillValue(required) >= rank &&
-                                loot && CompanionLootSources::Has(CompanionLootSourceIndex::Kind::Skinning, creature->SkinLootId, item))
+                                loot && CompanionLootSources::Has(CompanionLootSourceIndex::Kind::Skinning,
+                                    creature->SkinLootId, item))
                                 kinds |= 4;
                         }
                     }
@@ -374,7 +376,8 @@ namespace
                 {
                     auto const* object = sObjectMgr->GetGameObjectTemplate(data.id);
                     auto const* loot = object ? LootTemplates_Gameobject.GetLootFor(object->GetLootId()) : nullptr;
-                    useful = CanGather(object) && loot && CompanionLootSources::Has(CompanionLootSourceIndex::Kind::Gameobject, object->GetLootId(), item);
+                    useful = CanGather(object) && loot && CompanionLootSources::Has(
+                        CompanionLootSourceIndex::Kind::Gameobject, object->GetLootId(), item);
                     gatherEntries[data.id] = useful;
                 }
                 if (useful)

@@ -5,6 +5,7 @@
 #define COMPANION_LOOT_SOURCES_H
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <unordered_map>
 #include <vector>
@@ -26,7 +27,7 @@ public:
 
     void Add(Kind kind, uint32_t entry, Row row)
     {
-        _tables[static_cast<size_t>(kind)][entry].push_back(row);
+        _tables[static_cast<std::size_t>(kind)][entry].push_back(row);
     }
 
     bool Has(Kind kind, uint32_t entry, uint32_t item, uint16_t lootMode = 1,
@@ -35,7 +36,7 @@ public:
         if (!item || depth > MaxDepth)
             return false;
 
-        auto const& table = _tables[static_cast<size_t>(kind)];
+        auto const& table = _tables[static_cast<std::size_t>(kind)];
         auto found = table.find(entry);
         if (found == table.end())
             return false;
