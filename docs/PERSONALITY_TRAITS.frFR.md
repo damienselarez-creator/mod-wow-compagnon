@@ -8,7 +8,7 @@ La fiche concerne uniquement les compagnons. Le projet prévoit une validation d
 
 Les formes françaises suivent le genre du compagnon ; les libellés anglais sont communs. La langue d'affichage suivra celle du client du joueur.
 
-État : fiches, confirmation définitive et consignes de dialogue implémentées. Les commandes sont décrites dans PERSONALITY_WORKSHOP.frFR.md ; l'addon reste à développer.
+État : fiches, confirmation définitive et consignes de dialogue implémentées. Les commandes sont décrites dans PERSONALITY_WORKSHOP.frFR.md ; le formulaire est fourni dans addons/WoWCompagnon.
 
 | Qualité (masculin) | Qualité (féminin) | Défaut (masculin) | Défaut (féminin) |
 | --- | --- | --- | --- |

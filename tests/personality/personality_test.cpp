@@ -1,4 +1,5 @@
 #include "pbc_personality_model.h"
+#include "pbc_personality_wire.h"
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -20,6 +21,15 @@ int main(int argc, char** argv)
         std::ifstream input(argv[1]);
         auto catalog = pbc_json::parse(input);
         Check(PBC_ValidPersonalityCatalog(catalog), "Public catalogue rejected");
+        Check(PBC_PersonalityRequest("WoWCmp\tH|1|self").size() == 3, "Addon hello rejected");
+        Check(PBC_PersonalityRequest("WoWCmp\tC|1|Player-0-28|123").size() == 4, "Addon confirm rejected");
+        Check(PBC_PersonalityRequest("WoWCmp\tH|1|self|extra").empty(), "Extra addon field accepted");
+        Check(PBC_PersonalityRequest("Other\tH|1|self").empty(), "Foreign addon request accepted");
+        Check(PBC_PersonalityRequest("WoWCmp\tC|bad|key|123").empty(), "Invalid request ID accepted");
+        Check(!PBC_PersonalityNumber("-1") && !PBC_PersonalityNumber("4294967296") &&
+            !PBC_PersonalityNumber("1x"), "Invalid addon number accepted");
+        Check(PBC_PersonalityRequest("WoWCmp\t" + std::string(249, 'x')).empty(), "Oversize addon packet accepted");
+        Check(PBC_PersonalitySplit("a|b||", '|').size() == 4, "Empty wire fields lost");
         pbc_json sheet = {{"account", 1u}, {"race", 8u}, {"class", 5u}, {"tab", 1},
             {"professions", {171u, 182u}},
             {"quality_ids", {"quality_benevolent", "quality_protective", "quality_patient"}},

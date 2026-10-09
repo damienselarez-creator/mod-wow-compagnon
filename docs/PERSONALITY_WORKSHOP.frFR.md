@@ -8,8 +8,15 @@ sans dépendre de leur présence dans le modèle de prompt.
 
 ## Définir une fiche
 
-L'addon graphique reste à créer. Les commandes suivantes permettent déjà
-de préparer puis confirmer une fiche. Connecte-toi avec un personnage secondaire,
+L'addon [WoWCompagnon](../addons/WoWCompagnon/README.md) fournit un formulaire classique.
+Il s'ouvre à la connexion d'un secondaire sans fiche ; depuis le main, sélectionner
+un compagnon de son compte et utiliser `/compagnon`. Choisir les neuf champs,
+cliquer **Vérifier ma fiche**, relire le récapitulatif, cocher la confirmation
+puis **Confirmer définitivement**. La fiche confirmée devient consultable uniquement.
+
+### Commandes de secours
+
+Les commandes suivantes permettent aussi de préparer puis confirmer une fiche. Connecte-toi avec un personnage secondaire,
 ou sélectionne un compagnon connecté de ton compte, hors combat.
 Le plus ancien personnage encore présent sur le compte est le main et ne peut
 pas recevoir de fiche. Le contrôle est refait lors de la confirmation.

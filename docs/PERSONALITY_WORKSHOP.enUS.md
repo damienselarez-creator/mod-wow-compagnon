@@ -5,8 +5,13 @@ Gender comes from the character; French or English labels follow the player's
 client language. The module adds these instructions to every dialogue request
 without retrieval chunks or a required prompt-template token.
 
-The graphical addon is still to be developed. Commands provide a usable preview
-and permanent confirmation now. Log in as a secondary character or select an
+The [WoWCompagnon addon](../addons/WoWCompagnon/README.md) provides a standard form.
+An eligible secondary character without a sheet gets it on login. From the main,
+select your companion and use `/companion`. Complete the fields, click **Review my sheet**,
+review the summary, tick the acknowledgement and click **Confirm permanently**.
+Saved sheets are read-only.
+
+Commands remain available as a fallback. Log in as a secondary character or select an
 online companion from your account, out of combat. The oldest surviving character
 is the main and cannot receive a sheet. Eligibility is checked again at confirmation.
 

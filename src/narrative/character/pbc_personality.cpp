@@ -1,13 +1,16 @@
 #include "pbc_personality.h"
 #include "pbc_personality_model.h"
+#include "pbc_personality_wire.h"
 #include "pbc_companion_language.h"
 #include "pbc_config.h"
 #include "Chat.h"
 #include "ChatCommand.h"
 #include "DatabaseEnv.h"
 #include "Player.h"
+#include "Random.h"
 #include "ScriptMgr.h"
 #include "WorldSession.h"
+#include "WorldPacket.h"
 #include <algorithm>
 #include <chrono>
 #include <filesystem>
@@ -38,8 +41,10 @@ struct Draft
     std::string target;
     pbc_json sheet;
     std::chrono::steady_clock::time_point expires;
+    uint32_t nonce = 0;
 };
 std::map<std::string, Draft> drafts;
+std::map<std::string, std::chrono::steady_clock::time_point> addonRequests;
 
 pbc_json ReadFile(std::filesystem::path const& path, uintmax_t limit)
 {
@@ -266,6 +271,152 @@ public:
         return {{"companion", Command, SEC_PLAYER, Console::No}};
     }
 };
+
+void Reply(Player* actor, std::string const& payload)
+{
+    std::string message = std::string(PBC_PersonalityPrefix) + payload;
+    if (message.size() > 255)
+        return;
+    WorldPacket packet;
+    ChatHandler::BuildChatPacket(packet, CHAT_MSG_WHISPER, LANG_ADDON, actor, actor, message);
+    actor->GetSession()->SendPacket(&packet);
+}
+
+std::string SheetFields(pbc_json const& sheet)
+{
+    return std::to_string(sheet.at("tab").get<int>()) + '|' +
+        std::to_string(sheet.at("professions")[0].get<uint32_t>()) + '|' +
+        std::to_string(sheet.at("professions")[1].get<uint32_t>()) + '|' +
+        PBC_PersonalityIds(sheet.at("quality_ids")) + '|' + PBC_PersonalityIds(sheet.at("flaw_ids"));
+}
+
+std::string WireKey(Player* player)
+{
+    return std::to_string(player->GetGUID().GetCounter());
+}
+
+void ReplyHeader(Player* actor, Player* target, std::string const& request)
+{
+    auto saved = sheets.find(target->GetGUID().ToString());
+    bool locked = saved != sheets.end();
+    std::string data = locked ? SheetFields(*saved) : "-1|0|0||";
+    Reply(actor, "H|" + request + '|' + WireKey(target) + '|' + target->GetName() + '|' +
+        std::to_string(target->getRace()) + '|' + std::to_string(target->getClass()) + '|' +
+        std::to_string(target->getGender()) + '|' + (locked ? "LOCKED|" : "NEW|") + data);
+}
+}
+
+bool PBC_HandlePersonalityAddon(Player* actor, uint32_t type, uint32_t language,
+    std::string const& message, Player* receiver)
+{
+    if (language != LANG_ADDON || !message.starts_with(PBC_PersonalityPrefix))
+        return false;
+    // Recognized traffic is consumed before narrative processing, even if malformed.
+    if (!actor || receiver != actor || type != CHAT_MSG_WHISPER || !actor->GetSession() ||
+        actor->GetSession()->IsHeadless())
+        return true;
+    auto fields = PBC_PersonalityRequest(message);
+    if (fields.empty())
+        return true;
+    std::lock_guard<std::mutex> lock(stateMutex);
+    auto error = [&](char const* code) { Reply(actor, "E|" + fields[1] + '|' + code); };
+    auto now = std::chrono::steady_clock::now();
+    for (auto it = addonRequests.begin(); it != addonRequests.end();)
+        if (now - it->second > std::chrono::minutes(10))
+            it = addonRequests.erase(it);
+        else
+            ++it;
+    std::string actorKey = actor->GetGUID().ToString();
+    auto recent = addonRequests.find(actorKey);
+    if (recent != addonRequests.end() && now - recent->second < std::chrono::milliseconds(300))
+    {
+        error("BUSY");
+        return true;
+    }
+    if (addonRequests.size() >= 4096 && recent == addonRequests.end())
+        return true;
+    addonRequests[actorKey] = now;
+    if (!ready)
+    {
+        error("NOTREADY");
+        return true;
+    }
+    ChatHandler handler(actor->GetSession());
+    auto* target = fields[2] == "self" || fields[2] == WireKey(actor) ? actor : handler.getSelectedPlayer();
+    if (!target && fields[0] == "H")
+        target = actor;
+    if (!target || (fields[0] != "H" && fields[2] != WireKey(target)))
+    {
+        error("TARGET");
+        return true;
+    }
+    if (!Eligible(actor, target))
+    {
+        error("INELIGIBLE");
+        return true;
+    }
+    std::string key = target->GetGUID().ToString();
+    auto saved = sheets.find(key);
+    if (saved != sheets.end() && !Matches(*saved, target))
+    {
+        error("INVALID");
+        return true;
+    }
+    if (fields[0] == "H" || saved != sheets.end())
+    {
+        ReplyHeader(actor, target, fields[1]);
+        return true;
+    }
+    if (fields[0] == "P")
+    {
+        drafts.erase(actorKey);
+        auto tab = PBC_PersonalityNumber(fields[3]);
+        auto first = PBC_PersonalityNumber(fields[4]);
+        auto second = PBC_PersonalityNumber(fields[5]);
+        if (!tab || *tab > 2 || !first || !second)
+        {
+            error("INVALID");
+            return true;
+        }
+        pbc_json sheet = {{"account", actor->GetSession()->GetAccountId()}, {"race", uint32_t(target->getRace())},
+            {"class", uint32_t(target->getClass())}, {"tab", int(*tab)}, {"professions", {*first, *second}},
+            {"quality_ids", PBC_PersonalitySplit(fields[6], ',')},
+            {"flaw_ids", PBC_PersonalitySplit(fields[7], ',')}};
+        if (!PBC_ValidPersonalitySheet(sheet, catalog))
+        {
+            error("INVALID");
+            return true;
+        }
+        for (auto it = drafts.begin(); it != drafts.end();)
+            if (it->second.expires < now)
+                it = drafts.erase(it);
+            else
+                ++it;
+        if (drafts.size() >= 4096)
+        {
+            error("BUSY");
+            return true;
+        }
+        uint32_t nonce = urand(1, 0xffffff);
+        drafts[actorKey] = {key, sheet, now + std::chrono::minutes(5), nonce};
+        Reply(actor, "P|" + fields[1] + '|' + WireKey(target) + '|' + std::to_string(nonce) + '|' + SheetFields(sheet));
+        return true;
+    }
+    auto draft = drafts.find(actorKey);
+    auto nonce = PBC_PersonalityNumber(fields[3]);
+    if (draft == drafts.end() || !nonce || *nonce == 0 || draft->second.nonce != *nonce ||
+        draft->second.target != key || draft->second.expires < now || !Matches(draft->second.sheet, target))
+    {
+        error("EXPIRED");
+        return true;
+    }
+    bool published = Save(key, draft->second.sheet);
+    drafts.erase(draft);
+    if (published)
+        ReplyHeader(actor, target, fields[1]);
+    else
+        error("SAVE");
+    return true;
 }
 
 bool PBC_LoadPersonality(std::string const& catalogPath, std::string const& statePath, std::string& status)

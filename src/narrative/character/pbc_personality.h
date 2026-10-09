@@ -9,6 +9,8 @@ class Player;
 bool PBC_LoadPersonality(std::string const& catalogPath, std::string const& statePath, std::string& status);
 pbc_json PBC_PersonalitySheet(Player* companion);
 std::string PBC_PersonalityContext(pbc_json const& sheet, uint8_t gender, uint8_t locale);
+bool PBC_HandlePersonalityAddon(Player* player, uint32_t type, uint32_t language,
+    std::string const& message, Player* receiver);
 void AddPBCPersonalityScripts();
 
 #endif

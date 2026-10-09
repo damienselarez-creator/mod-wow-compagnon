@@ -39,7 +39,7 @@ def main():
             "Les formes françaises suivent le genre du compagnon ; les libellés anglais "
             "sont communs. La langue d'affichage suivra celle du client du joueur.",
             "État : fiches, confirmation définitive et consignes de dialogue implémentées. "
-            "Les commandes sont décrites dans PERSONALITY_WORKSHOP.frFR.md ; l'addon reste à développer.",
+            "Les commandes sont décrites dans PERSONALITY_WORKSHOP.frFR.md ; le formulaire est fourni dans addons/WoWCompagnon.",
             "| Qualité (masculin) | Qualité (féminin) | Défaut (masculin) | Défaut (féminin) |",
             "| --- | --- | --- | --- |",
         ],
@@ -55,7 +55,7 @@ def main():
             "French labels follow the companion's gender; English labels use a common form. "
             "The player's client language will determine the display language.",
             "Status: sheets, permanent confirmation and dialogue instructions are implemented. "
-            "See PERSONALITY_WORKSHOP.enUS.md for commands; the graphical addon remains to be developed.",
+            "See PERSONALITY_WORKSHOP.enUS.md for commands; the form ships in addons/WoWCompagnon.",
             "| Quality | Flaw |",
             "| --- | --- |",
         ],

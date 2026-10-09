@@ -1,4 +1,5 @@
 #include "pbc_vocation.h"
+#include "pbc_personality.h"
 #include "pbc_player_scripts.h"
 #include "pbc_config.h"
 #include "pbc_character.h"
@@ -36,6 +37,8 @@
 
 static bool IsBlacklisted(uint32 lang, const std::string& msg)
 {
+    if (lang == LANG_ADDON && msg.starts_with("WoWCmp\t"))
+        return true;
     // When IgnoreAllAddonMessages is enabled, drop ALL addon traffic silently.
     if (lang == LANG_ADDON && g_PBC_IgnoreAllAddonMessages)
         return true;
@@ -111,6 +114,8 @@ PBC_PlayerEvents::PBC_PlayerEvents() : PlayerScript("PBC_PlayerEvents",
 bool PBC_PlayerEvents::OnPlayerCanUseChat(Player* player, uint32 type, uint32 lang,
                                           std::string& msg, Player* receiver)
 {
+    if (PBC_HandlePersonalityAddon(player, type, lang, msg, receiver))
+        return false;
     HandleChatMessage(player, type, lang, msg, receiver);
     return true;
 }

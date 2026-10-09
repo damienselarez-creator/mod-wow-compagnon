@@ -100,4 +100,5 @@ Trois qualités et trois défauts distincts, choisis indépendamment, pour les c
 La fiche privée est confirmée côté serveur et ajoutée aux consignes de chaque dialogue.
 Consulter le [guide français](docs/PERSONALITY_WORKSHOP.frFR.md) ou
 [English guide](docs/PERSONALITY_WORKSHOP.enUS.md) pour les commandes de préparation et confirmation.
-L'addon graphique et la restauration automatique après jeu manuel restent à développer.
+L'addon [WoWCompagnon](addons/WoWCompagnon/README.md) fournit un formulaire classique français/anglais.
+La restauration automatique après jeu manuel reste à développer.
