@@ -17,12 +17,16 @@ local function request()
 end
 local function choose(number, value)
     local drop = _G["WoWCompagnonDrop" .. number]
-    TestMenu = {}
-    drop.initialize()
-    for _, option in ipairs(TestMenu) do
-        if option.value == value then
-            assert(not option.disabled, "Duplicate option must be disabled")
-            option.func()
+    drop.scripts.OnClick()
+    local options = data[drop.category]
+    if drop.category == "specializations" then
+        options = {{id = 0}, {id = 1}, {id = 2}}
+    end
+    for i, option in ipairs(options) do
+        if option.id == value then
+            local row = _G["WoWCompagnonChoice" .. i]
+            assert(row.enabled, "Duplicate option must be disabled")
+            row.scripts.OnClick()
             return
         end
     end
@@ -44,6 +48,20 @@ assert(not WoWCompagnonForm:IsShown(), "Stale reply accepted")
 incoming(header("1", "NEW", "-1|0|0||"))
 assert(WoWCompagnonForm:IsShown(), "Eligible character form did not open")
 assert(not WoWCompagnonSubmit.enabled, "Incomplete form enabled preview")
+-- All thirty traits remain accessible in a bounded popup, including the last row.
+WoWCompagnonDrop4.scripts.OnClick()
+assert(WoWCompagnonChoiceMenu.height == 208)
+local scroll = WoWCompagnonChoiceScroll
+scroll.scripts.OnMouseWheel(scroll, -100)
+assert(scroll:GetVerticalScroll() == 528, "Wheel must reach the last trait")
+assert(WoWCompagnonChoice30:IsShown(), "Last trait missing")
+WoWCompagnonChoice30.scripts.OnClick()
+assert(not WoWCompagnonChoiceMenu:IsShown(), "Selection did not close popup")
+WoWCompagnonDrop4.scripts.OnClick()
+assert(scroll:GetVerticalScroll() == 0, "Reopened popup must start at the top")
+scroll.scripts.OnMouseWheel(scroll, 100)
+assert(scroll:GetVerticalScroll() == 0, "Wheel scrolled above the first trait")
+WoWCompagnonDrop4.scripts.OnClick()
 choose(1, 1)
 choose(2, 171)
 choose(3, 182)

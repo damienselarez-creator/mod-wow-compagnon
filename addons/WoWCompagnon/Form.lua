@@ -66,6 +66,64 @@ back:SetText(T("Modifier", "Edit"))
 back:Hide()
 local dropdowns = {}
 
+-- One bounded scrolling popup shared by all fields (WoW 3.3.5 frame APIs).
+local menu = CreateFrame("Frame", "WoWCompagnonChoiceMenu", frame)
+menu:SetWidth(276)
+menu:SetFrameStrata("TOOLTIP")
+menu:SetClampedToScreen(true)
+menu:EnableMouse(true)
+menu:SetBackdrop({bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", tile = true, tileSize = 16,
+    edgeSize = 16, insets = {left = 4, right = 4, top = 4, bottom = 4}})
+menu:Hide()
+local scroll = CreateFrame("ScrollFrame", "WoWCompagnonChoiceScroll", menu, "UIPanelScrollFrameTemplate")
+scroll:SetPoint("TOPLEFT", 8, -8)
+scroll:SetPoint("BOTTOMRIGHT", -30, 8)
+local content = CreateFrame("Frame", nil, scroll)
+content:SetWidth(236)
+scroll:SetScrollChild(content)
+scroll:EnableMouseWheel(true)
+local rows = {}
+local scrollLimit = 0
+scroll:SetScript("OnMouseWheel", function(self, delta)
+    self:SetVerticalScroll(math.max(0, math.min(scrollLimit, self:GetVerticalScroll() - delta * 24)))
+end)
+local function CloseMenu() menu:Hide() end
+local function OpenMenu(drop, options)
+    if menu:IsShown() and menu.owner == drop then CloseMenu(); return end
+    menu.owner = drop
+    menu:ClearAllPoints()
+    menu:SetPoint("TOPLEFT", drop, "BOTTOMLEFT", 0, -2)
+    local visible = math.min(8, #options)
+    menu:SetHeight(visible * 24 + 16)
+    content:SetHeight(math.max(1, #options * 24))
+    scrollLimit = math.max(0, (#options - visible) * 24)
+    for i, option in ipairs(options) do
+        local row = rows[i]
+        if not row then
+            row = CreateFrame("Button", "WoWCompagnonChoice" .. i, content)
+            row:SetWidth(236)
+            row:SetHeight(24)
+            row:SetPoint("TOPLEFT", 0, -(i - 1) * 24)
+            row:SetNormalFontObject("GameFontHighlightSmall")
+            row:SetDisabledFontObject("GameFontDisableSmall")
+            row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
+            rows[i] = row
+        end
+        row:SetText((option.checked and "|cff00ff00> |r" or "") .. option.text)
+        row:SetScript("OnClick", function()
+            if option.disabled then return end
+            CloseMenu()
+            option.func()
+        end)
+        if option.disabled then row:Disable() else row:Enable() end
+        row:Show()
+    end
+    for i = #options + 1, #rows do rows[i]:Hide() end
+    menu:Show()
+    scroll:SetVerticalScroll(0)
+end
+
 local function LabelFor(category, id)
     local item = WC.Find(data[category], id)
     if not item then return T("Choisir…", "Choose…") end
@@ -108,6 +166,7 @@ local function Summary()
 end
 
 local function Refresh()
+    CloseMenu()
     if state.header then
         local h = state.header
         identity:SetText(h.name .. " — " .. data.races[h.race] .. " / " .. data.classes[h.class] ..
@@ -121,11 +180,11 @@ local function Refresh()
             local text = drop.category == "specializations" and state.header and value ~= nil and
                 data.specializations[state.header.class][value + 1] or
                 (drop.category ~= "specializations" and LabelFor(drop.category, value)) or T("Choisir…", "Choose…")
-            UIDropDownMenu_SetText(drop, text)
+            drop:SetText(text)
             if state.pending or not state.header then
-                UIDropDownMenu_DisableDropDown(drop)
+                drop:Disable()
             else
-                UIDropDownMenu_EnableDropDown(drop)
+                drop:Enable()
             end
         end
     else
@@ -136,12 +195,14 @@ local function Refresh()
 end
 
 local function Dropdown(category, x, y, get, set, index)
-    local drop = CreateFrame("Frame", "WoWCompagnonDrop" .. (#dropdowns + 1), form, "UIDropDownMenuTemplate")
-    drop:SetPoint("TOPLEFT", x, y)
-    UIDropDownMenu_SetWidth(drop, 236)
+    local drop = CreateFrame("Button", "WoWCompagnonDrop" .. (#dropdowns + 1), form, "UIPanelButtonTemplate")
+    drop:SetPoint("TOPLEFT", x + 18, y + 2)
+    drop:SetWidth(254)
+    drop:SetHeight(24)
     drop.category, drop.get = category, get
-    UIDropDownMenu_Initialize(drop, function()
-        if not state.header then return end
+    drop:SetScript("OnClick", function()
+        if not state.header or state.pending or state.mode ~= "form" then return end
+        local entries = {}
         local options = data[category]
         if category == "specializations" then
             options = {}
@@ -151,7 +212,7 @@ local function Dropdown(category, x, y, get, set, index)
         end
         for _, item in ipairs(options) do
             local chosen = item
-            local info = UIDropDownMenu_CreateInfo()
+            local info = {}
             info.text = item.label or item[state.header.gender == 1 and "female" or "male"]
             info.value, info.checked = item.id, get() == item.id
             if category == "professions" then
@@ -168,8 +229,9 @@ local function Dropdown(category, x, y, get, set, index)
                 status:SetText("")
                 Refresh()
             end
-            UIDropDownMenu_AddButton(info)
+            entries[#entries + 1] = info
         end
+        OpenMenu(drop, entries)
     end)
     dropdowns[#dropdowns + 1] = drop
     return drop
@@ -305,6 +367,7 @@ events:SetScript("OnUpdate", function()
     end
 end)
 frame:SetScript("OnHide", function()
+    CloseMenu()
     state.pending = nil
     if state.mode == "review" then state.mode, state.nonce = "form", nil end
 end)

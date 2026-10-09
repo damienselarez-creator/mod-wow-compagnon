@@ -5,7 +5,8 @@ local methods = {}
 local function stub() end
 for _, name in ipairs({"SetPoint", "SetFrameStrata", "SetMovable", "EnableMouse", "RegisterForDrag",
     "SetClampedToScreen", "SetBackdrop", "SetAllPoints", "SetJustifyH", "SetJustifyV",
-    "StartMoving", "StopMovingOrSizing"}) do methods[name] = stub end
+    "StartMoving", "StopMovingOrSizing", "ClearAllPoints", "SetNormalFontObject",
+    "SetDisabledFontObject", "SetHighlightTexture", "EnableMouseWheel"}) do methods[name] = stub end
 function methods:SetWidth(width) self.width = width end
 function methods:SetHeight(height) self.height = height end
 function methods:SetText(text) self.text = text end
@@ -41,3 +42,7 @@ function UIDropDownMenu_EnableDropDown(frame) frame:Enable() end
 function UIDropDownMenu_Initialize(frame, callback) frame.initialize = callback end
 function UIDropDownMenu_CreateInfo() return {} end
 function UIDropDownMenu_AddButton(info) TestMenu[#TestMenu + 1] = info end
+
+function methods:SetScrollChild(child) self.child = child end
+function methods:SetVerticalScroll(value) self.offset = value end
+function methods:GetVerticalScroll() return self.offset or 0 end

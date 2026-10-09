@@ -1,29 +1,29 @@
-# WoW Compagnon — formulaire
+# WoW Compagnon â€” formulaire
 
 Copier le dossier `WoWCompagnon` dans `Interface/AddOns`, puis relancer le client.
-L'addon est prévu pour le client 3.3.5a (Interface 30300), sans dépendance.
+L'addon est prÃ©vu pour le client 3.3.5a (Interface 30300), sans dÃ©pendance.
 
-À la connexion d'un personnage secondaire sans fiche, le formulaire s'ouvre
-après vérification par le serveur. Le main ne reçoit pas de formulaire automatique.
-Depuis le main, sélectionner un compagnon connecté de son compte et taper
-`/compagnon`. `/companion` ouvre la même fenêtre.
+Ã€ la connexion d'un personnage secondaire sans fiche, le formulaire s'ouvre
+aprÃ¨s vÃ©rification par le serveur. Le main ne reÃ§oit pas de formulaire automatique.
+Depuis le main, sÃ©lectionner un compagnon connectÃ© de son compte et taper
+`/compagnon`. `/companion` ouvre la mÃªme fenÃªtre.
 
-Choisir la spécialisation, deux métiers, trois qualités et trois défauts.
-Le bouton **Vérifier ma fiche** affiche un récapitulatif fourni par le serveur.
-Cocher la compréhension du caractère définitif, puis **Confirmer définitivement**.
-La fiche enregistrée est ensuite consultable en lecture seule. Aucun choix n'est
-confirmé à la connexion ou en fermant la fenêtre.
+Choisir la spÃ©cialisation, deux mÃ©tiers, trois qualitÃ©s et trois dÃ©fauts.
+Le bouton **VÃ©rifier ma fiche** affiche un rÃ©capitulatif fourni par le serveur.
+Cocher la comprÃ©hension du caractÃ¨re dÃ©finitif, puis **Confirmer dÃ©finitivement**.
+La fiche enregistrÃ©e est ensuite consultable en lecture seule. Aucun choix n'est
+confirmÃ© Ã  la connexion ou en fermant la fenÃªtre.
 
-L'affichage suit la langue du client : français ou anglais, avec repli anglais
-pour les autres langues. Le genre du compagnon détermine les formes françaises.
-L'addon ne stocke aucune fiche ni variable sauvegardée : le serveur conserve
-l'autorité. Réinstaller l'addon ne permet pas de modifier une fiche confirmée.
+L'affichage suit la langue du client : franÃ§ais ou anglais, avec repli anglais
+pour les autres langues. Le genre du compagnon dÃ©termine les formes franÃ§aises.
+L'addon ne stocke aucune fiche ni variable sauvegardÃ©e : le serveur conserve
+l'autoritÃ©. RÃ©installer l'addon ne permet pas de modifier une fiche confirmÃ©e.
 
-Les données publiques `Data.lua` sont produites par
-`tools/generate_companion_addon.py` à partir des JSON du module. Le dialogue addon
-privé utilise le préfixe `WoWCmp` et ne passe pas par les dialogues narratifs.
-Le serveur contrôle compte, main, cible, choix et aperçu avant chaque confirmation.
-Changer de sélection pendant une confirmation exige de rouvrir le formulaire.
+Les donnÃ©es publiques `Data.lua` sont produites par
+`tools/generate_companion_addon.py` Ã  partir des JSON du module. Le dialogue addon
+privÃ© utilise le prÃ©fixe `WoWCmp` et ne passe pas par les dialogues narratifs.
+Le serveur contrÃ´le compte, main, cible, choix et aperÃ§u avant chaque confirmation.
+Changer de sÃ©lection pendant une confirmation exige de rouvrir le formulaire.
 
 ## English
 
@@ -33,6 +33,9 @@ The addon targets 3.3.5a (Interface 30300) and has no dependencies.
 An eligible secondary character without a sheet gets the form on login after
 server approval. From the main, select an online companion from your account
 and use `/companion` or `/compagnon`.
+
+Lists show eight choices at a time; use the mouse wheel or scrollbar to reach
+all choices.
 
 Choose a specialization, two professions, three qualities and three flaws.
 **Review my sheet** displays the server's summary. Tick the permanent-choice
