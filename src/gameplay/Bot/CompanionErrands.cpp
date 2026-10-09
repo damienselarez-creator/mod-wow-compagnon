@@ -1031,7 +1031,7 @@ bool CompanionErrandAction::Execute(Event)
                     !bot->IsNonMeleeSpellCast(false) && bot->GetDistance(master) < 30.0f && HasBagRoom(bot))
                 {
                     if (botAI->DoSpecificAction("craft random item", Event(), true))
-                        return;
+                        return true;
                 }
                 if (best != std::numeric_limits<double>::max())
                 {
