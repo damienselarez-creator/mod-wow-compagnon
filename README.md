@@ -91,3 +91,7 @@ follows its master's. Other client languages fall back to English. Language is
 captured before asynchronous processing and does not change skills, identity or
 memories. Vocation and training dialogue supports both languages. Historical
 source documents may remain French; their language does not dictate the reply.
+
+## Atelier de personnalité / Personality workshop
+
+Catalogue préparatoire : [qualités et défauts en français](docs/PERSONALITY_TRAITS.frFR.md), [English qualities and flaws](docs/PERSONALITY_TRAITS.enUS.md). Trois qualités et trois défauts distincts, choisis indépendamment, pour les compagnons uniquement. L'addon et le verrouillage restent à développer.

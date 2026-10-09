@@ -1,0 +1,795 @@
+{
+  "schema": "wow-compagnon.personality-traits.v1",
+  "status": "catalogue_for_future_workshop",
+  "selection": {
+    "scope": "companions_only",
+    "qualities": 3,
+    "flaws": 3,
+    "mode": "independent",
+    "unique_within_category": true,
+    "immutable_after_confirmation": true
+  },
+  "associations": "editorial_reference_only",
+  "pairs": [
+    {
+      "quality": {
+        "id": "quality_benevolent",
+        "labels": {
+          "frFR": {
+            "male": "Bienveillant",
+            "female": "Bienveillante"
+          },
+          "enUS": {
+            "neutral": "Benevolent"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_naive",
+        "labels": {
+          "frFR": {
+            "male": "Naïf",
+            "female": "Naïve"
+          },
+          "enUS": {
+            "neutral": "Naive"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_courageous",
+        "labels": {
+          "frFR": {
+            "male": "Courageux",
+            "female": "Courageuse"
+          },
+          "enUS": {
+            "neutral": "Courageous"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_reckless",
+        "labels": {
+          "frFR": {
+            "male": "Téméraire",
+            "female": "Téméraire"
+          },
+          "enUS": {
+            "neutral": "Reckless"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_patient",
+        "labels": {
+          "frFR": {
+            "male": "Patient",
+            "female": "Patiente"
+          },
+          "enUS": {
+            "neutral": "Patient"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_passive",
+        "labels": {
+          "frFR": {
+            "male": "Passif",
+            "female": "Passive"
+          },
+          "enUS": {
+            "neutral": "Passive"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_energetic",
+        "labels": {
+          "frFR": {
+            "male": "Dynamique",
+            "female": "Dynamique"
+          },
+          "enUS": {
+            "neutral": "Energetic"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_impulsive",
+        "labels": {
+          "frFR": {
+            "male": "Impulsif",
+            "female": "Impulsive"
+          },
+          "enUS": {
+            "neutral": "Impulsive"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_organised",
+        "labels": {
+          "frFR": {
+            "male": "Organisé",
+            "female": "Organisée"
+          },
+          "enUS": {
+            "neutral": "Organised"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_rigid",
+        "labels": {
+          "frFR": {
+            "male": "Rigide",
+            "female": "Rigide"
+          },
+          "enUS": {
+            "neutral": "Rigid"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_creative",
+        "labels": {
+          "frFR": {
+            "male": "Créatif",
+            "female": "Créative"
+          },
+          "enUS": {
+            "neutral": "Creative"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_scattered",
+        "labels": {
+          "frFR": {
+            "male": "Dispersé",
+            "female": "Dispersée"
+          },
+          "enUS": {
+            "neutral": "Scattered"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_ambitious",
+        "labels": {
+          "frFR": {
+            "male": "Ambitieux",
+            "female": "Ambitieuse"
+          },
+          "enUS": {
+            "neutral": "Ambitious"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_opportunistic",
+        "labels": {
+          "frFR": {
+            "male": "Opportuniste",
+            "female": "Opportuniste"
+          },
+          "enUS": {
+            "neutral": "Opportunistic"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_persevering",
+        "labels": {
+          "frFR": {
+            "male": "Persévérant",
+            "female": "Persévérante"
+          },
+          "enUS": {
+            "neutral": "Persevering"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_relentless",
+        "labels": {
+          "frFR": {
+            "male": "Acharné",
+            "female": "Acharnée"
+          },
+          "enUS": {
+            "neutral": "Relentless"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_honest",
+        "labels": {
+          "frFR": {
+            "male": "Honnête",
+            "female": "Honnête"
+          },
+          "enUS": {
+            "neutral": "Honest"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_brutally_honest",
+        "labels": {
+          "frFR": {
+            "male": "Brutalement franc",
+            "female": "Brutalement franche"
+          },
+          "enUS": {
+            "neutral": "Brutally honest"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_confident",
+        "labels": {
+          "frFR": {
+            "male": "Confiant",
+            "female": "Confiante"
+          },
+          "enUS": {
+            "neutral": "Confident"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_arrogant",
+        "labels": {
+          "frFR": {
+            "male": "Arrogant",
+            "female": "Arrogante"
+          },
+          "enUS": {
+            "neutral": "Arrogant"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_independent",
+        "labels": {
+          "frFR": {
+            "male": "Autonome",
+            "female": "Autonome"
+          },
+          "enUS": {
+            "neutral": "Independent"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_individualistic",
+        "labels": {
+          "frFR": {
+            "male": "Individualiste",
+            "female": "Individualiste"
+          },
+          "enUS": {
+            "neutral": "Individualistic"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_generous",
+        "labels": {
+          "frFR": {
+            "male": "Généreux",
+            "female": "Généreuse"
+          },
+          "enUS": {
+            "neutral": "Generous"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_spendthrift",
+        "labels": {
+          "frFR": {
+            "male": "Dépensier",
+            "female": "Dépensière"
+          },
+          "enUS": {
+            "neutral": "Spendthrift"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_curious",
+        "labels": {
+          "frFR": {
+            "male": "Curieux",
+            "female": "Curieuse"
+          },
+          "enUS": {
+            "neutral": "Curious"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_indiscreet",
+        "labels": {
+          "frFR": {
+            "male": "Indiscret",
+            "female": "Indiscrète"
+          },
+          "enUS": {
+            "neutral": "Indiscreet"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_meticulous",
+        "labels": {
+          "frFR": {
+            "male": "Méticuleux",
+            "female": "Méticuleuse"
+          },
+          "enUS": {
+            "neutral": "Meticulous"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_perfectionist",
+        "labels": {
+          "frFR": {
+            "male": "Perfectionniste",
+            "female": "Perfectionniste"
+          },
+          "enUS": {
+            "neutral": "Perfectionist"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_optimistic",
+        "labels": {
+          "frFR": {
+            "male": "Optimiste",
+            "female": "Optimiste"
+          },
+          "enUS": {
+            "neutral": "Optimistic"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_unrealistic",
+        "labels": {
+          "frFR": {
+            "male": "Irréaliste",
+            "female": "Irréaliste"
+          },
+          "enUS": {
+            "neutral": "Unrealistic"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_loyal",
+        "labels": {
+          "frFR": {
+            "male": "Loyal",
+            "female": "Loyale"
+          },
+          "enUS": {
+            "neutral": "Loyal"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_possessive",
+        "labels": {
+          "frFR": {
+            "male": "Possessif",
+            "female": "Possessive"
+          },
+          "enUS": {
+            "neutral": "Possessive"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_responsible",
+        "labels": {
+          "frFR": {
+            "male": "Responsable",
+            "female": "Responsable"
+          },
+          "enUS": {
+            "neutral": "Responsible"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_controlling",
+        "labels": {
+          "frFR": {
+            "male": "Contrôlant",
+            "female": "Contrôlante"
+          },
+          "enUS": {
+            "neutral": "Controlling"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_sociable",
+        "labels": {
+          "frFR": {
+            "male": "Sociable",
+            "female": "Sociable"
+          },
+          "enUS": {
+            "neutral": "Sociable"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_intrusive",
+        "labels": {
+          "frFR": {
+            "male": "Envahissant",
+            "female": "Envahissante"
+          },
+          "enUS": {
+            "neutral": "Intrusive"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_diplomatic",
+        "labels": {
+          "frFR": {
+            "male": "Diplomate",
+            "female": "Diplomate"
+          },
+          "enUS": {
+            "neutral": "Diplomatic"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_manipulative",
+        "labels": {
+          "frFR": {
+            "male": "Manipulateur",
+            "female": "Manipulatrice"
+          },
+          "enUS": {
+            "neutral": "Manipulative"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_humble",
+        "labels": {
+          "frFR": {
+            "male": "Humble",
+            "female": "Humble"
+          },
+          "enUS": {
+            "neutral": "Humble"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_self_effacing",
+        "labels": {
+          "frFR": {
+            "male": "Effacé",
+            "female": "Effacée"
+          },
+          "enUS": {
+            "neutral": "Self-effacing"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_flexible",
+        "labels": {
+          "frFR": {
+            "male": "Flexible",
+            "female": "Flexible"
+          },
+          "enUS": {
+            "neutral": "Flexible"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_fickle",
+        "labels": {
+          "frFR": {
+            "male": "Inconstant",
+            "female": "Inconstante"
+          },
+          "enUS": {
+            "neutral": "Fickle"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_thoughtful",
+        "labels": {
+          "frFR": {
+            "male": "Réfléchi",
+            "female": "Réfléchie"
+          },
+          "enUS": {
+            "neutral": "Thoughtful"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_slow_to_decide",
+        "labels": {
+          "frFR": {
+            "male": "Lent à décider",
+            "female": "Lente à décider"
+          },
+          "enUS": {
+            "neutral": "Slow to decide"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_demanding",
+        "labels": {
+          "frFR": {
+            "male": "Exigeant",
+            "female": "Exigeante"
+          },
+          "enUS": {
+            "neutral": "Demanding"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_uncompromising",
+        "labels": {
+          "frFR": {
+            "male": "Intransigeant",
+            "female": "Intransigeante"
+          },
+          "enUS": {
+            "neutral": "Uncompromising"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_protective",
+        "labels": {
+          "frFR": {
+            "male": "Protecteur",
+            "female": "Protectrice"
+          },
+          "enUS": {
+            "neutral": "Protective"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_overprotective",
+        "labels": {
+          "frFR": {
+            "male": "Surprotecteur",
+            "female": "Surprotectrice"
+          },
+          "enUS": {
+            "neutral": "Overprotective"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_enthusiastic",
+        "labels": {
+          "frFR": {
+            "male": "Enthousiaste",
+            "female": "Enthousiaste"
+          },
+          "enUS": {
+            "neutral": "Enthusiastic"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_excessive",
+        "labels": {
+          "frFR": {
+            "male": "Excessif",
+            "female": "Excessive"
+          },
+          "enUS": {
+            "neutral": "Excessive"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_sensitive",
+        "labels": {
+          "frFR": {
+            "male": "Sensible",
+            "female": "Sensible"
+          },
+          "enUS": {
+            "neutral": "Sensitive"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_easily_offended",
+        "labels": {
+          "frFR": {
+            "male": "Susceptible",
+            "female": "Susceptible"
+          },
+          "enUS": {
+            "neutral": "Easily offended"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_calm",
+        "labels": {
+          "frFR": {
+            "male": "Calme",
+            "female": "Calme"
+          },
+          "enUS": {
+            "neutral": "Calm"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_cold",
+        "labels": {
+          "frFR": {
+            "male": "Froid",
+            "female": "Froide"
+          },
+          "enUS": {
+            "neutral": "Cold"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_pragmatic",
+        "labels": {
+          "frFR": {
+            "male": "Pragmatique",
+            "female": "Pragmatique"
+          },
+          "enUS": {
+            "neutral": "Pragmatic"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_cynical",
+        "labels": {
+          "frFR": {
+            "male": "Cynique",
+            "female": "Cynique"
+          },
+          "enUS": {
+            "neutral": "Cynical"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_determined",
+        "labels": {
+          "frFR": {
+            "male": "Déterminé",
+            "female": "Déterminée"
+          },
+          "enUS": {
+            "neutral": "Determined"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_stubborn",
+        "labels": {
+          "frFR": {
+            "male": "Obstiné",
+            "female": "Obstinée"
+          },
+          "enUS": {
+            "neutral": "Stubborn"
+          }
+        }
+      }
+    },
+    {
+      "quality": {
+        "id": "quality_helpful",
+        "labels": {
+          "frFR": {
+            "male": "Disponible",
+            "female": "Disponible"
+          },
+          "enUS": {
+            "neutral": "Ready to help"
+          }
+        }
+      },
+      "flaw": {
+        "id": "flaw_cannot_say_no",
+        "labels": {
+          "frFR": {
+            "male": "Ne sait pas dire non",
+            "female": "Ne sait pas dire non"
+          },
+          "enUS": {
+            "neutral": "Cannot say no"
+          }
+        }
+      }
+    }
+  ]
+}
