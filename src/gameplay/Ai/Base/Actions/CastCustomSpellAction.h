@@ -50,6 +50,7 @@ public:
 
     bool isUseful() override { return false; }
     virtual bool AcceptSpell(SpellInfo const* spellInfo);
+    virtual bool UseStrictPriority() const { return false; }
     virtual uint32 GetSpellPriority(SpellInfo const* /*spellInfo*/) { return 1; }
     virtual bool castSpell(uint32 spellId, WorldObject* wo);
     bool Execute(Event event) override;
@@ -65,6 +66,7 @@ public:
 
     bool AcceptSpell(SpellInfo const* spellInfo) override;
     uint32 GetSpellPriority(SpellInfo const* spellInfo) override;
+    bool UseStrictPriority() const override;
 };
 
 class DisEnchantRandomItemAction : public CastCustomSpellAction

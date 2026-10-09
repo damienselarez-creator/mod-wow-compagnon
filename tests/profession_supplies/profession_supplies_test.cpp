@@ -13,6 +13,8 @@
 #include <set>
 #include <vector>
 
+using uint8 = uint8_t;
+using uint16 = uint16_t;
 using uint32 = uint32_t;
 using uint64 = uint64_t;
 constexpr uint32 MAX_MONEY_AMOUNT = 2147483647;
@@ -20,14 +22,29 @@ using int32 = int32_t;
 constexpr uint32 SKILL_MINING = 186, SKILL_SKINNING = 393, SKILL_BLACKSMITHING = 164;
 constexpr uint32 SKILL_ENGINEERING = 202, SKILL_INSCRIPTION = 773;
 constexpr uint32 PLAYERSPELL_REMOVED = 1, MAX_SPELL_REAGENTS = 8;
-constexpr uint32 EQUIP_ERR_OK = 0, NULL_BAG = 0, NULL_SLOT = 0;
+constexpr uint32 EQUIP_ERR_OK = 0, NULL_BAG = 255, NULL_SLOT = 255;
+constexpr uint8 INVENTORY_SLOT_BAG_0 = 255, INVENTORY_SLOT_BAG_START = 19, INVENTORY_SLOT_BAG_END = 23;
+constexpr uint8 INVENTORY_SLOT_ITEM_START = 23, INVENTORY_SLOT_ITEM_END = 39;
+constexpr uint32 ITEM_CLASS_CONTAINER = 1;
 using ItemPosCountVec = std::vector<uint32>;
 
 struct ItemTemplate
 {
     uint32 ItemId = 0, TotemCategory = 0, BuyCount = 1, stack = 20;
     int32 BuyPrice = 1;
+    uint32 Class = 0, BagFamily = 0, ContainerSlots = 0;
     uint32 GetMaxStackSize() const { return stack; }
+};
+
+struct Item
+{
+    ItemTemplate const* proto;
+    ItemTemplate const* GetTemplate() const { return proto; }
+    bool IsBag() const { return proto->Class == ITEM_CLASS_CONTAINER; }
+};
+struct Bag : Item
+{
+    uint32 GetBagSize() const { return proto->ContainerSlots; }
 };
 
 struct ObjectMgr
@@ -101,6 +118,17 @@ struct Creature
 struct Player
 {
     std::map<uint32, uint32> skills, inventory;
+    std::map<uint16, Item*> positions;
+    Item* GetItemByPos(uint8 bag, uint8 slot) const
+    {
+        auto found = positions.find(uint16(bag << 8) | slot);
+        return found == positions.end() ? nullptr : found->second;
+    }
+    Bag* GetBagByPos(uint8 slot) const
+    {
+        return static_cast<Bag*>(GetItemByPos(INVENTORY_SLOT_BAG_0, slot));
+    }
+    void SwapItem(uint16 source, uint16 target) { std::swap(positions[source], positions[target]); }
     std::map<uint32, KnownSpell*> spells;
     std::set<uint32> categories;
     uint32 money = 100, maxSkill = 75;
@@ -249,5 +277,45 @@ int main()
     assert(CompanionErrands::SupplyBatches(10, 10, 5, 4, 100, 20, 100) == 0);
     assert(CompanionErrands::SupplyBatches(0, 10, 0, 4, 100, 20, 100) == 0);
     assert(CompanionErrands::SupplyBatches(0, 10, UINT32_MAX, 4, 100, 20, UINT32_MAX) == 0);
-    std::cout << "PASS: real profession supply discovery and vendor choice, tools, vials, parchment, reserves\n";
+    // Execute actual bag selection: affordability, direct empty-slot equip, and protected specialty bags.
+    objectMgr.items[200] = {200, 0, 1, 1, 10, ITEM_CLASS_CONTAINER, 0, 6};
+    objectMgr.items[201] = {201, 0, 1, 1, 40, ITEM_CLASS_CONTAINER, 0, 12};
+    objectMgr.items[202] = {202, 0, 1, 1, 90, ITEM_CLASS_CONTAINER, 0, 20};
+    objectMgr.items[203] = {203, 0, 1, 1, 5, ITEM_CLASS_CONTAINER, 1, 24};
+    objectMgr.items[204] = {204, 0, 1, 1, 30, ITEM_CLASS_CONTAINER, 0, 12};
+    VendorItemData bags{{{200}, {201}, {202}, {203}, {204}}};
+    Player bagBot;
+    auto chosen = ChooseBag(&bagBot, &bags, 20);
+    assert(chosen.item == 204 && chosen.equipSlot == 19 && chosen.storageSlot == 19);
+    bagBot.money = 20;
+    assert(!ChooseBag(&bagBot, &bags, 20).item);
+    bagBot.money = 100;
+    Bag small{{&objectMgr.items[200]}}, large{{&objectMgr.items[201]}}, specialty{{&objectMgr.items[203]}};
+    bagBot.positions[uint16(255 << 8) | 19] = &specialty;
+    bagBot.positions[uint16(255 << 8) | 20] = &small;
+    bagBot.positions[uint16(255 << 8) | 21] = &large;
+    assert(ChooseBag(&bagBot, &bags, 20).equipSlot == 22);
+    bagBot.positions[uint16(255 << 8) | 22] = &large;
+    chosen = ChooseBag(&bagBot, &bags, 20);
+    assert(chosen.item == 204 && chosen.equipSlot == 20 && chosen.storageSlot == 23);
+    Item filler{&objectMgr.items[3371]};
+    for (uint8 slot = 23; slot < 39; ++slot)
+        bagBot.positions[uint16(255 << 8) | slot] = &filler;
+    assert(!ChooseBag(&bagBot, &bags, 20).item);
+    bagBot.positions[uint16(255 << 8) | 23] = nullptr;
+    bags.offers[4].ExtendedCost = 1;
+    bags.offers[1].maxcount = 1;
+    npc.available = 0;
+    assert(!ChooseBag(&bagBot, &bags, 20, &npc).item);
+    npc.available = 1;
+    assert(ChooseBag(&bagBot, &bags, 20, &npc).item == 201);
+    bagBot.positions[uint16(255 << 8) | 23] = &large;
+    assert(!ChooseBag(&bagBot, &bags, 20).item);
+    EquipOwnedBagUpgrade(&bagBot);
+    assert(bagBot.GetBagByPos(20) == &large && bagBot.GetBagByPos(19) == &specialty);
+    assert(!ChooseBag(&bagBot, &bags, 20).item); // No downgrade or duplicate once all general bags are 12 slots.
+    for (uint8 slot = 19; slot < 23; ++slot)
+        bagBot.positions[uint16(255 << 8) | slot] = &specialty;
+    assert(!ChooseBag(&bagBot, &bags, 20).item);
+    std::cout << "PASS: real profession supply discovery and vendor choice, tools, vials, parchment, reserves, affordable bag upgrades\n";
 }

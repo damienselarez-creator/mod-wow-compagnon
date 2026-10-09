@@ -398,6 +398,97 @@ namespace
         return best;
     }
 
+    struct BagPurchase
+    {
+        uint32 item = 0;
+        uint32 vendorSlot = 0;
+        uint8 equipSlot = NULL_SLOT;
+        uint8 storageSlot = NULL_SLOT;
+    };
+
+    uint8 SmallestGeneralBagSlot(Player* bot)
+    {
+        uint8 selected = NULL_SLOT;
+        uint32 capacity = std::numeric_limits<uint32>::max();
+        for (uint8 slot = INVENTORY_SLOT_BAG_START; slot < INVENTORY_SLOT_BAG_END; ++slot)
+        {
+            Bag* bag = bot->GetBagByPos(slot);
+            if (!bag)
+                return slot;
+            if (!bag->GetTemplate()->BagFamily && bag->GetBagSize() < capacity)
+            {
+                selected = slot;
+                capacity = bag->GetBagSize();
+            }
+        }
+        return selected;
+    }
+
+    BagPurchase ChooseBag(Player* bot, VendorItemData const* goods, uint32 reserve, Creature* vendor = nullptr)
+    {
+        uint8 target = SmallestGeneralBagSlot(bot);
+        if (!goods || target == NULL_SLOT)
+            return {};
+        Bag* current = bot->GetBagByPos(target);
+        uint32 capacity = current ? current->GetBagSize() : 0;
+        uint8 storage = current ? NULL_SLOT : target;
+        for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
+        {
+            Item* item = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
+            // Use owned upgrades first; a failed exchange must not cause another purchase.
+            if (item && item->IsBag() && !item->GetTemplate()->BagFamily &&
+                item->GetTemplate()->ContainerSlots > capacity)
+                return {};
+            if (!item && current && storage == NULL_SLOT)
+                storage = slot;
+        }
+        if (storage == NULL_SLOT)
+            return {};
+        BagPurchase best;
+        uint32 bestCapacity = capacity;
+        uint32 bestPrice = std::numeric_limits<uint32>::max();
+        for (uint32 slot = 0; slot < goods->GetItemCount(); ++slot)
+        {
+            auto const* offer = goods->GetItem(slot);
+            auto const* item = offer ? sObjectMgr->GetItemTemplate(offer->item) : nullptr;
+            if (!item || item->Class != ITEM_CLASS_CONTAINER || item->BagFamily || item->BuyCount != 1 ||
+                offer->ExtendedCost || item->BuyPrice < 0 || bot->CanUseItem(item) != EQUIP_ERR_OK ||
+                item->ContainerSlots <= capacity || (vendor && offer->maxcount &&
+                vendor->GetVendorItemCurrentCount(offer) < 1))
+                continue;
+            float discount = vendor ? bot->GetReputationPriceDiscount(vendor) : 1.0f;
+            uint32 price = uint32(std::floor(item->BuyPrice * discount));
+            if (!CompanionErrands::CanSpend(bot->GetMoney(), price, reserve) ||
+                item->ContainerSlots < bestCapacity ||
+                (item->ContainerSlots == bestCapacity && price >= bestPrice))
+                continue;
+            best = {item->ItemId, slot, target, storage};
+            bestCapacity = item->ContainerSlots;
+            bestPrice = price;
+        }
+        return best;
+    }
+
+    void EquipOwnedBagUpgrade(Player* bot)
+    {
+        uint8 target = SmallestGeneralBagSlot(bot);
+        if (target == NULL_SLOT)
+            return;
+        Bag* current = bot->GetBagByPos(target);
+        uint32 capacity = current ? current->GetBagSize() : 0;
+        for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
+        {
+            Item* item = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
+            if (item && item->IsBag() && !item->GetTemplate()->BagFamily &&
+                item->GetTemplate()->ContainerSlots > capacity)
+            {
+                bot->SwapItem(uint16(INVENTORY_SLOT_BAG_0 << 8) | slot,
+                    uint16(INVENTORY_SLOT_BAG_0 << 8) | target);
+                return;
+            }
+        }
+    }
+
     uint32 RepairEquipment(Player* bot, Creature* vendor, uint32 reserve)
     {
         Creature* repairer = bot->GetNPCIfCanInteractWith(vendor->GetGUID(), UNIT_NPC_FLAG_REPAIR);
@@ -819,6 +910,8 @@ bool CompanionErrandAction::Execute(Event)
             {
                 state.reserve = std::max(state.reserve, bot->GetMoney() / 5);
                 double best = std::numeric_limits<double>::max();
+                if (IsManagedCompanion(botAI))
+                    EquipOwnedBagUpgrade(bot);
                 auto const stock = PoisonStock(bot);
                 auto const supplies = IsManagedCompanion(botAI) ? NeededProfessionSupplies(bot) : ProfessionSupplies{};
                 bool sell = false;
@@ -870,8 +963,9 @@ bool CompanionErrandAction::Execute(Event)
                         priority = focus == "craft" ? (profession ? 0.0 : 10000.0) : (profession ? 10000.0 : 0.0);
                     }
                     else if (IsManagedCompanion(botAI) && !state.rejectedSupplyVendors.count(uint32(spawn)) &&
-                        ChooseProfessionSupply(bot, sObjectMgr->GetNpcVendorItemList(data.id),
-                            state.reserve, supplies).item)
+                        (ChooseProfessionSupply(bot, sObjectMgr->GetNpcVendorItemList(data.id),
+                            state.reserve, supplies).item ||
+                        ChooseBag(bot, sObjectMgr->GetNpcVendorItemList(data.id), state.reserve).item))
                     {
                         candidate = Errand::ProfessionVendor;
                         priority = 15000.0;
@@ -904,6 +998,13 @@ bool CompanionErrandAction::Execute(Event)
                     if (previous.status.empty() || previous.status == "requested" ||
                         previous.status == "no_eligible_lesson" || previous.status == "budget_insufficient")
                         RecordTraining(bot, budgetBlocked ? "budget_insufficient" : "no_eligible_lesson", 0, 0, 0);
+                }
+                if (best == std::numeric_limits<double>::max() && IsManagedCompanion(botAI) &&
+                    !master->isMoving() && !bot->isMoving() && !bot->IsMounted() &&
+                    !bot->IsNonMeleeSpellCast(false) && bot->GetDistance(master) < 30.0f && HasBagRoom(bot))
+                {
+                    if (botAI->DoSpecificAction("craft random item", Event(), true))
+                        return;
                 }
                 if (best != std::numeric_limits<double>::max())
                 {
@@ -1064,6 +1165,12 @@ bool CompanionErrandAction::Execute(Event)
             auto purchase = supplies ?
                 ChooseProfessionSupply(bot, npc->GetVendorItems(), state.reserve, NeededProfessionSupplies(bot), npc) :
                 ChoosePoison(bot, npc->GetVendorItems(), state.reserve, PoisonStock(bot), npc);
+            BagPurchase bag;
+            if (supplies && !purchase.item)
+            {
+                bag = ChooseBag(bot, npc->GetVendorItems(), state.reserve, npc);
+                purchase = {bag.item, bag.vendorSlot, 1};
+            }
             if (purchase.item)
             {
                 bot->StopMoving();
@@ -1071,11 +1178,15 @@ bool CompanionErrandAction::Execute(Event)
                 uint32 previousVendor = bot->GetSession()->GetCurrentVendor();
                 bot->GetSession()->SetCurrentVendor(0);
                 bot->BuyItemFromVendorSlot(npc->GetGUID(), purchase.slot, purchase.item,
-                    uint8(purchase.batches), NULL_BAG, NULL_SLOT);
+                    uint8(purchase.batches), bag.item ? INVENTORY_SLOT_BAG_0 : NULL_BAG,
+                    bag.item ? bag.storageSlot : NULL_SLOT);
                 bot->GetSession()->SetCurrentVendor(previousVendor);
                 uint32 after = bot->GetItemCount(purchase.item, false);
                 if (after > before)
                 {
+                    if (bag.item && bag.storageSlot != bag.equipSlot)
+                        bot->SwapItem(uint16(INVENTORY_SLOT_BAG_0 << 8) | bag.storageSlot,
+                            uint16(INVENTORY_SLOT_BAG_0 << 8) | bag.equipSlot);
                     botAI->TellMaster("J'ai achete " +
                         ChatHelper::FormatItem(sObjectMgr->GetItemTemplate(purchase.item)));
                     LOG_INFO("playerbots", "[CompanionErrands] {} bought {} x {} at {}",

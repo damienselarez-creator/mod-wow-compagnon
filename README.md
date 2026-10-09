@@ -122,3 +122,27 @@ prevent duplicate purchases. Reagent stock aims for ten, is capped at twenty and
 vendor pack sizes; non-stackable components are bought once. At the skill cap, recent-tier
 recipes remain supplied. Purchases use the companion's own gold and preserve the reserve,
 free bag space, vendor stock and normal travel safety. No items are granted.
+
+Les compagnons achètent également des sacs ordinaires plus grands lorsqu'ils peuvent
+les payer après les fournitures, sans toucher à leur réserve. Un emplacement libre
+est rempli en priorité ; les sacs de métier sont conservés. L'échange natif conserve
+le contenu du sac remplacé. Une amélioration déjà possédée est équipée avant tout achat.
+
+Companions also buy larger general-purpose bags when affordable after profession
+supplies, preserving their reserve and existing profession bags. Empty bag slots
+come first. Native bag swapping preserves contents; owned upgrades are used first.
+
+L'artisanat autonome privilégie un bénéfice personnel (amélioration, sac,
+consommable ou composant utile), puis les besoins des membres du groupe proches.
+Il utilise les recettes réellement apprises, les composants possédés et les règles
+natives d'atelier. Une fabrication par passage en ville, sans série automatique de
+19 objets ; aucun objet inutile n'est fabriqué pour monter artificiellement le métier.
+Un lot destiné au groupe reste en inventaire pour une remise normale : le transfert
+automatique n'est pas ajouté ici. Les objets liés à la fabrication ne sont pas
+produits pour autrui ; un lot en attente bloque la répétition de la même recette.
+
+Autonomous crafting prioritizes personal benefits, then nearby group members' needs.
+It uses learned recipes, real reagents and native crafting requirements, one craft
+at a time. Group goods remain available for normal trading; automatic delivery is
+not implemented. Bind-on-pickup outputs are never crafted for others, and pending
+goods prevent duplicate group batches. No useless skill-grinding crafts are added.

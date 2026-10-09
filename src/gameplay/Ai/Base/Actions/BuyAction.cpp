@@ -108,7 +108,8 @@ bool BuyAction::Execute(Event event)
                     // Managed companions restock through bounded profession errands, not gear-scored shopping.
                     // Explicit item purchases and recipe books retain the existing purchase path.
                     if (IsCompanionInventoryManaged(botAI) && IsManagedCompanion(botAI) &&
-                        usage == ITEM_USAGE_SKILL && proto->Class != ITEM_CLASS_RECIPE)
+                        ((usage == ITEM_USAGE_SKILL && proto->Class != ITEM_CLASS_RECIPE) ||
+                        (proto->Class == ITEM_CLASS_CONTAINER && !proto->BagFamily)))
                         break;
 
                     uint32 invType = proto->InventoryType;

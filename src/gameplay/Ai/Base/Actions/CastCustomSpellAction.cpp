@@ -7,7 +7,10 @@
  */
 
 #include "CastCustomSpellAction.h"
+#include "Bag.h"
 #include "ChatHelper.h"
+#include "PlayerbotSpellRepository.h"
+#include "StatsWeightCalculator.h"
 #include "Event.h"
 #include "ItemUsageValue.h"
 #include "Playerbots.h"
@@ -237,6 +240,12 @@ bool CastRandomSpellAction::Execute(Event event)
     if (!got && !target)
         target = bot;
 
+    bool strictPriority = UseStrictPriority();
+    if (strictPriority)
+    {
+        target = bot;
+        got = nullptr;
+    }
     std::vector<std::pair<uint32, std::pair<uint32, WorldObject*>>> spellList;
 
     for (auto& spell : spellMap)
@@ -253,6 +262,8 @@ bool CastRandomSpellAction::Execute(Event event)
         if (bot->HasSpell(spellId))
         {
             uint32 spellPriority = GetSpellPriority(spellInfo);
+            if (strictPriority && !spellPriority)
+                continue;
 
             if (target && botAI->CanCastSpell(spellId, target, true))
                 spellList.push_back(std::make_pair(spellId, std::make_pair(spellPriority, target)));
@@ -270,13 +281,19 @@ bool CastRandomSpellAction::Execute(Event event)
     // bool isCast = false; //not used, line marked for removal.
 
     std::sort(spellList.begin(), spellList.end(),
-              [](std::pair<uint32, std::pair<uint32, WorldObject*>> i,
-                 std::pair<uint32, std::pair<uint32, WorldObject*>> j) { return i.first > j.first; });
+              [strictPriority](auto const& i, auto const& j)
+              {
+                  if (strictPriority && i.second.first != j.second.first)
+                      return i.second.first > j.second.first;
+                  return i.first > j.first;
+              });
 
     uint32 rndBound = spellList.size() / 4;
 
     rndBound = std::min(rndBound, (uint32)10);
     rndBound = std::max(rndBound, (uint32)0);
+    if (strictPriority)
+        rndBound = 0;
 
     for (uint32 i = 0; i < 5; i++)
     {
@@ -291,7 +308,7 @@ bool CastRandomSpellAction::Execute(Event event)
 
         if (isCast)
         {
-            if (MultiCast && ((wo && bot->HasInArc(CAST_ANGLE_IN_FRONT, wo, sPlayerbotAIConfig.sightDistance))))
+            if (MultiCast && !strictPriority && ((wo && bot->HasInArc(CAST_ANGLE_IN_FRONT, wo, sPlayerbotAIConfig.sightDistance))))
             {
                 std::ostringstream cmd;
                 cmd << "castnc " << chat->FormatWorldobject(wo) + " " << spellId << " " << 19;
@@ -304,14 +321,92 @@ bool CastRandomSpellAction::Execute(Event event)
     return false;
 }
 
+namespace
+{
+    bool CompanionCraftUseful(Player* recipient, ItemTemplate const* item)
+    {
+        if (!recipient || recipient->CanUseItem(item) != EQUIP_ERR_OK)
+            return false;
+        uint32 held = recipient->GetItemCount(item->ItemId, true);
+        if (item->Class == ITEM_CLASS_CONTAINER)
+        {
+            if (held || item->BagFamily)
+                return false;
+            for (uint8 slot = INVENTORY_SLOT_BAG_START; slot < INVENTORY_SLOT_BAG_END; ++slot)
+            {
+                Bag* bag = recipient->GetBagByPos(slot);
+                if (!bag || (!bag->GetTemplate()->BagFamily && bag->GetBagSize() < item->ContainerSlots))
+                    return true;
+            }
+            return false;
+        }
+        if (auto* ai = GET_PLAYERBOT_AI(recipient))
+        {
+            ItemUsage usage = ai->GetAiObjectContext()->GetValue<ItemUsage>("item usage",
+                std::to_string(item->ItemId))->Get();
+            if (usage == ITEM_USAGE_EQUIP || usage == ITEM_USAGE_REPLACE)
+                return !held;
+            return held < 10 && (usage == ITEM_USAGE_USE || usage == ITEM_USAGE_AMMO ||
+                usage == ITEM_USAGE_QUEST || usage == ITEM_USAGE_SKILL);
+        }
+        if (item->Class == ITEM_CLASS_CONSUMABLE)
+            return held < 10 && !ItemUsageValue::GetConsumableType(item, recipient->GetMaxPower(POWER_MANA)).empty();
+        if (held || (item->Class != ITEM_CLASS_ARMOR && item->Class != ITEM_CLASS_WEAPON))
+            return false;
+        uint16 destination = 0;
+        if (recipient->CanEquipNewItem(NULL_SLOT, destination, item->ItemId, true) != EQUIP_ERR_OK)
+            return false;
+        StatsWeightCalculator calculator(recipient);
+        calculator.SetItemSetBonus(false);
+        calculator.SetOverflowPenalty(false);
+        Item* equipped = recipient->GetItemByPos(destination);
+        float current = equipped ? calculator.CalculateItem(equipped->GetEntry(), equipped->GetItemRandomPropertyId()) : 0;
+        return calculator.CalculateItem(item->ItemId) > current;
+    }
+}
+
+bool CraftRandomItemAction::UseStrictPriority() const
+{
+    return IsCompanionInventoryManaged(botAI) && IsManagedCompanion(botAI);
+}
+
 bool CraftRandomItemAction::AcceptSpell(SpellInfo const* spellInfo)
 {
-    return spellInfo->Effects[EFFECT_0].Effect == SPELL_EFFECT_CREATE_ITEM && spellInfo->ReagentCount[EFFECT_0] > 0 &&
-           spellInfo->SchoolMask == 0;
+    if (spellInfo->Effects[EFFECT_0].Effect != SPELL_EFFECT_CREATE_ITEM ||
+        spellInfo->ReagentCount[EFFECT_0] <= 0 || spellInfo->SchoolMask != 0)
+        return false;
+    if (UseStrictPriority())
+    {
+        auto const* skill = PlayerbotSpellRepository::Instance().GetSkillLine(spellInfo->Id);
+        auto const& known = bot->GetSpellMap();
+        auto found = known.find(spellInfo->Id);
+        return skill && IsProfession(skill->SkillLine) && bot->HasSkill(skill->SkillLine) &&
+            found != known.end() && found->second->State != PLAYERSPELL_REMOVED && found->second->Active;
+    }
+    return true;
 }
 
 uint32 CraftRandomItemAction::GetSpellPriority(SpellInfo const* spellInfo)
 {
+    if (UseStrictPriority())
+    {
+        auto const* item = sObjectMgr->GetItemTemplate(spellInfo->Effects[EFFECT_0].ItemType);
+        if (!item)
+            return 0;
+        if (CompanionCraftUseful(bot, item))
+            return 100;
+        // Keep one pending batch for the group; do not recreate goods awaiting delivery.
+        if (item->Bonding == BIND_WHEN_PICKED_UP || bot->GetItemCount(item->ItemId, true))
+            return 0;
+        if (Group* group = bot->GetGroup())
+            for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+                if (Player* member = ref->GetSource())
+                    if (member != bot && member->IsAlive() && member->IsInWorld() &&
+                        member->GetMap() == bot->GetMap() && bot->GetDistance(member) <= 40.0f &&
+                        CompanionCraftUseful(member, item))
+                        return 50;
+        return 0;
+    }
     if (spellInfo->Effects[EFFECT_0].Effect != SPELL_EFFECT_CREATE_ITEM)
     {
         uint32 newItemId = spellInfo->Effects[EFFECT_0].ItemType;
