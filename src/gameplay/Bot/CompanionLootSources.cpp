@@ -63,7 +63,7 @@ bool CompanionLootSources::Load()
             int64 reference = fields[2].Get<int32>();
             if (reference < 0)
                 reference = -reference;
-            int32 maxCount = fields[7].Get<int32>();
+            int32 maxCount = fields[7].Get<uint8>();
             index->Add(static_cast<CompanionLootSourceIndex::Kind>(kind), fields[0].Get<uint32>(),
                 {fields[1].Get<uint32>(), static_cast<uint32>(reference), fields[3].Get<float>(),
                  fields[4].Get<bool>(), fields[5].Get<uint16>(), fields[6].Get<uint8>(),
