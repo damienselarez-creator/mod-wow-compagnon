@@ -94,4 +94,10 @@ source documents may remain French; their language does not dictate the reply.
 
 ## Atelier de personnalité / Personality workshop
 
-Catalogue préparatoire : [qualités et défauts en français](docs/PERSONALITY_TRAITS.frFR.md), [English qualities and flaws](docs/PERSONALITY_TRAITS.enUS.md). Trois qualités et trois défauts distincts, choisis indépendamment, pour les compagnons uniquement. L'addon et le verrouillage restent à développer.
+Catalogue : [qualités et défauts en français](docs/PERSONALITY_TRAITS.frFR.md),
+[English qualities and flaws](docs/PERSONALITY_TRAITS.enUS.md).
+Trois qualités et trois défauts distincts, choisis indépendamment, pour les compagnons uniquement.
+La fiche privée est confirmée côté serveur et ajoutée aux consignes de chaque dialogue.
+Consulter le [guide français](docs/PERSONALITY_WORKSHOP.frFR.md) ou
+[English guide](docs/PERSONALITY_WORKSHOP.enUS.md) pour les commandes de préparation et confirmation.
+L'addon graphique et la restauration automatique après jeu manuel restent à développer.

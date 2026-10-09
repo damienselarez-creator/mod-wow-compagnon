@@ -16,6 +16,15 @@
 #include <limits>
 #include <mutex>
 #include <sstream>
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#else
+#include <fcntl.h>
+#include <unistd.h>
+#endif
 
 namespace
 {
@@ -100,8 +109,33 @@ bool Save(std::string const& key, pbc_json const& sheet)
         output.close();
         if (output.fail())
             return false;
+#ifdef _WIN32
+        if (!MoveFileExW(temporary.c_str(), stateFile.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+            return false;
+#else
+        int file = open(temporary.c_str(), O_RDONLY);
+        if (file < 0)
+            return false;
+        int synced = fsync(file);
+        close(file);
+        if (synced != 0)
+            return false;
         std::filesystem::rename(temporary, stateFile);
+#endif
         sheets.swap(next);
+#ifndef _WIN32
+        int directory = open(stateFile.parent_path().c_str(), O_RDONLY | O_DIRECTORY);
+        synced = directory < 0 ? -1 : fsync(directory);
+        if (directory >= 0)
+            close(directory);
+        if (synced != 0)
+        {
+            // The file is published, so never allow another confirmation against stale state.
+            ready = false;
+            LOG_ERROR("module.pbc", "Personality directory sync failed; workshop disabled");
+            return false;
+        }
+#endif
         return true;
     }
     catch (std::exception const& error)
@@ -121,6 +155,9 @@ bool Command(ChatHandler* handler, Acore::ChatCommands::Tail args)
     std::istringstream input{std::string(args)};
     std::string action;
     input >> action;
+    std::string trailing;
+    if (action != "preview" && input >> trailing)
+        return false;
     std::lock_guard<std::mutex> lock(stateMutex);
     if (!ready)
     {
@@ -174,7 +211,8 @@ bool Command(ChatHandler* handler, Acore::ChatCommands::Tail args)
         bool saved = Save(key, draft->second.sheet);
         drafts.erase(draft);
         handler->SendSysMessage(saved ? (french ? "Fiche confirmee definitivement." : "Sheet permanently confirmed.") :
-            (french ? "Echec de sauvegarde ; aucun choix confirme." : "Save failed; no choices confirmed."));
+            (french ? "Sauvegarde non confirmee ; atelier a verifier." :
+                "Save not confirmed; the workshop needs checking."));
         return true;
     }
     if (action == "preview")

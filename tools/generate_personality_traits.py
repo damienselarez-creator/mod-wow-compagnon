@@ -29,7 +29,7 @@ def main():
     introductions = {
         "frFR": [
             "# Traits de personnalité des compagnons",
-            "Catalogue public : 30 qualités et 30 défauts pour le futur atelier.",
+            "Catalogue public : 30 qualités et 30 défauts pour les fiches des compagnons.",
             "Choisir trois qualités distinctes et trois défauts distincts, indépendamment. "
             "Les associations ci-dessous sont des repères narratifs ; choisir une qualité "
             "n'impose pas le défaut de sa ligne.",
@@ -38,14 +38,14 @@ def main():
             "continuent d'évoluer. Aucun bonus de statistiques n'est défini ici.",
             "Les formes françaises suivent le genre du compagnon ; les libellés anglais "
             "sont communs. La langue d'affichage suivra celle du client du joueur.",
-            "État : catalogue préparatoire. L'addon, la sélection en jeu et le verrouillage "
-            "restent à développer ; ces traits ne sont pas encore chargés par le dialogue.",
+            "État : fiches, confirmation définitive et consignes de dialogue implémentées. "
+            "Les commandes sont décrites dans PERSONALITY_WORKSHOP.frFR.md ; l'addon reste à développer.",
             "| Qualité (masculin) | Qualité (féminin) | Défaut (masculin) | Défaut (féminin) |",
             "| --- | --- | --- | --- |",
         ],
         "enUS": [
             "# Companion personality traits",
-            "Public catalogue: 30 qualities and 30 flaws for the future workshop.",
+            "Public catalogue: 30 qualities and 30 flaws for companion sheets.",
             "Choose three distinct qualities and three distinct flaws independently. "
             "The associations below are narrative references; choosing a quality "
             "does not require the flaw on the same row.",
@@ -54,8 +54,8 @@ def main():
             "to evolve. No stat bonuses are defined here.",
             "French labels follow the companion's gender; English labels use a common form. "
             "The player's client language will determine the display language.",
-            "Status: preparatory catalogue. The addon, in-game selection and locking still "
-            "need implementation; dialogue does not load these traits yet.",
+            "Status: sheets, permanent confirmation and dialogue instructions are implemented. "
+            "See PERSONALITY_WORKSHOP.enUS.md for commands; the graphical addon remains to be developed.",
             "| Quality | Flaw |",
             "| --- | --- |",
         ],

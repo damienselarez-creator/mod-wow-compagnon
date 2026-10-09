@@ -1,6 +1,7 @@
 #include "pbc_vocation_policy.h"
 #include "pbc_vocation_store.h"
 #include "pbc_vocation.h"
+#include "pbc_personality.h"
 #include "pbc_vocation_catalog.h"
 #include "pbc_character.h"
 #include "pbc_companion_language.h"
@@ -83,6 +84,12 @@ bool Matches(Json const& item, Player* bot)
 
 Json Read(Player* bot)
 {
+    auto definitive = PBC_PersonalitySheet(bot);
+    if (!definitive.is_null())
+    {
+        definitive["stage"] = "done";
+        return definitive;
+    }
     std::lock_guard<std::mutex> lock(stateMutex);
     auto it = records.find(Key(bot));
     return ready && it != records.end() && Matches(*it, bot) ? *it : Json();
@@ -90,6 +97,8 @@ Json Read(Player* bot)
 
 bool Save(Player* bot, Json const& item)
 {
+    if (!PBC_PersonalitySheet(bot).is_null())
+        return false;
     std::lock_guard<std::mutex> lock(stateMutex);
     if (!ready || (records.size() >= 4096 && !records.contains(Key(bot))))
         return false;

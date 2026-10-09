@@ -1,6 +1,6 @@
 # Companion personality traits
 
-Public catalogue: 30 qualities and 30 flaws for the future workshop.
+Public catalogue: 30 qualities and 30 flaws for companion sheets.
 
 Choose three distinct qualities and three distinct flaws independently. The associations below are narrative references; choosing a quality does not require the flaw on the same row.
 
@@ -8,7 +8,7 @@ Only companions receive this sheet. The design calls for permanent server-side c
 
 French labels follow the companion's gender; English labels use a common form. The player's client language will determine the display language.
 
-Status: preparatory catalogue. The addon, in-game selection and locking still need implementation; dialogue does not load these traits yet.
+Status: sheets, permanent confirmation and dialogue instructions are implemented. See PERSONALITY_WORKSHOP.enUS.md for commands; the graphical addon remains to be developed.
 
 | Quality | Flaw |
 | --- | --- |

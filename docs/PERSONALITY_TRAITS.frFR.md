@@ -1,6 +1,6 @@
 # Traits de personnalité des compagnons
 
-Catalogue public : 30 qualités et 30 défauts pour le futur atelier.
+Catalogue public : 30 qualités et 30 défauts pour les fiches des compagnons.
 
 Choisir trois qualités distinctes et trois défauts distincts, indépendamment. Les associations ci-dessous sont des repères narratifs ; choisir une qualité n'impose pas le défaut de sa ligne.
 
@@ -8,7 +8,7 @@ La fiche concerne uniquement les compagnons. Le projet prévoit une validation d
 
 Les formes françaises suivent le genre du compagnon ; les libellés anglais sont communs. La langue d'affichage suivra celle du client du joueur.
 
-État : catalogue préparatoire. L'addon, la sélection en jeu et le verrouillage restent à développer ; ces traits ne sont pas encore chargés par le dialogue.
+État : fiches, confirmation définitive et consignes de dialogue implémentées. Les commandes sont décrites dans PERSONALITY_WORKSHOP.frFR.md ; l'addon reste à développer.
 
 | Qualité (masculin) | Qualité (féminin) | Défaut (masculin) | Défaut (féminin) |
 | --- | --- | --- | --- |

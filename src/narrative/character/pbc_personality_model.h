@@ -115,6 +115,10 @@ inline std::string PBC_RenderPersonality(pbc_json const& sheet, pbc_json const& 
                     }
             out += ".\n";
         }
+        out += french ? "Orientations definitives (pas des capacites deja acquises) : " :
+            "Permanent paths (not evidence of acquired abilities): ";
+        out += "talent_tree=" + std::to_string(sheet.at("tab").get<int>()) + " professions=" +
+            sheet.at("professions").dump() + ".\n";
         out += french ?
             "Ces six traits guident tes reactions, tes priorites et ta voix, avec nuance. "
             "Ne les recite pas a chaque reponse. Tes defauts ne sont pas des qualites imposees en miroir. "
