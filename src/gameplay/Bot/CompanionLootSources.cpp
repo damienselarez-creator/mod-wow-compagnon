@@ -4,10 +4,12 @@
 #include "CompanionLootSources.h"
 #include "Config.h"
 #include "DatabaseEnv.h"
+#include "Field.h"
 #include "Log.h"
 #include "MySQLConnection.h"
 #include "MySQLPreparedStatement.h"
 #include "PreparedStatement.h"
+#include "QueryResult.h"
 #include <atomic>
 #include <memory>
 
