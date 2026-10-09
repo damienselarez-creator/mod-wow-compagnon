@@ -426,9 +426,10 @@ namespace
 
     uint16 FindOwnedBagUpgrade(Player* bot, uint32 capacity)
     {
-        auto useful = [capacity](Item* item)
+        auto useful = [bot, capacity](Item* item)
         {
-            return item && item->IsBag() && !item->GetTemplate()->BagFamily &&
+            return item && item->IsBag() && !item->IsInTrade() && !item->GetTemplate()->BagFamily &&
+                bot->CanUseItem(item->GetTemplate()) == EQUIP_ERR_OK &&
                 item->GetTemplate()->ContainerSlots > capacity;
         };
         for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
@@ -502,7 +503,10 @@ namespace
                 if (!bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot))
                 {
                     uint16 temporary = uint16(INVENTORY_SLOT_BAG_0 << 8) | slot;
+                    Item* upgrade = bot->GetItemByPos(uint8(source >> 8), uint8(source));
                     bot->SwapItem(source, temporary);
+                    if (bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot) != upgrade)
+                        return;
                     source = temporary;
                     break;
                 }

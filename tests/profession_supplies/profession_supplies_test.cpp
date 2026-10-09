@@ -41,6 +41,7 @@ struct Item
     ItemTemplate const* proto;
     ItemTemplate const* GetTemplate() const { return proto; }
     bool IsBag() const { return proto->Class == ITEM_CLASS_CONTAINER; }
+    bool IsInTrade() const { return false; }
 };
 struct Bag : Item
 {
@@ -128,7 +129,12 @@ struct Player
     {
         return static_cast<Bag*>(GetItemByPos(INVENTORY_SLOT_BAG_0, slot));
     }
-    void SwapItem(uint16 source, uint16 target) { std::swap(positions[source], positions[target]); }
+    bool swapFails = false;
+    void SwapItem(uint16 source, uint16 target)
+    {
+        if (!swapFails)
+            std::swap(positions[source], positions[target]);
+    }
     std::map<uint32, KnownSpell*> spells;
     std::set<uint32> categories;
     uint32 money = 100, maxSkill = 75;
@@ -311,6 +317,10 @@ int main()
     assert(ChooseBag(&bagBot, &bags, 20, &npc).item == 201);
     bagBot.positions[uint16(19 << 8) | 0] = &large;
     assert(!ChooseBag(&bagBot, &bags, 20).item);
+    bagBot.swapFails = true;
+    EquipOwnedBagUpgrade(&bagBot);
+    assert(bagBot.GetBagByPos(20) == &small && bagBot.GetItemByPos(255, 23) == nullptr);
+    bagBot.swapFails = false;
     EquipOwnedBagUpgrade(&bagBot);
     assert(bagBot.GetBagByPos(20) == &large && bagBot.GetBagByPos(19) == &specialty);
     assert(!ChooseBag(&bagBot, &bags, 20).item); // No downgrade or duplicate once all general bags are 12 slots.
