@@ -30,6 +30,23 @@ namespace CompanionErrands
         return price ? std::min(desired, (money - reserve) / price) : desired;
     }
 
+    constexpr uint32_t SupplyStock = 10;
+    constexpr uint32_t SupplyStockLimit = 20;
+
+    // Vendor prices are per pack, not per individual item. Never borrow the reserve.
+    inline uint32_t SupplyBatches(uint32_t held, uint32_t desired, uint32_t pack,
+        uint32_t price, uint32_t money, uint32_t reserve, uint32_t available)
+    {
+        if (held >= desired || !pack || desired > SupplyStockLimit || money < reserve)
+            return 0;
+        uint32_t batches = (desired - held + pack - 1) / pack;
+        batches = std::min(batches, available / pack);
+        batches = std::min(batches, (SupplyStockLimit - held) / pack);
+        if (price)
+            batches = std::min(batches, (money - reserve) / price);
+        return batches;
+    }
+
     inline bool CanSellGrey(uint32_t quality, bool protectedItem, bool unused)
     {
         return quality == 0 && !protectedItem && unused;

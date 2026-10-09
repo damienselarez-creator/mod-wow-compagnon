@@ -43,7 +43,7 @@ namespace
     }
 
     enum Timer : uint32 { Decision = 1, TownScan, HerbScan, Deadline, Progress, Resume, ClearRejected, VerifyLesson };
-    enum class Errand { None, Trainer, Herb, Return, PoisonVendor, Bags };
+    enum class Errand { None, Trainer, Herb, Return, PoisonVendor, Bags, ProfessionVendor };
     constexpr float TownRadius = 1500.0f;
 
     bool Eligible(PlayerbotAI* ai)
@@ -275,6 +275,125 @@ namespace
         return {};
     }
 
+    struct ProfessionSupplies
+    {
+        std::map<uint32, uint32> desired;
+        std::map<uint32, uint32> held;
+        std::set<uint32> categories;
+    };
+
+    ProfessionSupplies NeededProfessionSupplies(Player* bot)
+    {
+        ProfessionSupplies needs;
+        auto addTool = [&](uint32 item)
+        {
+            auto const* proto = sObjectMgr->GetItemTemplate(item);
+            if (proto && (!proto->TotemCategory || !bot->HasItemTotemCategory(proto->TotemCategory)))
+                needs.desired[item] = 1;
+        };
+        // Gathering tools must be available even before the first crafting recipe.
+        if (bot->HasSkill(SKILL_MINING))
+            addTool(2901); // Mining Pick
+        if (bot->HasSkill(SKILL_SKINNING))
+            addTool(7005); // Skinning Knife
+        if (bot->HasSkill(SKILL_BLACKSMITHING) || bot->HasSkill(SKILL_ENGINEERING))
+            addTool(5956); // Blacksmith Hammer
+        if (bot->HasSkill(SKILL_ENGINEERING))
+            addTool(6219); // Arclight Spanner
+
+        if (bot->HasSkill(SKILL_INSCRIPTION))
+            addTool(39505); // Virtuoso Inking Set
+
+        for (auto const& [id, known] : bot->GetSpellMap())
+        {
+            if (known->State == PLAYERSPELL_REMOVED || !known->Active)
+                continue;
+            auto const* line = PlayerbotSpellRepository::Instance().GetSkillLine(id);
+            auto const* spell = sSpellMgr->GetSpellInfo(id);
+            if (!line || !spell || !IsProfession(line->SkillLine) || !bot->HasSkill(line->SkillLine))
+                continue;
+            uint32 skill = bot->GetSkillValue(line->SkillLine);
+            // Keep useful recipes; at the skill cap keep the recent tier rather than every old vial type.
+            if (skill < line->MinSkillLineRank || (skill >= line->TrivialSkillLineRankHigh &&
+                (skill < bot->GetMaxSkillValue(line->SkillLine) || skill > line->MinSkillLineRank + 75)))
+                continue;
+            for (uint32 tool : spell->Totem)
+                if (tool)
+                    addTool(tool);
+            for (uint32 category : spell->TotemCategory)
+                if (category && !bot->HasItemTotemCategory(category))
+                    needs.categories.insert(category);
+            for (uint32 i = 0; i < MAX_SPELL_REAGENTS; ++i)
+            {
+                if (spell->Reagent[i] <= 0 || !spell->ReagentCount[i])
+                    continue;
+                uint32 item = uint32(spell->Reagent[i]);
+                auto const* proto = sObjectMgr->GetItemTemplate(item);
+                if (!proto || proto->GetMaxStackSize() <= 1)
+                    continue;
+                uint32 desired = std::min<uint32>(proto->GetMaxStackSize(), CompanionErrands::SupplyStockLimit);
+                desired = std::min(desired, std::max(CompanionErrands::SupplyStock, spell->ReagentCount[i]));
+                needs.desired[item] = std::max(needs.desired[item], desired);
+            }
+        }
+        for (auto const& [item, desired] : needs.desired)
+            needs.held[item] = bot->GetItemCount(item, false);
+        return needs;
+    }
+
+    PoisonPurchase ChooseProfessionSupply(Player* bot, VendorItemData const* goods, uint32 reserve,
+        ProfessionSupplies const& needs, Creature* vendor = nullptr)
+    {
+        if (!goods || goods->Empty())
+            return {};
+        PoisonPurchase best;
+        uint32 bestPrice = std::numeric_limits<uint32>::max();
+        bool bestTool = false;
+        for (uint32 slot = 0; slot < goods->GetItemCount(); ++slot)
+        {
+            auto const* offer = goods->GetItem(slot);
+            auto const* item = offer ? sObjectMgr->GetItemTemplate(offer->item) : nullptr;
+            if (!item || offer->ExtendedCost || item->BuyPrice < 0 || !item->BuyCount ||
+                bot->CanUseItem(item) != EQUIP_ERR_OK)
+                continue;
+            uint32 desired = 0;
+            uint32 held = 0;
+            if (auto found = needs.desired.find(item->ItemId); found != needs.desired.end())
+            {
+                desired = found->second;
+                held = needs.held.at(item->ItemId);
+            }
+            if (!desired && item->TotemCategory)
+                for (uint32 category : needs.categories)
+                    if (bot->IsTotemCategoryCompatiableWith(item, category))
+                    {
+                        desired = 1;
+                        held = bot->GetItemCount(item->ItemId, false);
+                        break;
+                    }
+            if (!desired || held >= desired || (desired == 1 && item->BuyCount != 1))
+                continue;
+            float discount = vendor ? bot->GetReputationPriceDiscount(vendor) : 1.0f;
+            uint32 price = uint32(std::ceil(item->BuyPrice * discount));
+            uint32 available = offer->maxcount ? (vendor ? vendor->GetVendorItemCurrentCount(offer) :
+                offer->maxcount) : std::numeric_limits<uint32>::max();
+            uint32 batches = CompanionErrands::SupplyBatches(held, desired, item->BuyCount, price,
+                bot->GetMoney(), reserve, available);
+            ItemPosCountVec destination;
+            if (!batches || bot->CanStoreNewItem(NULL_BAG, NULL_SLOT, destination, item->ItemId,
+                batches * item->BuyCount) != EQUIP_ERR_OK)
+                continue;
+            // Tools first, then the cheapest available supply; unrelated equipment scores do not apply.
+            bool tool = desired == 1;
+            if (best.item && (bestTool > tool || (bestTool == tool && bestPrice <= price)))
+                continue;
+            best = {item->ItemId, slot, batches};
+            bestPrice = price;
+            bestTool = tool;
+        }
+        return best;
+    }
+
     uint32 RepairEquipment(Player* bot, Creature* vendor, uint32 reserve)
     {
         Creature* repairer = bot->GetNPCIfCanInteractWith(vendor->GetGUID(), UNIT_NPC_FLAG_REPAIR);
@@ -365,6 +484,7 @@ struct CompanionErrandState
     std::set<uint32> rejectedTrainers;
     std::set<uint32> rejectedLessons;
     std::set<uint32> rejectedVendors;
+    std::set<uint32> rejectedSupplyVendors;
     std::set<ObjectGuid> rejectedHerbs;
 };
 
@@ -424,6 +544,8 @@ namespace
             }
             if (state.kind == Errand::Bags)
                 state.rejectedBagVendors.insert(state.spawn);
+            if (state.kind == Errand::ProfessionVendor)
+                state.rejectedSupplyVendors.insert(state.spawn);
             if (state.kind == Errand::PoisonVendor)
                 state.rejectedVendors.insert(state.spawn);
             if (state.kind == Errand::Herb)
@@ -609,6 +731,7 @@ void UpdateCompanionErrands(PlayerbotAI* ai, uint32 elapsed)
                 state.rejectedTrainers.clear();
                 state.rejectedLessons.clear();
                 state.rejectedVendors.clear();
+                state.rejectedSupplyVendors.clear();
                 state.rejectedHerbs.clear();
                 state.events.ScheduleEvent(ClearRejected, Milliseconds(300000));
                 break;
@@ -626,7 +749,8 @@ void UpdateCompanionErrands(PlayerbotAI* ai, uint32 elapsed)
     Player* bot = ai->GetBot();
     if (GetCompanionNarrativeFocus(bot->GetGUID()) == "follow" ||
         !Eligible(ai) || master->GetGUID() != state.owner || bot->GetMapId() != state.map ||
-        ((state.kind == Errand::Trainer || state.kind == Errand::PoisonVendor || state.kind == Errand::Bags) &&
+        ((state.kind == Errand::Trainer || state.kind == Errand::PoisonVendor || state.kind == Errand::Bags ||
+            state.kind == Errand::ProfessionVendor) &&
             (!InTown(master) || master->GetZoneId() != state.zone ||
             (state.settlement ? Settlement(master) != state.settlement :
                 master->GetDistance(state.x, state.y, state.z) > TownRadius))) ||
@@ -692,6 +816,7 @@ bool CompanionErrandAction::Execute(Event)
                 state.reserve = std::max(state.reserve, bot->GetMoney() / 5);
                 double best = std::numeric_limits<double>::max();
                 auto const stock = PoisonStock(bot);
+                auto const supplies = IsManagedCompanion(botAI) ? NeededProfessionSupplies(bot) : ProfessionSupplies{};
                 bool sell = false;
                 for (Item* item : botAI->GetInventoryItems())
                     if (!state.failedSales.count(item->GetGUID()) && CanSellCompanionItem(botAI, item))
@@ -740,6 +865,13 @@ bool CompanionErrandAction::Execute(Event)
                         bool profession = trainer->GetTrainerType() != Trainer::Type::Class;
                         priority = focus == "craft" ? (profession ? 0.0 : 10000.0) : (profession ? 10000.0 : 0.0);
                     }
+                    else if (IsManagedCompanion(botAI) && !state.rejectedSupplyVendors.count(uint32(spawn)) &&
+                        ChooseProfessionSupply(bot, sObjectMgr->GetNpcVendorItemList(data.id),
+                            state.reserve, supplies).item)
+                    {
+                        candidate = Errand::ProfessionVendor;
+                        priority = 15000.0;
+                    }
                     else if (IsManagedCompanion(botAI) && !state.rejectedVendors.count(uint32(spawn)) &&
                         ChoosePoison(bot, sObjectMgr->GetNpcVendorItemList(data.id), state.reserve, stock).item)
                     {
@@ -777,7 +909,8 @@ bool CompanionErrandAction::Execute(Event)
                         RecordTraining(bot, "travelling", 0, 0, 0);
                     state.sold = 0;
                     state.repairs = 0;
-                    botAI->TellMaster(selected == Errand::Bags ?
+                    if (selected != Errand::ProfessionVendor)
+                        botAI->TellMaster(selected == Errand::Bags ?
                         "Je vais vendre mes objets gris inutiles et faire reparer mon equipement, puis je reviens." :
                         selected == Errand::Trainer ?
                         "Je vais voir un maitre pour mes apprentissages, puis je vous rejoins." :
@@ -918,12 +1051,15 @@ bool CompanionErrandAction::Execute(Event)
             state.z = npc->GetPositionZ();
         }
     }
-    if (state.kind == Errand::PoisonVendor)
+    if (state.kind == Errand::PoisonVendor || state.kind == Errand::ProfessionVendor)
     {
+        bool supplies = state.kind == Errand::ProfessionVendor;
         Creature* npc = ObjectAccessor::GetSpawnedCreatureByDBGUID(bot->GetMapId(), state.spawn);
         if (npc && bot->GetNPCIfCanInteractWith(npc->GetGUID(), UNIT_NPC_FLAG_VENDOR))
         {
-            auto purchase = ChoosePoison(bot, npc->GetVendorItems(), state.reserve, PoisonStock(bot), npc);
+            auto purchase = supplies ?
+                ChooseProfessionSupply(bot, npc->GetVendorItems(), state.reserve, NeededProfessionSupplies(bot), npc) :
+                ChoosePoison(bot, npc->GetVendorItems(), state.reserve, PoisonStock(bot), npc);
             if (purchase.item)
             {
                 bot->StopMoving();
@@ -942,9 +1078,11 @@ bool CompanionErrandAction::Execute(Event)
                         bot->GetName(), after - before, purchase.item, npc->GetEntry());
                     return true;
                 }
-                state.rejectedVendors.insert(state.spawn);
             }
-            state.rejectedVendors.insert(state.spawn);
+            if (supplies)
+                state.rejectedSupplyVendors.insert(state.spawn);
+            else
+                state.rejectedVendors.insert(state.spawn);
             botAI->TellMaster("Ravitaillement termine, je vous rejoins.");
             state.events.RescheduleEvent(TownScan, Milliseconds(5000));
             Returning(botAI);
