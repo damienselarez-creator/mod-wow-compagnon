@@ -1,0 +1,8 @@
+{
+  "sources": {
+    "mod-playerbots": "be691a93009678e950d512aeba89aae46894ce46",
+    "mod-pbc": "5a4955de02deca3f3e7b16a4e6798fe92ad77c29"
+  },
+  "histories": "Imported without squash; original commits and notices preserved",
+  "native_core": "7b2cecef92b271a468e39d89831b520b20ae06a8"
+}
