@@ -319,7 +319,10 @@ bool PBC_HandlePersonalityAddon(Player* actor, uint32_t type, uint32_t language,
     if (fields.empty())
         return true;
     std::lock_guard<std::mutex> lock(stateMutex);
-    auto error = [&](char const* code) { Reply(actor, "E|" + fields[1] + '|' + code); };
+    auto error = [&](char const* code)
+    {
+        Reply(actor, "E|" + fields[1] + '|' + code);
+    };
     auto now = std::chrono::steady_clock::now();
     for (auto it = addonRequests.begin(); it != addonRequests.end();)
         if (now - it->second > std::chrono::minutes(10))
