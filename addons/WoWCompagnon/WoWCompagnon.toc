@@ -1,6 +1,6 @@
 ## Interface: 30300
 ## Title: WoW Compagnon
-## Notes: Permanent companion personality form / Fiche dÃ©finitive des compagnons
+## Notes: Permanent companion personality form / Fiche définitive des compagnons
 ## Author: damienselarez-creator
 ## Version: 1.0.1
 Data.lua

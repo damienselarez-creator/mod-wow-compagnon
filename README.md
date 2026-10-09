@@ -1,82 +1,82 @@
 # WoW Compagnon
 
 Un module AzerothCore unique : comportements de jeu, progression, dialogue,
-vocations, culture et mÃ©moire d'aventures sont dÃ©veloppÃ©s et livrÃ©s ensemble.
-Playerbots et PBC sont intÃ©grÃ©s dans ce dÃ©pÃ´t, sans sous-modules externes.
+vocations, culture et mémoire d'aventures sont développés et livrés ensemble.
+Playerbots et PBC sont intégrés dans ce dépôt, sans sous-modules externes.
 
-Le [tableau des stÃ©rÃ©otypes](docs/STEREOTYPES.frFR.md) recense les profils,
-leurs traits et les propositions de mÃ©tiers.
+Le [tableau des stéréotypes](docs/STEREOTYPES.frFR.md) recense les profils,
+leurs traits et les propositions de métiers.
 An [English catalogue](docs/STEREOTYPES.enUS.md) is also available.
 
 ## Installation
 
-Cloner ce dÃ©pÃ´t dans `modules/mod-wow-compagnon` d'AzerothCore. Retirer les anciens
-modules Playerbots/PBC de la construction : leur activation simultanÃ©e est refusÃ©e
-pour empÃªcher le double chargement. Le cÅ“ur conserve sa construction native.
+Cloner ce dépôt dans `modules/mod-wow-compagnon` d'AzerothCore. Retirer les anciens
+modules Playerbots/PBC de la construction : leur activation simultanée est refusée
+pour empêcher le double chargement. Le cœur conserve sa construction native.
 
-Compiler avec C++20, `SCRIPTS=static` et `MODULES=static`. Les dÃ©pendances utilisÃ©es
-sont celles d'AzerothCore (MySQL, fmt, OpenSSL) et les bibliothÃ¨ques vendues dans
-`deps/`. Les configurations distribuÃ©es se trouvent dans `conf/`.
+Compiler avec C++20, `SCRIPTS=static` et `MODULES=static`. Les dépendances utilisées
+sont celles d'AzerothCore (MySQL, fmt, OpenSSL) et les bibliothèques vendues dans
+`deps/`. Les configurations distribuées se trouvent dans `conf/`.
 
-Les clÃ©s `AiPlayerbot.*`, `Playerbots.*` et `PBC.*` restent compatibles. Les deux
-fichiers de configuration sont conservÃ©s pendant la transition ; ils rÃ¨glent
-deux parties du mÃªme module. Les tables SQL, GUID, choix, journaux et souvenirs
-gardent leurs noms et formats. Aucun personnage n'est crÃ©Ã© par la fusion.
+Les clés `AiPlayerbot.*`, `Playerbots.*` et `PBC.*` restent compatibles. Les deux
+fichiers de configuration sont conservés pendant la transition ; ils règlent
+deux parties du même module. Les tables SQL, GUID, choix, journaux et souvenirs
+gardent leurs noms et formats. Aucun personnage n'est créé par la fusion.
 
-## CompatibilitÃ© avec le cÅ“ur
+## Compatibilité avec le cœur
 
 Le module utilise les interfaces publiques d'AzerothCore. Il ne requiert pas
-`LootTemplate::HasNonQuestItem` ni un patch du cÅ“ur. La dÃ©couverte des sources de
-matÃ©riaux appartient au module : index en lecture seule chargÃ© avant les threads
-de cartes, quatre requÃªtes prÃ©parÃ©es, aucune requÃªte supplÃ©mentaire par tick.
-Il ne modifie pas les tirages de butin et ne promet pas une rÃ©colte.
+`LootTemplate::HasNonQuestItem` ni un patch du cœur. La découverte des sources de
+matériaux appartient au module : index en lecture seule chargé avant les threads
+de cartes, quatre requêtes préparées, aucune requête supplémentaire par tick.
+Il ne modifie pas les tirages de butin et ne promet pas une récolte.
 
-Les preuves de validation doivent indiquer la rÃ©vision exacte du cÅ“ur officiel
-et du fork personnel. Une compilation ne certifie pas la totalitÃ© du gameplay,
-ni la compatibilitÃ© avec toutes les anciennes versions du cÅ“ur.
+Les preuves de validation doivent indiquer la révision exacte du cœur officiel
+et du fork personnel. Une compilation ne certifie pas la totalité du gameplay,
+ni la compatibilité avec toutes les anciennes versions du cœur.
 
 ## Organisation
 
-- `src/gameplay/` : actions, combat, dÃ©placement, Ã©quipement et formation.
-- `src/narrative/` : dialogue, culture, vocations et mÃ©moire durable.
+- `src/gameplay/` : actions, combat, déplacement, équipement et formation.
+- `src/narrative/` : dialogue, culture, vocations et mémoire durable.
 - `src/companion_loader.cpp` : chargement unique du module.
 - `tests/` : tests autonomes sans lancement d'un second serveur.
-- `gameplay/` et `narrative/` : documents, licences et mÃ©tadonnÃ©es d'origine.
+- `gameplay/` et `narrative/` : documents, licences et métadonnées d'origine.
 
-Les deux historiques Git complets sont conservÃ©s, sans squash. Les notices et
-licences d'origine restent prÃ©sentes. `PROVENANCE.json` indique leurs rÃ©visions.
-Le dÃ©pÃ´t contient uniquement les sources et assets dÃ©jÃ  publiables ; les fichiers
-d'exploitation privÃ©s restent hors de Git.
+Les deux historiques Git complets sont conservés, sans squash. Les notices et
+licences d'origine restent présentes. `PROVENANCE.json` indique leurs révisions.
+Le dépôt contient uniquement les sources et assets déjà publiables ; les fichiers
+d'exploitation privés restent hors de Git.
 
 ## Maintenance
 
-Suivre les Ã©volutions officielles AzerothCore. DÃ©velopper les compagnons dans ce
-dÃ©pÃ´t, sans synchroniser les dÃ©pÃ´ts natifs Playerbots/PBC. Tester le mÃªme module
-sur le cÅ“ur officiel et le fork utilisateur, puis vÃ©rifier la construction du
-cÅ“ur sans module. Conserver les traductions et donnÃ©es privÃ©es Ã  chaque migration.
+Suivre les évolutions officielles AzerothCore. Développer les compagnons dans ce
+dépôt, sans synchroniser les dépôts natifs Playerbots/PBC. Tester le même module
+sur le cœur officiel et le fork utilisateur, puis vérifier la construction du
+cœur sans module. Conserver les traductions et données privées à chaque migration.
 
 ## Personnification et langue du client
 
-Les compagnons se composent Ã  partir de leur race, classe, arbre de talents et
-mÃ©tiers effectivement appris ou choisis. Les anciennes fiches nominatives et
-la description gÃ©nÃ©rique ne participent plus Ã  leur identitÃ©. Leurs fichiers
-privÃ©s restent prÃ©servÃ©s ; les souvenirs acquis et les choix ne sont pas effacÃ©s.
+Les compagnons se composent à partir de leur race, classe, arbre de talents et
+métiers effectivement appris ou choisis. Les anciennes fiches nominatives et
+la description générique ne participent plus à leur identité. Leurs fichiers
+privés restent préservés ; les souvenirs acquis et les choix ne sont pas effacés.
 
 Les profils publics font partie du module : `knowledge/personifications/frFR.json`
 et `enUS.json`. Le corpus `knowledge/archetypes.json` conserve les sources et la
-sÃ©lection documentaire. La version anglaise doit Ãªtre placÃ©e Ã  cÃ´tÃ© du corpus,
-dans `personifications/enUS.json`, mÃªme lorsque le corpus est installÃ© ailleurs.
-Une traduction incohÃ©rente est rejetÃ©e ; le prÃ©cÃ©dent chargement reste actif.
+sélection documentaire. La version anglaise doit être placée à côté du corpus,
+dans `personifications/enUS.json`, même lorsque le corpus est installé ailleurs.
+Une traduction incohérente est rejetée ; le précédent chargement reste actif.
 
-La session du joueur dÃ©termine la langue : client franÃ§ais â†’ franÃ§ais ; client
-anglais â†’ anglais. Un murmure suit la langue de son destinataire ; les initiatives
-du compagnon suivent celle de son maÃ®tre. Les autres langues utilisent le repli
-anglais. Aucun rÃ©glage global du serveur ni fichier nominatif n'est nÃ©cessaire.
-Le choix est capturÃ© avant le traitement du dialogue en arriÃ¨re-plan, sans
-rÃ©Ã©crire les souvenirs, les professions ou les engagements lors d'un changement
-de client. Les consignes de formation et les rÃ©ponses de vocation sont bilingues.
-Les documents sources historiques peuvent rester franÃ§ais : ils apportent des
-faits, tandis que la langue du client dirige la rÃ©ponse.
+La session du joueur détermine la langue : client français → français ; client
+anglais → anglais. Un murmure suit la langue de son destinataire ; les initiatives
+du compagnon suivent celle de son maître. Les autres langues utilisent le repli
+anglais. Aucun réglage global du serveur ni fichier nominatif n'est nécessaire.
+Le choix est capturé avant le traitement du dialogue en arrière-plan, sans
+réécrire les souvenirs, les professions ou les engagements lors d'un changement
+de client. Les consignes de formation et les réponses de vocation sont bilingues.
+Les documents sources historiques peuvent rester français : ils apportent des
+faits, tandis que la langue du client dirige la réponse.
 
 ## Personification and client language
 
@@ -92,17 +92,16 @@ captured before asynchronous processing and does not change skills, identity or
 memories. Vocation and training dialogue supports both languages. Historical
 source documents may remain French; their language does not dictate the reply.
 
-## Atelier de personnalitÃ© / Personality workshop
+## Atelier de personnalité / Personality workshop
 
-Catalogue : [qualitÃ©s et dÃ©fauts en franÃ§ais](docs/PERSONALITY_TRAITS.frFR.md),
+Catalogue : [qualités et défauts en français](docs/PERSONALITY_TRAITS.frFR.md),
 [English qualities and flaws](docs/PERSONALITY_TRAITS.enUS.md).
-Trois qualitÃ©s et trois dÃ©fauts distincts, choisis indÃ©pendamment, pour les compagnons uniquement.
-La fiche privÃ©e est confirmÃ©e cÃ´tÃ© serveur et ajoutÃ©e aux consignes de chaque dialogue.
-Consulter le [guide franÃ§ais](docs/PERSONALITY_WORKSHOP.frFR.md) ou
-[English guide](docs/PERSONALITY_WORKSHOP.enUS.md) pour les commandes de prÃ©paration et confirmation.
-L'addon [WoWCompagnon](addons/WoWCompagnon/README.md) fournit un formulaire classique franÃ§ais/anglais.
-La restauration automatique aprÃ¨s jeu manuel reste Ã  dÃ©velopper.
-
+Trois qualités et trois défauts distincts, choisis indépendamment, pour les compagnons uniquement.
+La fiche privée est confirmée côté serveur et ajoutée aux consignes de chaque dialogue.
+Consulter le [guide français](docs/PERSONALITY_WORKSHOP.frFR.md) ou
+[English guide](docs/PERSONALITY_WORKSHOP.enUS.md) pour les commandes de préparation et confirmation.
+L'addon [WoWCompagnon](addons/WoWCompagnon/README.md) fournit un formulaire classique français/anglais.
+La restauration automatique après jeu manuel reste à développer.
 
 ## Fournitures de métier / Profession supplies
 
@@ -123,3 +122,4 @@ prevent duplicate purchases. Reagent stock aims for ten, is capped at twenty and
 vendor pack sizes; non-stackable components are bought once. At the skill cap, recent-tier
 recipes remain supplied. Purchases use the companion's own gold and preserve the reserve,
 free bag space, vendor stock and normal travel safety. No items are granted.
+

@@ -697,13 +697,13 @@ AiPlayerbot.AttunementQuests = 10279,10277,10282,10283,10284,10285,10296,10297,1
 # Min random delay before the 1st follower bot clicks the flight-master (ms)
 AiPlayerbot.BotTaxiDelayMinMs = 350
 
-# Upper bound for the overall taxi delay window (ms) â€“ larger spreads big raids
+# Upper bound for the overall taxi delay window (ms) – larger spreads big raids
 AiPlayerbot.BotTaxiDelayMaxMs = 5000
 
 # Fixed gap added per group-slot so bots never take off together (ms)
 AiPlayerbot.BotTaxiGapMs = 200
 
-# Extra small randomness added to each gap so launches donâ€™t look robotic (ms)
+# Extra small randomness added to each gap so launches don’t look robotic (ms)
 AiPlayerbot.BotTaxiGapJitterMs = 100
 
 #
@@ -776,7 +776,7 @@ AiPlayerbot.CompanionTankPriorities = 0
 # Default: 0 (disabled)
 AiPlayerbot.RandomBotConcentrateInPlayerZone = 0
 
-# Mark many quests â‰¤ bot level as complete (slows down bot creation)
+# Mark many quests ≤ bot level as complete (slows down bot creation)
 # Default: 0 (disabled)
 AiPlayerbot.PreQuests = 0
 
@@ -812,7 +812,7 @@ AiPlayerbot.LimitTalentsExpansion = 0
 AiPlayerbot.EnableRandomBotTrading = 1
 
 # Configure message prefixes which will be excluded in analysis in trade action to open trade window
-AiPlayerbot.TradeActionExcludedPrefixes = "RPLL_H_,DBMv4,{Ð·Ð²ÐµÐ·Ð´Ð°} Questie,{rt1} Questie"
+AiPlayerbot.TradeActionExcludedPrefixes = "RPLL_H_,DBMv4,{звезда} Questie,{rt1} Questie"
 
 # Allow bots to send mail. When disabled, bots will not mail items or money in
 # response to chat commands ("send mail").
@@ -1287,7 +1287,7 @@ AiPlayerbot.ExcludedHunterPetFamilies = ""
 # BotActiveAlone
 # - Controls how many bots are active when no real players are nearby.
 # - Think of it as a rough percentage: 10 means approximately 10% of bots will be active.
-#   Not exact â€” the actual number may vary slightly per rotation cycle.
+#   Not exact — the actual number may vary slightly per rotation cycle.
 # - The active bots rotate: every <DurationSeconds> a different set of bots takes a turn.
 # - The real number of active bots will always be higher than this value, because bots in
 #   combat, dungeons, battlegrounds, LFG queue, groups with real players, etc. are always
@@ -1299,7 +1299,7 @@ AiPlayerbot.ExcludedHunterPetFamilies = ""
 # - How often the active roster rotates (in seconds). A different group of bots wakes up
 #   and the previous group may go idle.
 # - This is a minimum, not exact. If a bot is in combat or meets any force rule when the
-#   rotation happens, it stays active until those conditions end â€” it won't be cut off
+#   rotation happens, it stays active until those conditions end — it won't be cut off
 #   mid-fight just because its turn expired.
 #
 AiPlayerbot.BotActiveAlone = 10
@@ -1324,7 +1324,7 @@ AiPlayerbot.BotActiveAloneForceWhenInMap = 0
 AiPlayerbot.BotActiveAloneForceWhenIsFriend = 0
 AiPlayerbot.BotActiveAloneForceWhenInGuild = 1
 
-# SmartScale â€” automatically reduces active bots when the server is struggling.
+# SmartScale — automatically reduces active bots when the server is struggling.
 # Monitors the server's update time (how long each server tick takes in milliseconds).
 # When the server slows down, fewer bots are kept active to reduce load.
 #
@@ -1332,11 +1332,11 @@ AiPlayerbot.BotActiveAloneForceWhenInGuild = 1
 #   Ceiling (default 200ms) - At or above this, all non-forced bots are paused.
 #   Between floor and ceiling, activity scales down gradually.
 #     Example: BotActiveAlone=10, floor=50, ceiling=200
-#       Server at 50ms  â†’ ~10% active (no reduction)
-#       Server at 125ms â†’ ~5% active (half reduction)
-#       Server at 200ms â†’ 0% active (only forced bots remain)
+#       Server at 50ms  → ~10% active (no reduction)
+#       Server at 125ms → ~5% active (half reduction)
+#       Server at 200ms → 0% active (only forced bots remain)
 #
-# MinLevel/MaxLevel â€” only bots within this level range are affected by SmartScale.
+# MinLevel/MaxLevel — only bots within this level range are affected by SmartScale.
 #   Bots outside the range always use the full BotActiveAlone value.
 #   Force rules always win over SmartScale.
 #
@@ -1437,14 +1437,14 @@ AiPlayerbot.RestrictedHealerDPSMaps = "33,34,36,43,47,48,70,90,109,129,209,229,2
 # Default: 1 (enabled)
 AiPlayerbot.EnableNewRpgStrategy = 1
 
-# Control probability weights for RPG status of bots. Takes effect only when the status meets its premise.â€‹
+# Control probability weights for RPG status of bots. Takes effect only when the status meets its premise.​
 # Sum of weights need not be 100. Set to 0 to disable the status.
 #
 # WanderRandom  (Default: 15  Move randomly nearby to find and kill mobs)
-# WanderNpc     (Default: 20  Randomly interact with nearby NPCsâ€‹)
+# WanderNpc     (Default: 20  Randomly interact with nearby NPCs​)
 # GoGrind       (Default: 15  Go to nearby level-appropriate locations to grind for killing mobs)
-# GoCamp        (Default: 10  Return to a nearby camp depending on innkeeper/flightmaster)â€‹
-# DoQuest       (Default: 60  Select quest from the quest log and head to the location to attempt completionâ€‹)
+# GoCamp        (Default: 10  Return to a nearby camp depending on innkeeper/flightmaster)​
+# DoQuest       (Default: 60  Select quest from the quest log and head to the location to attempt completion​)
 # TravelFlight  (Default: 15  Go to the nearest flightmaster and fly to a level-appropriate area)
 # Rest          (Default: 5   Take a break for a while and do nothing)
 # OutdoorPvp    (Default: 10  Participate in outdoor PvP capture points if already in an outdoor PvP zone)
@@ -1783,7 +1783,7 @@ AiPlayerbot.MaxRandomBotReviveTime = 300
 AiPlayerbot.MinRandomBotTeleportInterval = 3600
 AiPlayerbot.MaxRandomBotTeleportInterval = 18000
 
-# Number of seconds bots flagged as permanent stay in the world (31,104,000 â‰ˆ 1 year)
+# Number of seconds bots flagged as permanent stay in the world (31,104,000 ≈ 1 year)
 # Default: 31104000
 AiPlayerbot.PermanentlyInWorldTime = 31104000
 
