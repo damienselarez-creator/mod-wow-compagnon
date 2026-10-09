@@ -1,0 +1,9 @@
+TODO/*
+characters/*
+!characters/Example.card.txt
+connections/*
+!connections/*.jsonc.example
+prompts/*/*.custom.txt
+*.sql
+!data/sql/characters/base/*.sql
+!data/sql/characters/updates/*.sql
