@@ -49,7 +49,7 @@ inline PBC_QuestReactionSpec PBC_SelectQuestReaction(PBC_QuestReactionTier tier,
     }
     std::string instruction = "\n[REACTION A CETTE QUETE]\nPour cette replique seulement, la longueur "
         "suivante remplace les consignes generales de brievete, y compris celles de la fiche : " + length +
-        ". Parle en francais, naturellement, en restant fidele a ta personnalite. "
+        ". Parle naturellement, en restant fidele a ta personnalite. "
         "Appuie-toi sur des details connus de cette mission ; ne remplis pas avec des banalites. "
         "Ne recite pas la fiche de quete, ne dis pas 'quete elite', 'quete de raid' ou un pourcentage. "
         "Ne transforme pas un objectif ou les affirmations d'un PNJ en action deja accomplie. "

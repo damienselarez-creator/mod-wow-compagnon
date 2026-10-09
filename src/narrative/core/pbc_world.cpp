@@ -491,7 +491,8 @@ void PBC_WorldScript::OnUpdate(uint32_t diff)
                         continue;
                     }
                     auto whisperTarget = snap.whisperTargetGuid;
-                    snap = PBC_SnapshotCharacter(bot);
+                    snap = PBC_SnapshotCharacter(bot, whisperTarget.IsEmpty()
+                        ? nullptr : ObjectAccessor::FindPlayer(whisperTarget));
                     snap.whisperTargetGuid = whisperTarget;
                 }
             }

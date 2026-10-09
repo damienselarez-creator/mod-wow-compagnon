@@ -1,8 +1,10 @@
 #include "pbc_archetype.h"
 #include "pbc_json.h"
+#include "pbc_companion_language.h"
 #include <algorithm>
 #include <atomic>
 #include <fstream>
+#include <filesystem>
 #include <map>
 #include <memory>
 #include <set>
@@ -56,11 +58,39 @@ struct Entry
 struct Corpus
 {
     pbc_json data;
+    pbc_json englishProfiles;
     std::vector<Entry> entries;
     std::map<std::string, std::vector<std::set<std::string>>> aliases;
 };
 
 std::atomic<std::shared_ptr<Corpus const>> corpus;
+
+bool SameProfileStructure(pbc_json const& original, pbc_json const& translated)
+{
+    if (original.type() != translated.type())
+        return false;
+    if (original.is_object())
+    {
+        if (original.size() != translated.size())
+            return false;
+        for (auto const& [key, value] : original.items())
+            if (!translated.contains(key) || !SameProfileStructure(value, translated.at(key)) ||
+                ((key == "talent_evidence" || key == "sources" || key == "references") &&
+                    value != translated.at(key)))
+                return false;
+        return true;
+    }
+    if (original.is_array())
+    {
+        if (original.size() != translated.size())
+            return false;
+        for (size_t i = 0; i < original.size(); ++i)
+            if (!SameProfileStructure(original.at(i), translated.at(i)))
+                return false;
+        return true;
+    }
+    return original.is_string() || original == translated;
+}
 
 bool Includes(std::set<std::string> const& words, std::set<std::string> const& phrase)
 {
@@ -85,30 +115,33 @@ bool Allowed(Corpus const& state, uint8_t race, uint8_t cls)
     return std::find(list.begin(), list.end(), cls) != list.end();
 }
 
-pbc_json Profile(Corpus const& state, uint8_t race, uint8_t cls, int spec, uint64_t identity)
+pbc_json Profile(Corpus const& state, uint8_t race, uint8_t cls, int spec, uint64_t identity,
+    uint8_t clientLocale = 2)
 {
     if (!Allowed(state, race, cls))
         return nullptr;
     auto r = std::to_string(race);
     auto c = std::to_string(cls);
     auto pair = r + ":" + c;
-    pbc_json profile = {{"race", state.data.at("races").at(r)}, {"classe", state.data.at("classes").at(c)},
+    auto const& profiles = !PBC_IsFrenchClient(clientLocale) && !state.englishProfiles.is_null()
+        ? state.englishProfiles : state.data;
+    pbc_json profile = {{"race", profiles.at("races").at(r)}, {"classe", profiles.at("classes").at(c)},
         {"statut", "socle_collectif_sans_biographie_personnelle"}};
-    if (state.data.at("race_classes").contains(pair))
-        profile["culture_de_classe"] = state.data.at("race_classes").at(pair);
+    if (profiles.at("race_classes").contains(pair))
+        profile["culture_de_classe"] = profiles.at("race_classes").at(pair);
     if (spec >= 0 && spec < 3)
     {
         auto s = c + ":" + std::to_string(spec);
-        profile["specialisation"] = state.data.at("specializations").at(s);
+        profile["specialisation"] = profiles.at("specializations").at(s);
         profile["specialisation_statut"] = "arbre_de_talents_actuel_pas_tous_les_sorts_acquis";
         auto key = pair + ":" + std::to_string(spec);
-        if (state.data.at("combinations").contains(key))
-            profile["combinaison"] = state.data.at("combinations").at(key);
+        if (profiles.at("combinations").contains(key))
+            profile["combinaison"] = profiles.at("combinations").at(key);
     }
     else
         profile["specialisation_statut"] = "indeterminee_aucune_orientation_imposee";
-    if (identity && state.data.at("variants").size())
-        profile["nuance_expression"] = state.data.at("variants").at(identity % state.data.at("variants").size());
+    if (identity && profiles.at("variants").size())
+        profile["nuance_expression"] = profiles.at("variants").at(identity % profiles.at("variants").size());
     return profile;
 }
 
@@ -352,11 +385,45 @@ bool PBC_LoadArchetypes(std::string const& path, std::string& status)
                 entry.entities.push_back(Terms(entity.get<std::string>()));
             next->entries.push_back(std::move(entry));
         }
+        auto englishPath = std::filesystem::path(path).parent_path() / "personifications" / "enUS.json";
+        if (std::filesystem::exists(englishPath))
+        {
+            std::ifstream englishFile(englishPath, std::ios::binary | std::ios::ate);
+            if (!englishFile || englishFile.tellg() <= 0 || englishFile.tellg() > 2 * 1024 * 1024)
+                throw std::runtime_error("Invalid English profiles size");
+            std::string englishBytes(static_cast<size_t>(englishFile.tellg()), '\0');
+            englishFile.seekg(0);
+            if (!englishFile.read(englishBytes.data(), englishBytes.size()))
+                throw std::runtime_error("Unreadable English profiles");
+            next->englishProfiles = pbc_json::parse(englishBytes,
+                [](int depth, pbc_json::parse_event_t, pbc_json&)
+                {
+                    if (depth > 16)
+                        throw std::runtime_error("English profiles nesting limit");
+                    return true;
+                });
+            if (next->englishProfiles.at("locale") != "enUS")
+                throw std::runtime_error("Invalid English profiles locale");
+            for (auto key : {"races", "classes", "specializations", "race_classes", "combinations"})
+            {
+                auto const& translated = next->englishProfiles.at(key);
+                if (!SameProfileStructure(data.at(key), translated))
+                    throw std::runtime_error("Incomplete English profiles");
+                for (auto const& [id, value] : data.at(key).items())
+                    if (!translated.contains(id))
+                        throw std::runtime_error("English profile identifier changed");
+            }
+            if (!SameProfileStructure(data.at("variants"), next->englishProfiles.at("variants")))
+                throw std::runtime_error("English expression variants changed");
+        }
         // Validate every composition before publishing the single immutable snapshot.
         for (auto const& [race, classes] : data.at("allowed_classes_by_race").items())
             for (auto cls : classes)
                 for (int spec : {-1, 0, 1, 2})
-                    if (Profile(*next, static_cast<uint8_t>(std::stoi(race)), cls.get<uint8_t>(), spec, 1).dump().size() > 16000)
+                    if (Profile(*next, static_cast<uint8_t>(std::stoi(race)), cls.get<uint8_t>(), spec, 1)
+                            .dump().size() > 16000 ||
+                        Profile(*next, static_cast<uint8_t>(std::stoi(race)), cls.get<uint8_t>(), spec, 1, 0)
+                            .dump().size() > 16000)
                         throw std::runtime_error("Oversized composition");
         status = "v2: " + std::to_string(data.at("combinations").size()) + " combinations, " +
             std::to_string(next->entries.size()) + " sourced collective passages";
@@ -373,17 +440,36 @@ bool PBC_LoadArchetypes(std::string const& path, std::string& status)
 bool PBC_UsesCollectiveIdentity(uint8_t race)
 {
     auto state = corpus.load();
-    return state && state->data.at("collective_races").contains(std::to_string(race));
+    return state && state->data.at("races").contains(std::to_string(race));
 }
 
-std::string PBC_ArchetypeCard(uint8_t race, uint8_t cls, int spec, uint64_t identity)
+std::string PBC_ArchetypeCard(uint8_t race, uint8_t cls, int spec, uint64_t identity, uint8_t clientLocale)
 {
     auto state = corpus.load();
     if (!state)
         return {};
-    auto profile = Profile(*state, race, cls, spec, identity);
+    auto profile = Profile(*state, race, cls, spec, identity, clientLocale);
     if (profile.is_null())
         return {};
+    if (!PBC_IsFrenchClient(clientLocale))
+        return "\n[COLLECTIVE RACE CLASS SPECIALISATION FOUNDATION]\n"
+            "Lore bounds facts; project choices shape style; the scene bounds abilities and actions. "
+            "No personal biography is required. Interpretations are tendencies, not canonical facts. "
+            "The curated in-world library informs your cultural perspective, values and expression. "
+            "Combine race, class, specialisation and actual professions; let the situation nuance stereotypes. "
+            "Respect documentary boundaries and the editorial status of illustrations "
+            "without borrowing a narrator's life. "
+            "Consider what you notice, want and challenge before choosing your words. "
+            "Race supplies the historical and collective framework; class supplies a practice and its tensions; "
+            "specialisation refines the way you act. Never replace one layer with another. "
+            "Show their intersection in your judgement of the scene, not in a list of traits. "
+            "Adapt to the stakes: humour and distance may yield to loss or urgency. "
+            "Forsaken dark humour stays dry and situational; no compulsory joke in every reply. "
+            "Darkspear wisdom, composure, fate and relationships with spirits vary with class and path; "
+            "avoid caricatured accents and earthly references. Do not assign these tendencies to other races. "
+            "A class practice or talent tree grants no unlearned spell. Speak English. "
+            "No invented memory, imposed personal affiliation or knowledge after the Wrathgate.\n" +
+            profile.dump() + "\n[END FOUNDATION]\n";
     return "\n[SOCLE COLLECTIF RACE CLASSE SPECIALISATION]\n"
         "Le lore borne les faits ; les choix de projet donnent le style ; la scene borne les capacites et les actes. "
         "Aucune biographie personnelle necessaire. Les interpretations sont des tendances, pas des faits canoniques. "
@@ -410,7 +496,7 @@ std::string PBC_ArchetypeSelection(uint8_t race, uint8_t cls, int spec, std::str
 }
 
 std::string PBC_ArchetypeKnowledge(uint8_t race, uint8_t cls, int spec,
-    std::string const& event, std::string const& previous)
+    std::string const& event, std::string const& previous, uint8_t clientLocale)
 {
     auto state = corpus.load();
     if (!state)
@@ -418,9 +504,13 @@ std::string PBC_ArchetypeKnowledge(uint8_t race, uint8_t cls, int spec,
     auto result = Select(*state, race, cls, spec, event, previous);
     if (result["selected"].empty())
         return {};
-    std::string out = "\n[PILIERS COLLECTIFS - CONNAISSANCES ET INTERPRETATIONS, PAS SOUVENIRS]\n"
+    std::string out = PBC_IsFrenchClient(clientLocale)
+        ? "\n[PILIERS COLLECTIFS - CONNAISSANCES ET INTERPRETATIONS, PAS SOUVENIRS]\n"
         "Respecte le statut de chaque passage. Ne cite pas les identifiants techniques. "
-        "Une tradition collective ne prouve pas une experience personnelle.\n";
+        "Une tradition collective ne prouve pas une experience personnelle.\n"
+        : "\n[COLLECTIVE FOUNDATIONS - KNOWLEDGE AND INTERPRETATIONS, NOT MEMORIES]\n"
+          "Respect the status of each passage. Do not quote technical identifiers. "
+          "A collective tradition does not establish a personal experience.\n";
     for (auto const& item : result["selected"])
         out += item.dump() + "\n";
     return out;

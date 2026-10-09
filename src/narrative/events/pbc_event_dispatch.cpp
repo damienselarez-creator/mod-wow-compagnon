@@ -356,7 +356,7 @@ void PBC_DispatchWhisperEvent(Player* sender, Player* target, const std::string&
 
     if (PBC_RollChance(g_PBC_ReplyChanceWhisper))
     {
-        PBC_CharacterSnapshot snap = PBC_SnapshotCharacter(target);
+        PBC_CharacterSnapshot snap = PBC_SnapshotCharacter(target, sender);
         snap.whisperTargetGuid = sender->GetGUID();
         snap.whisperTargetName = senderName;
         ev.respondingChars.push_back(std::move(snap));

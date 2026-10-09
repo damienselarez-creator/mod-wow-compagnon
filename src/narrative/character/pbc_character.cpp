@@ -3,6 +3,7 @@
 #include "pbc_character.h"
 #include "pbc_lore.h"
 #include "pbc_archetype.h"
+#include "pbc_companion_language.h"
 #include "pbc_adventure.h"
 #include "pbc_config.h"
 #include "pbc_database.h"
@@ -136,21 +137,15 @@ std::string PBC_SubstituteVars(const std::string& tmpl, Player* bot, const std::
 }
 
 
-std::string PBC_GetCharacterCard(Player* bot)
+std::string PBC_GetCharacterCard(Player* bot, uint8_t clientLocale)
 {
     uint8 points[3] = {};
     bot->GetTalentTreePoints(points);
     int spec = points[0] || points[1] || points[2] ? bot->GetMostPointsTalentTree() : -1;
-    auto archetype = PBC_ArchetypeCard(bot->getRace(), bot->getClass(), spec, bot->GetGUID().GetCounter());
-    const std::string& name = bot->GetName();
-
-    if (PBC_UsesCollectiveIdentity(bot->getRace()))
-        return archetype + PBC_SubstituteVars(g_PBC_DefaultCharacterDescription, bot, "", false);
-
-    auto it = g_PBC_CharacterCards.find(name);
-    if (it != g_PBC_CharacterCards.end())
-        return archetype + "\n[FICHE PERSONNELLE PRIORITAIRE]\n" + PBC_SubstituteVars(it->second, bot, "", false);
-    return archetype + PBC_SubstituteVars(g_PBC_DefaultCharacterDescription, bot, "", false);
+    if (clientLocale == 255)
+        clientLocale = PBC_CompanionClientLocale(bot);
+    // Identity is composed from collective profiles and actual game state, never a named biography.
+    return PBC_ArchetypeCard(bot->getRace(), bot->getClass(), spec, bot->GetGUID().GetCounter(), clientLocale);
 }
 
 // Builds the [MEMORIES] block for a character's prompt.
@@ -826,9 +821,10 @@ static void ReplaceSnapshotVars(std::string& out, const PBC_CharacterSnapshot& s
 }
 
 
-PBC_CharacterSnapshot PBC_SnapshotCharacter(Player* bot)
+PBC_CharacterSnapshot PBC_SnapshotCharacter(Player* bot, Player* listener)
 {
     PBC_CharacterSnapshot snap;
+    snap.clientLocale = PBC_CompanionClientLocale(bot, listener);
     snap.requiresActiveSelfbot = PBC_IsActiveSelfbot(bot);
     snap.relationshipGeneration = relationshipGeneration.load();
     snap.charObjGuid  = bot->GetGUID();
@@ -837,7 +833,7 @@ PBC_CharacterSnapshot PBC_SnapshotCharacter(Player* bot)
 
     // Pre-render the character card and context once here so the event thread
     // never needs to call into game data.
-    snap.characterCard = PBC_GetCharacterCard(bot);
+    snap.characterCard = PBC_GetCharacterCard(bot, snap.clientLocale);
     snap.context       = PBC_GetCharacterContext(bot) + PBC_VocationContext(bot);
 
     // Capture raw template variables
@@ -1005,9 +1001,10 @@ std::string PBC_BuildUserPromptFromSnapshot(const PBC_CharacterSnapshot& snap,
         ? std::string{} : PBC_GetLoreBlock(snap.charGuidRaw, eventLine);
     out += documentary;
     out += PBC_ArchetypeKnowledge(snap.archetypeRace, snap.archetypeClass, snap.archetypeSpecialization,
-        eventLine, documentary);
+        eventLine, documentary, snap.clientLocale);
     out += PBC_AdventureContext(snap.charGuidRaw, snap.whisperTargetGuid.GetCounter(),
         snap.adventureGroupPlayers, eventLine);
+    out += PBC_CompanionLanguageInstruction(snap.clientLocale);
     return out;
 }
 

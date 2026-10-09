@@ -34,7 +34,7 @@ PBC_VarMap PBC_BuildVarMapFromSnapshot(const PBC_CharacterSnapshot& snap, const 
 // Must be called on the main thread.  The resulting struct is safe to pass
 // to the event thread without further access to game objects.
 // ---------------------------------------------------------------------------
-PBC_CharacterSnapshot PBC_SnapshotCharacter(Player* bot);
+PBC_CharacterSnapshot PBC_SnapshotCharacter(Player* bot, Player* listener = nullptr);
 
 // ---------------------------------------------------------------------------
 // Prompt builder (thread-safe, uses snapshot only)
@@ -168,7 +168,7 @@ PBC_HistoryResult PBC_DeleteMemory(uint64_t botGuid, uint64_t memoryId,
 // ---------------------------------------------------------------------------
 // Character card / context (main-thread only)
 // ---------------------------------------------------------------------------
-std::string PBC_GetCharacterCard(Player* bot);
+std::string PBC_GetCharacterCard(Player* bot, uint8_t clientLocale = 255);
 std::string PBC_GetCharacterContext(Player* bot);
 
 // ---------------------------------------------------------------------------

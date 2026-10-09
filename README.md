@@ -50,3 +50,40 @@ Suivre les évolutions officielles AzerothCore. Développer les compagnons dans 
 dépôt, sans synchroniser les dépôts natifs Playerbots/PBC. Tester le même module
 sur le cœur officiel et le fork utilisateur, puis vérifier la construction du
 cœur sans module. Conserver les traductions et données privées à chaque migration.
+
+## Personnification et langue du client
+
+Les compagnons se composent à partir de leur race, classe, arbre de talents et
+métiers effectivement appris ou choisis. Les anciennes fiches nominatives et
+la description générique ne participent plus à leur identité. Leurs fichiers
+privés restent préservés ; les souvenirs acquis et les choix ne sont pas effacés.
+
+Les profils publics font partie du module : `knowledge/personifications/frFR.json`
+et `enUS.json`. Le corpus `knowledge/archetypes.json` conserve les sources et la
+sélection documentaire. La version anglaise doit être placée à côté du corpus,
+dans `personifications/enUS.json`, même lorsque le corpus est installé ailleurs.
+Une traduction incohérente est rejetée ; le précédent chargement reste actif.
+
+La session du joueur détermine la langue : client français → français ; client
+anglais → anglais. Un murmure suit la langue de son destinataire ; les initiatives
+du compagnon suivent celle de son maître. Les autres langues utilisent le repli
+anglais. Aucun réglage global du serveur ni fichier nominatif n'est nécessaire.
+Le choix est capturé avant le traitement du dialogue en arrière-plan, sans
+réécrire les souvenirs, les professions ou les engagements lors d'un changement
+de client. Les consignes de formation et les réponses de vocation sont bilingues.
+Les documents sources historiques peuvent rester français : ils apportent des
+faits, tandis que la langue du client dirige la réponse.
+
+## Personification and client language
+
+Companions combine race, class, current talent tree and actual or agreed professions.
+Named biographies are inactive; private files, acquired memories and choices are
+preserved. Public French and English profiles ship with this module. Install
+`personifications/enUS.json` beside the configured archetypes corpus.
+
+A French client receives French dialogue; an English client receives English.
+Whispers follow their listener's client language; autonomous companion dialogue
+follows its master's. Other client languages fall back to English. Language is
+captured before asynchronous processing and does not change skills, identity or
+memories. Vocation and training dialogue supports both languages. Historical
+source documents may remain French; their language does not dictate the reply.

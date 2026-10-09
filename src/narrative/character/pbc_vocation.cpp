@@ -3,6 +3,7 @@
 #include "pbc_vocation.h"
 #include "pbc_vocation_catalog.h"
 #include "pbc_character.h"
+#include "pbc_companion_language.h"
 #include "pbc_config.h"
 #include "pbc_json.h"
 #include "pbc_quest_reaction_policy.h"
@@ -117,15 +118,47 @@ bool Save(Player* bot, Json const& item)
     }
 }
 
-std::string Spec(Player* bot, int tab)
+std::string Text(Player* player, std::string const& french, std::string const& english)
 {
-    return catalog.at("specs").at(std::to_string(bot->getClass())).at(tab).get<std::string>();
+    return PBC_IsFrenchClient(PBC_CompanionClientLocale(nullptr, player)) ? french : english;
 }
 
-std::string Pair(Json const& pair)
+Json const englishLabels = Json::parse(R"LABELS({
+  "specs": {
+    "1": ["Arms", "Fury", "Protection"],
+    "2": ["Holy", "Protection", "Retribution"],
+    "3": ["Beast Mastery", "Marksmanship", "Survival"],
+    "4": ["Assassination", "Combat", "Subtlety"],
+    "5": ["Discipline", "Holy", "Shadow"],
+    "6": ["Blood", "Frost", "Unholy"],
+    "7": ["Elemental", "Enhancement", "Restoration"],
+    "8": ["Arcane", "Fire", "Frost"],
+    "9": ["Affliction", "Demonology", "Destruction"],
+    "11": ["Balance", "Feral Combat", "Restoration"]
+  },
+  "skills": {
+    "164": "Blacksmithing", "165": "Leatherworking", "171": "Alchemy",
+    "182": "Herbalism", "186": "Mining", "197": "Tailoring",
+    "202": "Engineering", "333": "Enchanting", "393": "Skinning",
+    "755": "Jewelcrafting", "773": "Inscription"
+  }
+})LABELS");
+
+Json const& Labels(Player* bot)
 {
-    auto const& names = catalog.at("skills");
-    return names.at(std::to_string(pair.at(0).get<uint32>())).get<std::string>() + " et " +
+    return PBC_IsFrenchClient(PBC_CompanionClientLocale(bot)) ? catalog : englishLabels;
+}
+
+std::string Spec(Player* bot, int tab)
+{
+    return Labels(bot).at("specs").at(std::to_string(bot->getClass())).at(tab).get<std::string>();
+}
+
+std::string Pair(Player* bot, Json const& pair)
+{
+    auto const& names = Labels(bot).at("skills");
+    return names.at(std::to_string(pair.at(0).get<uint32>())).get<std::string>() +
+        (PBC_IsFrenchClient(PBC_CompanionClientLocale(bot)) ? " et " : " and ") +
         names.at(std::to_string(pair.at(1).get<uint32>())).get<std::string>();
 }
 
@@ -167,21 +200,41 @@ void Propose(Player* player, Player* bot, Json const& record)
     }
     if (DiscussionTopic(record) == "spec")
     {
-        Say(player, bot, "Je penche vers " + Spec(bot, record.value("tab", -1) >= 0 ? record.at("tab") : profile.at("preferred")) +
-            ". Nous pouvons aussi envisager " + Spec(bot, 0) + ", " + Spec(bot, 1) +
-            " ou " + Spec(bot, 2) + ". Qu'en penses-tu ?");
+        Say(player, bot, Text(player,
+            "Je penche vers ",
+            "I am leaning towards ") + Spec(bot,
+                record.value("tab", -1) >= 0 ? record.at("tab") : profile.at("preferred")) +
+            Text(player,
+                ". Nous pouvons aussi envisager ",
+                ". We could also consider ") + Spec(bot, 0) + ", " + Spec(bot, 1) +
+            Text(player,
+                " ou ",
+                " or ") + Spec(bot, 2) + Text(player,
+                ". Qu'en penses-tu ?",
+                ". What do you think?"));
         return;
     }
     if (DiscussionTopic(record) == "professions")
     {
-        std::string text = "J'aimerais apprendre " + Pair(profile.at("pairs").at(0)) + ". ";
+        std::string text = Text(player,
+            "J'aimerais apprendre ",
+            "I would like to learn ") + Pair(bot, profile.at("pairs").at(0)) + ". ";
         for (size_t i = 1; i < profile.at("pairs").size(); ++i)
-            text += "Nous pourrions aussi envisager " + Pair(profile.at("pairs").at(i)) + ". ";
-        Say(player, bot, text + "Cela te paraît utile pour nos voyages ?");
+            text += Text(player,
+                "Nous pourrions aussi envisager ",
+                "We could also consider ") + Pair(bot, profile.at("pairs").at(i)) + ". ";
+        Say(player, bot, text + Text(player,
+            "Cela te paraît utile pour nos voyages ?",
+            "Would that help us on our travels?"));
         return;
     }
-    Say(player, bot, "J'ai choisi " + Pair(record.at("professions")) +
-        ". Je chercherai leurs maîtres en ville pour les leçons accessibles, avec de quoi les payer.");
+    Say(player, bot, Text(player,
+        "J'ai choisi ",
+        "I have chosen ") + Pair(bot, record.at("professions")) +
+        Text(player,
+            ". Je chercherai leurs maîtres en ville pour les leçons accessibles, avec de quoi les "
+            "payer.",
+            ". I will look for their trainers in town for lessons I can learn and afford."));
 }
 
 bool Begin(Player* player, Player* bot, bool professions = false, bool speak = true, bool explicitTopic = false)
@@ -245,7 +298,11 @@ bool Command(ChatHandler* handler, Acore::ChatCommands::Tail)
 {
     auto* player = handler->GetSession() ? handler->GetSession()->GetPlayer() : nullptr;
     if (!Begin(player, handler->getSelectedPlayer()))
-        handler->SendSysMessage("Sélectionne un compagnon de ton compte, présent dans ton groupe et au calme. Vocations activées requises.");
+        handler->SendSysMessage(Text(player,
+            "Sélectionne un compagnon de ton compte, présent dans ton groupe et au calme. "
+            "Vocations activées requises.",
+            "Select a companion from your account, in your group and out of combat. Vocations "
+            "must be enabled."));
     return true;
 }
 
@@ -397,33 +454,60 @@ bool PBC_VocationChat(Player* player, Player* bot, std::string const& message)
     auto const words = PBCVocationPolicy::Words(input);
     bool trainingStatus = false;
     for (auto const* phrase : {"qu as tu appris", "tu as appris quoi", "as tu appris quelque chose",
-        "ou en est ta formation", "pourquoi tu n apprends rien", "as tu termine ta formation"})
+        "ou en est ta formation", "pourquoi tu n apprends rien", "as tu termine ta formation",
+        "what have you learned", "have you learned anything", "how is your training going",
+        "why are you not learning anything", "have you finished your training"})
         trainingStatus = trainingStatus || words == PBCVocationPolicy::Words(phrase);
     if (trainingStatus)
     {
         auto const status = GetCompanionTrainingSnapshot(bot->GetGUID());
         std::string answer;
         if (status.status == "budget_insufficient")
-            answer = "Les leçons accessibles dépassent ce que je peux dépenser en gardant ma réserve.";
+            answer = Text(player,
+                "Les leçons accessibles dépassent ce que je peux dépenser en gardant ma réserve.",
+                "The available lessons cost more than I can spend while keeping my reserve.");
         else if (status.status == "no_eligible_lesson")
-            answer = "Je n'ai trouvé aucune leçon accessible dans cette halte pour la formation demandée.";
+            answer = Text(player,
+                "Je n'ai trouvé aucune leçon accessible dans cette halte pour la formation demandée.",
+                "I found no eligible lesson at this stop for the requested training.");
         else if (status.status == "learning_failed")
-            answer = "J'ai tenté un apprentissage, mais la compétence n'est pas acquise. "
-                "Je ne le compte pas comme réussi.";
+            answer = Text(player,
+                "J'ai tenté un apprentissage, mais la compétence n'est pas acquise. ",
+                "I attempted a lesson, but I have not acquired the skill. ") +
+                Text(player,
+                    "Je ne le compte pas comme réussi.",
+                    "I am not counting it as a success.");
         else if (status.status == "verifying")
-            answer = "L'apprentissage est en cours de vérification ; je ne peux pas encore annoncer une réussite.";
+            answer = Text(player,
+                "L'apprentissage est en cours de vérification ; je ne peux pas encore annoncer une "
+                "réussite.",
+                "The lesson is being verified; I cannot confirm success yet.");
         else if (status.status == "travelling" || status.status == "requested")
-            answer = "Ma formation est prévue ou en cours de déplacement ; "
-                "je n'ai pas encore d'acquis confirmé pour cette visite.";
+            answer = Text(player,
+                "Ma formation est prévue ou en cours de déplacement ; ",
+                "My training is planned or I am travelling to it; ") +
+                Text(player,
+                    "je n'ai pas encore d'acquis confirmé pour cette visite.",
+                    "I have no confirmed learning from this visit yet.");
         else if (status.status == "interrupted" || status.status == "interrupted_or_unreachable")
-            answer = "J'ai interrompu ma visite ou n'ai pas pu atteindre le maître.";
+            answer = Text(player,
+                "J'ai interrompu ma visite ou n'ai pas pu atteindre le maître.",
+                "I interrupted my visit or could not reach the trainer.");
         else if (status.learned)
-            answer = "J'ai confirmé " + std::to_string(status.learned) +
-                " apprentissage(s) pendant ma dernière visite.";
+            answer = Text(player,
+                "J'ai confirmé ",
+                "I confirmed ") + std::to_string(status.learned) +
+                Text(player,
+                    " apprentissage(s) pendant ma dernière visite.",
+                    " lesson(s) during my last visit.");
         else if (status.status == "visit_finished")
-            answer = "La visite est terminée, mais elle n'a apporté aucune nouvelle compétence confirmée.";
+            answer = Text(player,
+                "La visite est terminée, mais elle n'a apporté aucune nouvelle compétence confirmée.",
+                "The visit is over, but no new skill was confirmed.");
         else
-            answer = "Je n'ai pas de compte rendu récent d'apprentissage à te donner.";
+            answer = Text(player,
+                "Je n'ai pas de compte rendu récent d'apprentissage à te donner.",
+                "I have no recent training report to give you.");
         Say(player, bot, answer);
         return true;
     }
@@ -449,14 +533,25 @@ bool PBC_VocationChat(Player* player, Player* bot, std::string const& message)
             std::lock_guard<std::mutex> lock(stateMutex);
             proposals.erase(Key(bot));
         }
-        Say(player, bot, activityIntent == "follow" ? "Je laisse mes apprentissages de côté pour le moment." :
+        Say(player, bot, activityIntent == "follow" ? Text(player,
+            "Je laisse mes apprentissages de côté pour le moment.",
+            "I am putting my training aside for now.") :
             activityIntent == "training_professions" ?
-                "Je m'occupe des apprentissages de mes métiers choisis, si une leçon m'est accessible en ville." :
+                Text(player,
+                    "Je m'occupe des apprentissages de mes métiers choisis, si une leçon m'est accessible "
+                    "en ville.",
+                    "I will train my chosen professions if an eligible lesson is available in town.") :
             activityIntent == "training_class" ?
-                "Je m'occupe de ma formation de classe, si une leçon m'est accessible en ville." :
+                Text(player,
+                    "Je m'occupe de ma formation de classe, si une leçon m'est accessible en ville.",
+                    "I will train my class skills if an eligible lesson is available in town.") :
             activityIntent == "training" ?
-                "Je donne la priorité à mes apprentissages en ville, si une leçon m'est accessible." :
-                "Je reprends mes habitudes et les apprentissages possibles pendant nos haltes.");
+                Text(player,
+                    "Je donne la priorité à mes apprentissages en ville, si une leçon m'est accessible.",
+                    "I will prioritise training in town if an eligible lesson is available.") :
+                Text(player,
+                    "Je reprends mes habitudes et les apprentissages possibles pendant nos haltes.",
+                    "I will resume my usual activities and eligible training during our stops."));
         return true;
     }
     auto profile = Profile(bot);
@@ -483,11 +578,14 @@ bool PBC_VocationChat(Player* player, Player* bot, std::string const& message)
     if (record.is_null() || record.value("paused", false) || DiscussionTopic(record) == "done")
         return false;
     if (input == "plus tard" || input == "laisse tomber" || input == "on verra plus tard" ||
-        input == "pas maintenant" || input == "nous en reparlerons")
+        input == "pas maintenant" || input == "nous en reparlerons" ||
+        input == "later" || input == "not now" || input == "we will discuss it later")
     {
         record["paused"] = true;
         if (Save(bot, record))
-            Say(player, bot, "Nous en reparlerons quand tu le souhaiteras.");
+            Say(player, bot, Text(player,
+                "Nous en reparlerons quand tu le souhaiteras.",
+                "We can discuss it again whenever you wish."));
         return true;
     }
     bool spec = DiscussionTopic(record) == "spec";
@@ -495,11 +593,11 @@ bool PBC_VocationChat(Player* player, Player* bot, std::string const& message)
     int count = spec ? 3 : int(profile.at("pairs").size());
     for (int index = 0; index < count; ++index)
     {
-        aliases.push_back({spec ? Spec(bot, index) : Pair(profile.at("pairs").at(index))});
+        aliases.push_back({spec ? Spec(bot, index) : Pair(bot, profile.at("pairs").at(index))});
         if (!spec)
         {
             for (auto skill : profile.at("pairs").at(index))
-                aliases.back().push_back(catalog.at("skills").at(std::to_string(skill.get<uint32>())));
+                aliases.back().push_back(Labels(bot).at("skills").at(std::to_string(skill.get<uint32>())));
             if (profile.at("pairs").at(index).at(0) == 165)
                 aliases.back().push_back("travaille les peaux");
         }
@@ -519,7 +617,10 @@ bool PBC_VocationChat(Player* player, Player* bot, std::string const& message)
     }
     if (selected == -2)
     {
-        Say(player, bot, "Ce métier peut accompagner plusieurs autres savoir-faire. Avec lequel l'associerais-tu ?");
+        Say(player, bot, Text(player,
+            "Ce métier peut accompagner plusieurs autres savoir-faire. Avec lequel "
+            "l'associerais-tu ?",
+            "That profession can be paired with several others. Which would you combine it with?"));
         Propose(player, bot, record);
         return true;
     }
@@ -541,7 +642,11 @@ bool PBC_VocationChat(Player* player, Player* bot, std::string const& message)
         auto tabs = AiFactory::GetPlayerSpecTabs(bot);
         if (tabs[0] + tabs[1] + tabs[2] && int(AiFactory::GetPlayerSpecTab(bot)) != selected)
         {
-            Say(player, bot, "J'ai déjà développé une autre voie. Je ne vais pas effacer cet apprentissage : il faut d'abord organiser ma respécialisation.");
+            Say(player, bot, Text(player,
+                "J'ai déjà développé une autre voie. Je ne vais pas effacer cet apprentissage : il "
+                "faut d'abord organiser ma respécialisation.",
+                "I have already developed another path. I will keep what I have learned until we "
+                "arrange a respecialisation."));
             return true;
         }
         record["tab"] = selected;
@@ -556,7 +661,11 @@ bool PBC_VocationChat(Player* player, Player* bot, std::string const& message)
             uint32 id = std::stoul(skill.key());
             if (bot->HasSkill(id) && pair.at(0) != id && pair.at(1) != id)
             {
-                Say(player, bot, "Ce choix remplacerait un métier que je connais déjà. Je conserve mes acquis ; nous devons régler ce changement séparément.");
+                Say(player, bot, Text(player,
+                    "Ce choix remplacerait un métier que je connais déjà. Je conserve mes acquis ; nous "
+                    "devons régler ce changement séparément.",
+                    "That choice would replace a profession I already know. I will keep what I have "
+                    "learned; we must arrange that change separately."));
                 return true;
             }
         }
@@ -569,14 +678,18 @@ bool PBC_VocationChat(Player* player, Player* bot, std::string const& message)
     }
     if (!Save(bot, record))
     {
-        ChatHandler(player->GetSession()).SendSysMessage("Choix non enregistré : erreur de sauvegarde des vocations.");
+        ChatHandler(player->GetSession()).SendSysMessage(Text(player,
+            "Choix non enregistré : erreur de sauvegarde des vocations.",
+            "Choice not recorded: the vocation could not be saved."));
         return true;
     }
     std::vector<uint64_t> owners = {player->GetGUID().GetCounter(), bot->GetGUID().GetCounter()};
     PBC_AppendHistoryMessage(player->GetGUID().GetCounter(), CHAT_MSG_WHISPER, message, owners);
     if (spec)
     {
-        Say(player, bot, "Entendu. Je vais développer la voie " + Spec(bot, selected) + ".");
+        Say(player, bot, Text(player,
+            "Entendu. Je vais développer la voie ",
+            "Agreed. I will develop the path of ") + Spec(bot, selected) + ".");
         PlayerbotFactory(bot, bot->GetLevel()).InitTalentsTree(true, true, false);
         GET_PLAYERBOT_AI(bot)->ResetStrategies();
     }
@@ -618,7 +731,7 @@ std::string PBC_VocationContext(Player* bot)
     if (!record.is_null() && record.value("tab", -1) >= 0)
         context["voie_souhaitee"] = Spec(bot, record.at("tab"));
     if (!record.is_null() && record.at("professions").at(0) != 0)
-        context["metiers_souhaites"] = Pair(record.at("professions"));
+        context["metiers_souhaites"] = Pair(bot, record.at("professions"));
     auto tabs = AiFactory::GetPlayerSpecTabs(bot);
     context["faits_observes"] = {{"niveau", bot->GetLevel()}, {"argent_cuivre", bot->GetMoney()},
         {"points_talents_disponibles", bot->GetFreeTalentPoints()},
@@ -630,7 +743,7 @@ std::string PBC_VocationContext(Player* bot)
     {
         uint32 id = std::stoul(skill.key());
         if (bot->HasSkill(id))
-            facts["metiers_appris"].push_back({{"nom", skill.value()},
+            facts["metiers_appris"].push_back({{"nom", Labels(bot).at("skills").at(skill.key())},
                 {"niveau", bot->GetBaseSkillValue(id)}, {"maximum", bot->GetPureMaxSkillValue(id)}});
     }
     auto activity = GetCompanionTrainingSnapshot(bot->GetGUID());

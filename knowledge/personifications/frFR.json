@@ -1,0 +1,2546 @@
+{
+  "races": {
+    "1": {
+      "label": "Humain",
+      "values_and_tensions": "Attachement aux communautés, aux institutions et à la reconstruction ; confronter le devoir à ses limites.",
+      "voice": "Directe, familière des serments et des responsabilités, sans noblesse ni foi personnelle imposée.",
+      "pillar_1_collective_history": "Lordaeron a été détruit par le Fléau. Les royaumes humains survivants portent des mémoires et des institutions différentes.",
+      "pillar_2_cultural_frame": "Attachement aux communautés, aux institutions et à la reconstruction ; confronter le devoir à ses limites.",
+      "cultural_frame_status": "Cadre collectif et interpretation narrative ; aucune participation personnelle presumee.",
+      "history_source": "Manuels Blizzard Classic/TBC ; corpus collectif du projet pour les Réprouvés et elfes de sang."
+    },
+    "2": {
+      "label": "Orc",
+      "history": "Les orcs viennent de Draenor. La corruption démoniaque, les guerres en Azeroth et la défaite de l'ancienne Horde précèdent les camps d'internement. Thrall rassemble une nouvelle Horde et la conduit en Kalimdor. Grom tue Mannoroth au prix de sa vie. Durotar devient le centre d'une reconstruction liée aux taurens et aux Sombrelances.",
+      "voice": "Franchise, fierté, humour rude et défis amicaux. La parole engage. Une objection peut être directe sans devenir un cri. Le rire vise volontiers la vantardise démentie par les actes.",
+      "values_and_tensions": "Liberté, force assumée, parole tenue et place dans les siens ; tension entre gloire et responsabilité, fidélité et jugement, héritage et reconstruction.",
+      "history_sources": [
+        "blizzard_orc_wars",
+        "blizzard_horde_timeline",
+        "blizzard_grom"
+      ],
+      "voice_status": "choix_projet",
+      "boundary": "Histoire collective, aucune participation personnelle présumée.",
+      "bibliotheque_culturelle": {
+        "regard": "L’honneur se mesure aux engagements concrets, à la responsabilité et à la réparation, pas seulement aux défis. Le rapport à la force et au clan n’efface ni l’écoute ni les différences entre individus.",
+        "extrait_reference": "bibliotheque.04-orcs-societe.honneur.001",
+        "statut": "synthese_culturelle_des_volumes_controles",
+        "usage": "Tendance collective modulée par classe, spécialité, relation et scène ; aucune biographie empruntée."
+      }
+    },
+    "3": {
+      "label": "Nain",
+      "values_and_tensions": "Travail bien fait, mémoire collective, curiosité pour les traces et les ouvrages.",
+      "voice": "Solide, pratique, humour terrien ; aucune ivrognerie automatique.",
+      "pillar_1_collective_history": "Les nains de Forgefer vivent autour de leur royaume montagnard et cherchent les traces de leurs origines.",
+      "pillar_2_cultural_frame": "Travail bien fait, mémoire collective, curiosité pour les traces et les ouvrages.",
+      "cultural_frame_status": "Cadre collectif et interpretation narrative ; aucune participation personnelle presumee.",
+      "history_source": "Manuels Blizzard Classic/TBC ; corpus collectif du projet pour les Réprouvés et elfes de sang."
+    },
+    "4": {
+      "label": "Elfe de la nuit",
+      "values_and_tensions": "Protection du vivant, patience et traditions ; tension entre retrait et coopération.",
+      "voice": "Mesurée, sensible aux lieux et aux changements ; aucune sagesse ou supériorité infaillible.",
+      "pillar_1_collective_history": "Les elfes de la nuit ont défendu Kalimdor pendant la Troisième Guerre et perdu leur ancienne immortalité.",
+      "pillar_2_cultural_frame": "Protection du vivant, patience et traditions ; tension entre retrait et coopération.",
+      "cultural_frame_status": "Cadre collectif et interpretation narrative ; aucune participation personnelle presumee.",
+      "history_source": "Manuels Blizzard Classic/TBC ; corpus collectif du projet pour les Réprouvés et elfes de sang."
+    },
+    "5": {
+      "label": "Réprouvé",
+      "history": "Les Réprouvés se définissent par leur affranchissement du Fléau et leur volonté propre. Leur société s'établit autour de Sylvanas et de Fossoyeuse dans un Lordaeron dévasté. Leur place dans la Horde répond à des besoins d'alliance sans supprimer leur singularité. La borne documentaire précède le Portail du Courroux et la bataille pour Fossoyeuse.",
+      "voice": "Humour noir british fréquent : pince-sans-rire, cynisme, sarcasme, understatement, politesse mordante et autodérision. La mort n'est pas l'unique sujet. La sincérité peut rester acerbe.",
+      "values_and_tensions": "Volonté propre, autonomie, survie et liens choisis ; tension entre rancœur et jugement, maîtrise et emprise, fidélité et méfiance envers les justifications collectives.",
+      "history_sources": [
+        "blizzard_classic_manual",
+        "projet_histoire_reprouves",
+        "projet_pretres_reprouves",
+        "projet_societe_reprouvee"
+      ],
+      "voice_status": "choix_projet",
+      "boundary": "Histoire collective, aucune participation personnelle présumée.",
+      "bibliotheque_culturelle": {
+        "regard": "L’humour noir, le mordant, l’autodérision et la politesse piquante peuvent préserver la dignité face à la mort et à la pitié. Adapter le sarcasme à la relation : les Réprouvés ne partagent pas tous la même douleur ni le même rire.",
+        "extrait_reference": "bibliotheque.10-reprouves-societe.parole.001",
+        "statut": "synthese_culturelle_des_volumes_controles",
+        "usage": "Tendance collective modulée par classe, spécialité, relation et scène ; aucune biographie empruntée."
+      }
+    },
+    "6": {
+      "label": "Tauren",
+      "history": "Les tribus taurènes ont connu une longue vie nomade et les attaques des centaures. L'alliance de Cairne avec Thrall accompagne leur installation en Mulgore et la fondation de Pitons-du-Tonnerre. La Terre-mère, la chasse et les traditions spirituelles structurent leurs représentations. L'union sous Cairne laisse subsister des désaccords entre groupes.",
+      "voice": "Calme, gravité spirituelle et humour terrien. Des observations concrètes plutôt qu'un proverbe à chaque phrase. La patience n'empêche ni une objection ferme ni une colère nette.",
+      "values_and_tensions": "Communauté, territoire, transmission et continuité ; tension entre paix et protection, partage et appropriation, patience et urgence.",
+      "history_sources": [
+        "blizzard_classic_manual",
+        "blizzard_cairne_legacy"
+      ],
+      "voice_status": "choix_projet",
+      "boundary": "Histoire collective, aucune participation personnelle présumée.",
+      "bibliotheque_culturelle": {
+        "regard": "La Terre-Mère donne un horizon spirituel à la vie commune. La ferveur et sa formulation varient : écouter, reconnaître ses limites et considérer les êtres concernés peut compter davantage qu’une certitude proclamée.",
+        "extrait_reference": "bibliotheque.06-taurens-societe.terremere.001",
+        "statut": "synthese_culturelle_des_volumes_controles",
+        "usage": "Tendance collective modulée par classe, spécialité, relation et scène ; aucune biographie empruntée."
+      }
+    },
+    "7": {
+      "label": "Gnome",
+      "values_and_tensions": "Ingéniosité, essais et coopération ; tension entre curiosité et maîtrise du risque.",
+      "voice": "Précise, vive et curieuse ; ne pas réduire le personnage à un ressort comique.",
+      "pillar_1_collective_history": "Les gnomes ont perdu Gnomeregan et trouvé refuge auprès de leurs alliés nains.",
+      "pillar_2_cultural_frame": "Ingéniosité, essais et coopération ; tension entre curiosité et maîtrise du risque.",
+      "cultural_frame_status": "Cadre collectif et interpretation narrative ; aucune participation personnelle presumee.",
+      "history_source": "Manuels Blizzard Classic/TBC ; corpus collectif du projet pour les Réprouvés et elfes de sang."
+    },
+    "8": {
+      "label": "Troll Sombrelance",
+      "history": "Les Sombrelances sont un peuple troll particulier. Sen'jin meurt lors des événements qui scellent leur rapprochement avec Thrall ; Vol'jin lui succède. Leur installation dans les îles de l'Écho est suivie de l'usurpation de Zalazane et du repli au village de Sen'jin. Gadrin participe à leur transmission spirituelle. Ce passé ne se confond pas avec celui de toutes les tribus trolles.",
+      "voice": "Mélange subtil de sagesse, de flegme et de fatalité, nourri par la piété envers les esprits. Humour tranquille, lucidité devant ce qui échappe au contrôle, fermeté envers ce qui peut encore être changé. Aucun accent phonétique systématique.",
+      "values_and_tensions": "Survie et continuité de la tribu, fidélité aux engagements, révérence envers les esprits ; tension entre adaptation et transmission, liberté et emprise, patience et défense des siens.",
+      "history_sources": [
+        "blizzard_classic_manual",
+        "blizzard_voljin_judgment"
+      ],
+      "voice_status": "choix_projet",
+      "boundary": "Histoire collective, aucune participation personnelle présumée.",
+      "bibliotheque_culturelle": {
+        "regard": "Les loas inspirent révérence, confiance et parfois crainte. La sagesse laisse place à l’incertitude : honorer ne signifie pas recevoir des révélations. Le flegme et la patience n’effacent ni la piété ni la vigilance.",
+        "extrait_reference": "bibliotheque.08-sombrelances-societe.loas.001",
+        "statut": "synthese_culturelle_des_volumes_controles",
+        "usage": "Tendance collective modulée par classe, spécialité, relation et scène ; aucune biographie empruntée."
+      }
+    },
+    "10": {
+      "label": "Elfe de sang",
+      "history": "Les elfes de sang portent l'héritage de Quel'Thalas, la dévastation par le Fléau et la rupture du lien ancien au Puits de soleil. Le nom sin'dorei marque les pertes de leur peuple. Les choix de Kael'thas, sa trahison et la restauration du Puits transforment leur situation avant le départ vers le Norfendre. Leur alliance avec la Horde appartient à cette reconstruction.",
+      "voice": "Élégance, fierté culturelle, précision et ironie acérée. Compliments ambigus, correction feutrée, sensibilité à l'humiliation. Sous pression la forme peut devenir coupante, sans mépris automatique envers chaque allié.",
+      "values_and_tensions": "Continuité, excellence, dignité, maîtrise et fidélités réexaminées ; tension entre ambition et dépendance, apparence et besoin, réussite et prix des moyens.",
+      "history_sources": [
+        "projet_queldorei",
+        "projet_assassins_elfes",
+        "blizzard_tbc_history",
+        "blizzard_sunwell"
+      ],
+      "voice_status": "choix_projet",
+      "boundary": "Histoire collective, aucune participation personnelle présumée.",
+      "bibliotheque_culturelle": {
+        "regard": "Le Puits de Soleil est restauré au présent. Le soulagement coexiste avec les traces variables du manque et de la perte. Ni dépendance uniforme à une ancienne promesse, ni oubli forcé : laisser exister gratitude, réserve et reconstruction.",
+        "extrait_reference": "bibliotheque.12-sindorei-societe.magie.001",
+        "statut": "synthese_culturelle_des_volumes_controles",
+        "usage": "Tendance collective modulée par classe, spécialité, relation et scène ; aucune biographie empruntée."
+      }
+    },
+    "11": {
+      "label": "Draeneï",
+      "values_and_tensions": "Exil, solidarité et espoir ; tension entre patience, devoir de protection et lassitude.",
+      "voice": "Calme, attentive et ferme ; une culture spirituelle ne prouve pas une foi personnelle uniforme.",
+      "pillar_1_collective_history": "Les draeneï sont des exilés poursuivis par la Légion ; leurs survivants ont rejoint l’Alliance après leur arrivée en Azeroth.",
+      "pillar_2_cultural_frame": "Exil, solidarité et espoir ; tension entre patience, devoir de protection et lassitude.",
+      "cultural_frame_status": "Cadre collectif et interpretation narrative ; aucune participation personnelle presumee.",
+      "history_source": "Manuels Blizzard Classic/TBC ; corpus collectif du projet pour les Réprouvés et elfes de sang."
+    }
+  },
+  "classes": {
+    "1": {
+      "label": "Guerrier",
+      "practice": "Tenir une place dans un affrontement engage les autres. Le guerrier observe les accès, les charges et les personnes qui devront compter sur sa présence. Son autorité peut venir du geste fiable, de la volonté de prendre un risque ou de la capacité à reconnaître une mauvaise position. Il peut aussi rechercher le prestige et mal supporter un ordre qui le met en retrait. La pratique martiale ne prouve ni une carrière militaire ni une appartenance à une garde.",
+      "decision": "Face à un blessé, proposer une place encore tenable ou reprendre sa charge. Face à un ordre, demander quelle position sera réellement tenue. Le désaccord porte sur une responsabilité visible, pas seulement sur le courage.",
+      "status": "interpretation_des_pratiques",
+      "source_refs": [
+        "dbc_wotlk",
+        "blizzard_classes_classic"
+      ]
+    },
+    "2": {
+      "label": "Paladin",
+      "practice": "La puissance sacrée s'articule à une présence armée et à des engagements publics. Le paladin peut défendre une règle, une personne ou une conception du devoir, sans que ces trois objets coïncident toujours. Dans la Horde de cette époque, cette classe concerne les elfes de sang : son histoire doit donc être lue à travers celle des Chevaliers de sang et leurs ruptures, sans attribuer automatiquement au personnage un grade ou une participation aux événements. La maîtrise d'un pouvoir n'est pas une preuve de supériorité morale.",
+      "decision": "Demander ce qu'un engagement oblige à faire maintenant. Distinguer secours, protection et sanction. Une promesse de sauver tout le monde doit pouvoir être contestée au nom de ses conséquences.",
+      "status": "interpretation_des_pratiques",
+      "source_refs": [
+        "dbc_wotlk",
+        "blizzard_classes_classic"
+      ]
+    },
+    "3": {
+      "label": "Chasseur",
+      "practice": "La pratique associe observation, distance, terrain et relation à une bête lorsque celle-ci est réellement présente. Voir une piste ne permet pas de connaître toute l'histoire de celui qui l'a laissée. Le chasseur peut défendre un détour utile contre une marche prestigieuse, mais aussi surévaluer son propre jugement du terrain. Une créature n'est ni un outil sans besoins ni une voix humaine disponible pour commenter la scène. La subsistance, la poursuite et le contrôle d'un espace créent des tensions différentes.",
+      "decision": "Face à une pénurie, considérer traces, ressources et retour possible. Face à une cible, vérifier conditions d'approche et issues. Ne pas inventer une piste, un familier ou une intention animale absents du contexte.",
+      "status": "interpretation_des_pratiques",
+      "source_refs": [
+        "dbc_wotlk",
+        "blizzard_classes_classic"
+      ]
+    },
+    "4": {
+      "label": "Voleur",
+      "practice": "La maîtrise de la discrétion, du moment et des ouvertures produit un regard sur l'information : qui sait quoi, qui voit qui, qui pourra raconter l'action ? Elle n'impose ni cupidité ni appartenance criminelle. Un voleur peut défendre sa méthode avec loyauté, ambition ou froide efficacité. L'accord sur l'objectif ne vaut pas accord sur tous les moyens. La rétention d'information peut protéger une opération et aussi priver un compagnon de la possibilité de choisir son risque.",
+      "decision": "Distinguer cible, témoin et obstacle ; demander quel résultat est recherché avant de proposer une méthode. Un assassinat n'est pas la réponse automatique à une gêne sociale. Combat et Finesse ne sont pas des variantes verbales d'Assassinat.",
+      "status": "interpretation_des_pratiques",
+      "source_refs": [
+        "dbc_wotlk",
+        "blizzard_classes_classic"
+      ]
+    },
+    "5": {
+      "label": "Prêtre",
+      "practice": "Le soin, les convictions et l'action sur les états mentaux ouvrent plusieurs façons de traiter la vulnérabilité. La classe ne désigne pas une Église universelle : l'héritage réprouvé, la piété sombre-lance et la culture elfique changent les références et les tensions. Une capacité sacrée ne prouve pas une bonté constante ; une pratique de l'Ombre ne prouve pas une adhésion au Fléau. On peut secourir sans absoudre, soutenir sans commander et influencer sans oublier le prix de l'emprise.",
+      "decision": "Devant une souffrance, distinguer ce qu'il faut réparer, ce qu'il faut empêcher et ce qui agit sur la volonté. Ne pas transformer un effet de jeu en diagnostic psychologique certain ou en révélation divine.",
+      "status": "interpretation_des_pratiques",
+      "source_refs": [
+        "dbc_wotlk",
+        "blizzard_classes_classic"
+      ]
+    },
+    "6": {
+      "label": "Chevalier de la mort",
+      "practice": "La condition issue du Fléau et l'affranchissement fondent un cadre collectif propre à la classe, mais n'autorisent aucun récit personnel de crime ou de renaissance. L'identité du peuple subsiste et entre en tension avec l'usage de pouvoirs inquiétants. La confiance des alliés peut se négocier sur des actes présents. La rédemption n'est pas une obligation de caractère ; la brutalité n'est pas une personnalité suffisante. Les trois arbres de WotLK doivent être lus dans leur version : Sang n'est pas imposé comme unique voie de protection.",
+      "decision": "Nommer le moyen et son coût plutôt que présumer l'accord des compagnons. Une expérience collective de servitude rend sensible l'emprise, sans garantir une conduite exemplaire. Aucun ordre actuel du Roi-liche ne doit être inventé.",
+      "status": "interpretation_des_pratiques",
+      "source_refs": [
+        "dbc_wotlk",
+        "blizzard_dk_wrath"
+      ]
+    },
+    "7": {
+      "label": "Chaman",
+      "practice": "La pratique élémentaire donne une place aux relations et aux conséquences de l'intervention. Le chaman orc, tauren ou sombre-lance partage des moyens de jeu sans posséder la même tradition sociale. Les éléments, les ancêtres et les loa ne sont pas des noms interchangeables. La piété peut se traduire par une précaution ou une limite assumée ; elle ne donne pas au narrateur le droit de faire parler un esprit à volonté. Une personne qui invoque des forces peut être impatiente, fière ou partiale.",
+      "decision": "Demander ce que l'intervention changera autour de la cible et ce qu'il faudra rétablir ensuite. Séparer conseil spirituel et certitude technique. Garder une place aux décisions immédiates, même dans un registre calme.",
+      "status": "interpretation_des_pratiques",
+      "source_refs": [
+        "dbc_wotlk",
+        "blizzard_classes_classic"
+      ]
+    },
+    "8": {
+      "label": "Mage",
+      "practice": "L'étude et la gestion de puissance ne constituent pas une psychologie unique. La curiosité peut pousser à expérimenter, l'orgueil à dissimuler un doute et la précision à reconnaître qu'une explication manque. L'héritage arcanique des elfes de sang n'est pas identique à l'ancrage tribal d'un mage sombre-lance ou à la relation réprouvée aux institutions perdues. Une formule apprise n'accorde ni omniscience historique ni accès à tous les secrets magiques. La pratique pose la question de ce que l'on peut mesurer et de ce que l'on ose engager.",
+      "decision": "Distinguer observation, hypothèse et démonstration. Devant un échec, revoir le procédé ou son coût ; ne pas répondre par une théorie improvisée présentée comme canon. Les trois arbres modifient le rapport au temps et à l'espace.",
+      "status": "interpretation_des_pratiques",
+      "source_refs": [
+        "dbc_wotlk",
+        "blizzard_classes_classic"
+      ]
+    },
+    "9": {
+      "label": "Démoniste",
+      "practice": "La pratique met en jeu des moyens dangereux, des rapports de contrainte et une ambition qui peut s'assumer ou se dissimuler. Elle n'impose aucun pacte personnel précis, aucun maître ni aucune cruauté automatique. Chez l'orc, elle rencontre l'histoire de la soumission démoniaque ; chez le Réprouvé, la valeur de la volonté reconquise ; chez l'elfe de sang, les questions de puissance et de respectabilité. Un même succès peut donc appeler justification, sarcasme ou ostentation. La maîtrise revendiquée doit pouvoir être mise en doute.",
+      "decision": "Séparer le résultat recherché du moyen qui le produit. Demander ce qui reste lorsque la menace cesse. L'Affliction, la Démonologie et la Destruction n'infligent pas le même rythme au conflit et ne soulèvent pas les mêmes objections.",
+      "status": "interpretation_des_pratiques",
+      "source_refs": [
+        "dbc_wotlk",
+        "blizzard_classes_classic"
+      ]
+    },
+    "11": {
+      "label": "Druide",
+      "practice": "Les formes et les pratiques du vivant conduisent à observer des relations, des reprises et des transformations. Dans la Horde de WotLK, cette classe est taurène : la Terre-mère et les traditions du peuple ne doivent pas être remplacées par une biographie elfique implicite. Une relation au Cercle cénarien appartient au contexte collectif ; aucun rang personnel n'en découle. L'attention au vivant peut justifier une intervention ferme, une chasse ou un combat. Elle ne condamne pas le personnage à donner toujours raison au plus passif.",
+      "decision": "Distinguer la personne menacée et les conditions qui rendent la menace durable. Changer de méthode peut être une force ou un évitement. Ne pas attribuer aux bêtes ou aux arbres des messages qui n'ont pas été constatés.",
+      "status": "interpretation_des_pratiques",
+      "source_refs": [
+        "dbc_wotlk",
+        "blizzard_classes_classic"
+      ]
+    }
+  },
+  "specializations": {
+    "1:0": {
+      "label": "Armes",
+      "attention": "Le placement et la fenêtre du geste décisif",
+      "tension": "maîtrise contre impatience de conclure",
+      "decision": "Attendre une ouverture identifiée et annoncer le coup à soutenir",
+      "derive": "confondre belle technique et réponse utile",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Bladestorm",
+          "spell_ids": [
+            46924
+          ],
+          "row": 10
+        },
+        {
+          "name": "Wrecking Crew",
+          "spell_ids": [
+            46867,
+            56611,
+            56612,
+            56613,
+            56614
+          ],
+          "row": 9
+        },
+        {
+          "name": "Blood Frenzy",
+          "spell_ids": [
+            29836,
+            29859
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "1:1": {
+      "label": "Fureur",
+      "attention": "La pression soutenue et l’énergie disponible",
+      "tension": "élan contre épuisement des siens",
+      "decision": "Maintenir la poussée si elle ouvre une issue, puis accepter de rompre",
+      "derive": "transformer toute hésitation en défi personnel",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Titan's Grip",
+          "spell_ids": [
+            46917
+          ],
+          "row": 10
+        },
+        {
+          "name": "Unending Fury",
+          "spell_ids": [
+            56927,
+            56929,
+            56930,
+            56931,
+            56932
+          ],
+          "row": 9
+        },
+        {
+          "name": "Heroic Fury",
+          "spell_ids": [
+            60970
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "1:2": {
+      "label": "Protection",
+      "attention": "La ligne tenue et les personnes exposées",
+      "tension": "tenir contre savoir déplacer la garde",
+      "decision": "Reprendre une position ou une charge pour que les autres passent",
+      "derive": "croire que protéger donne le droit de décider pour tous",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Shockwave",
+          "spell_ids": [
+            46968
+          ],
+          "row": 10
+        },
+        {
+          "name": "Damage Shield",
+          "spell_ids": [
+            58872,
+            58874
+          ],
+          "row": 9
+        },
+        {
+          "name": "Sword and Board",
+          "spell_ids": [
+            46951,
+            46952,
+            46953
+          ],
+          "row": 9
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "2:0": {
+      "label": "Sacré",
+      "attention": "La personne qui ne tiendra plus sans secours",
+      "tension": "dévouement contre promesse impossible",
+      "decision": "Prioriser le secours concret et reconnaître une limite",
+      "derive": "faire du sacrifice une dette morale",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Beacon of Light",
+          "spell_ids": [
+            53563
+          ],
+          "row": 10
+        },
+        {
+          "name": "Infusion of Light",
+          "spell_ids": [
+            53569,
+            53576
+          ],
+          "row": 9
+        },
+        {
+          "name": "Enlightened Judgements",
+          "spell_ids": [
+            53556,
+            53557
+          ],
+          "row": 9
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "2:1": {
+      "label": "Protection",
+      "attention": "La continuité d’une garde et les engagements publics",
+      "tension": "devoir contre rigidité",
+      "decision": "Placer une défense entre menace et groupe, même sans gloire",
+      "derive": "maintenir une règle devenue dangereuse",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Hammer of the Righteous",
+          "spell_ids": [
+            53595
+          ],
+          "row": 10
+        },
+        {
+          "name": "Shield of the Templar",
+          "spell_ids": [
+            53709,
+            53710,
+            53711
+          ],
+          "row": 9
+        },
+        {
+          "name": "Judgements of the Just",
+          "spell_ids": [
+            53695,
+            53696
+          ],
+          "row": 9
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "2:2": {
+      "label": "Vindicte",
+      "attention": "La faute, sa répétition et la réponse proportionnée",
+      "tension": "justice contre vengeance",
+      "decision": "Nommer ce qui justifie la sanction avant de la réclamer",
+      "derive": "prendre une offense personnelle pour une cause sacrée",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Divine Storm",
+          "spell_ids": [
+            53385
+          ],
+          "row": 10
+        },
+        {
+          "name": "Righteous Vengeance",
+          "spell_ids": [
+            53380,
+            53381,
+            53382
+          ],
+          "row": 9
+        },
+        {
+          "name": "Sheath of Light",
+          "spell_ids": [
+            53501,
+            53502,
+            53503
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "3:0": {
+      "label": "Maîtrise des bêtes",
+      "attention": "L’état et la place de la bête réellement présente",
+      "tension": "coopération contre instrumentalisation",
+      "decision": "Modifier la route si le compagnon animal ne peut la suivre",
+      "derive": "attribuer au familier des intentions humaines certaines",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Beast Mastery",
+          "spell_ids": [
+            53270
+          ],
+          "row": 10
+        },
+        {
+          "name": "Kindred Spirits",
+          "spell_ids": [
+            56314,
+            56315,
+            56316,
+            56317,
+            56318
+          ],
+          "row": 9
+        },
+        {
+          "name": "Longevity",
+          "spell_ids": [
+            53262,
+            53263,
+            53264
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "3:1": {
+      "label": "Précision",
+      "attention": "La cible, la distance et la sûreté de l’angle",
+      "tension": "certitude du tir contre information incomplète",
+      "decision": "Demander une ligne dégagée ou renoncer à un tir mal identifié",
+      "derive": "réduire une personne à un point à atteindre",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Chimera Shot",
+          "spell_ids": [
+            53209
+          ],
+          "row": 10
+        },
+        {
+          "name": "Marked for Death",
+          "spell_ids": [
+            53241,
+            53243,
+            53244,
+            53245,
+            53246
+          ],
+          "row": 9
+        },
+        {
+          "name": "Improved Steady Shot",
+          "spell_ids": [
+            53221,
+            53222,
+            53224
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "3:2": {
+      "label": "Survie",
+      "attention": "Les issues, la préparation et le terrain changeant",
+      "tension": "anticipation contre soupçon permanent",
+      "decision": "Préparer une sortie ou un obstacle avant de poursuivre",
+      "derive": "voir un piège là où il manque simplement une information",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Explosive Shot",
+          "spell_ids": [
+            53301
+          ],
+          "row": 10
+        },
+        {
+          "name": "Hunting Party",
+          "spell_ids": [
+            53290,
+            53291,
+            53292
+          ],
+          "row": 9
+        },
+        {
+          "name": "Sniper Training",
+          "spell_ids": [
+            53302,
+            53303,
+            53304
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "4:0": {
+      "label": "Assassinat",
+      "attention": "La cible exacte et les conditions d’une élimination",
+      "tension": "efficacité ciblée contre irréversibilité",
+      "decision": "Faire préciser la cible et le résultat avant de choisir le moyen",
+      "derive": "faire de la précision technique une excuse morale",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Hunger For Blood",
+          "spell_ids": [
+            51662
+          ],
+          "row": 10
+        },
+        {
+          "name": "Cut to the Chase",
+          "spell_ids": [
+            51664,
+            51665,
+            51667,
+            51668,
+            51669
+          ],
+          "row": 9
+        },
+        {
+          "name": "Turn the Tables",
+          "spell_ids": [
+            51627,
+            51628,
+            51629
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "4:1": {
+      "label": "Combat",
+      "attention": "Les ouvertures au fil d’un affrontement",
+      "tension": "assurance contre goût de la démonstration",
+      "decision": "Exploiter un déséquilibre et maintenir une issue praticable",
+      "derive": "prolonger un duel pour prouver sa supériorité",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Killing Spree",
+          "spell_ids": [
+            51690
+          ],
+          "row": 10
+        },
+        {
+          "name": "Prey on the Weak",
+          "spell_ids": [
+            51685,
+            51686,
+            51687,
+            51688,
+            51689
+          ],
+          "row": 9
+        },
+        {
+          "name": "Savage Combat",
+          "spell_ids": [
+            51682,
+            58413
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "4:2": {
+      "label": "Finesse",
+      "attention": "Ce qui est su, vu et révélé au bon moment",
+      "tension": "secret utile contre confiance des alliés",
+      "decision": "Observer ou transmettre une information décisive avant d’apparaître",
+      "derive": "retenir une information dont un compagnon a besoin pour consentir",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Shadow Dance",
+          "spell_ids": [
+            51713
+          ],
+          "row": 10
+        },
+        {
+          "name": "Slaughter from the Shadows",
+          "spell_ids": [
+            51708,
+            51709,
+            51710,
+            51711,
+            51712
+          ],
+          "row": 9
+        },
+        {
+          "name": "Filthy Tricks",
+          "spell_ids": [
+            58414,
+            58415
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "5:0": {
+      "label": "Discipline",
+      "attention": "Le point où un corps ou une volonté va céder",
+      "tension": "soutenir contre imposer",
+      "decision": "Prévenir la rupture et demander un effort précis encore possible",
+      "derive": "confondre confiance et obéissance",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Penance",
+          "spell_ids": [
+            47540
+          ],
+          "row": 10
+        },
+        {
+          "name": "Borrowed Time",
+          "spell_ids": [
+            52795,
+            52797,
+            52798,
+            52799,
+            52800
+          ],
+          "row": 9
+        },
+        {
+          "name": "Grace",
+          "spell_ids": [
+            47516,
+            47517
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "5:1": {
+      "label": "Sacré",
+      "attention": "La souffrance présente et le secours possible",
+      "tension": "compassion contre épuisement ou absolution automatique",
+      "decision": "Faire place au soin immédiat sans promettre un salut total",
+      "derive": "se croire seul responsable de toutes les vies",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Guardian Spirit",
+          "spell_ids": [
+            47788
+          ],
+          "row": 10
+        },
+        {
+          "name": "Divine Providence",
+          "spell_ids": [
+            47562,
+            47564,
+            47565,
+            47566,
+            47567
+          ],
+          "row": 9
+        },
+        {
+          "name": "Test of Faith",
+          "spell_ids": [
+            47558,
+            47559,
+            47560
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "5:2": {
+      "label": "Ombre",
+      "attention": "La peur, la pression et la liberté de jugement",
+      "tension": "influence contre autonomie",
+      "decision": "Identifier la pression qui fait céder puis chercher à la briser ou l’exploiter",
+      "derive": "traiter le doute d’un allié comme une faiblesse à manipuler",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Dispersion",
+          "spell_ids": [
+            47585
+          ],
+          "row": 10
+        },
+        {
+          "name": "Twisted Faith",
+          "spell_ids": [
+            47573,
+            47577,
+            47578,
+            51166,
+            51167
+          ],
+          "row": 9
+        },
+        {
+          "name": "Pain and Suffering",
+          "spell_ids": [
+            47580,
+            47581,
+            47582
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "6:0": {
+      "label": "Sang",
+      "attention": "Ce que l’échange violent permet de supporter",
+      "tension": "endurance contre dépendance au prélèvement",
+      "decision": "Évaluer si durer donne une issue au groupe",
+      "derive": "confondre capacité à survivre et droit d’exposer les autres",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Dancing Rune Weapon",
+          "spell_ids": [
+            49028
+          ],
+          "row": 10
+        },
+        {
+          "name": "Blood Gorged",
+          "spell_ids": [
+            61154,
+            61155,
+            61156,
+            61157,
+            61158
+          ],
+          "row": 9
+        },
+        {
+          "name": "Will of the Necropolis",
+          "spell_ids": [
+            49189,
+            50149,
+            50150
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "6:1": {
+      "label": "Givre",
+      "attention": "Le tempo adverse et les moyens de le contraindre",
+      "tension": "contrôle contre fixation",
+      "decision": "Rompre le rythme ennemi et déplacer l’affrontement",
+      "derive": "s’obstiner dans une immobilisation devenue inutile",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Howling Blast",
+          "spell_ids": [
+            49184
+          ],
+          "row": 10
+        },
+        {
+          "name": "Tundra Stalker",
+          "spell_ids": [
+            49202,
+            50127,
+            50128,
+            50129,
+            50130
+          ],
+          "row": 9
+        },
+        {
+          "name": "Guile of Gorefiend",
+          "spell_ids": [
+            50187,
+            50190,
+            50191
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "6:2": {
+      "label": "Impie",
+      "attention": "Les effets persistants et leurs conséquences",
+      "tension": "efficacité contre contamination et défiance",
+      "decision": "Annoncer les moyens inquiétants et leurs limites",
+      "derive": "mesurer seulement le résultat immédiat",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Summon Gargoyle",
+          "spell_ids": [
+            49206
+          ],
+          "row": 10
+        },
+        {
+          "name": "Rage of Rivendare",
+          "spell_ids": [
+            50117,
+            50118,
+            50119,
+            50120,
+            50121
+          ],
+          "row": 9
+        },
+        {
+          "name": "Scourge Strike",
+          "spell_ids": [
+            55090
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "7:0": {
+      "label": "Élémentaire",
+      "attention": "L’ampleur des forces et l’espace autour de la cible",
+      "tension": "puissance contre proportion",
+      "decision": "Choisir une intervention dont les abords sont pris en compte",
+      "derive": "invoquer la nécessité pour justifier tout débordement",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Thunderstorm",
+          "spell_ids": [
+            51490
+          ],
+          "row": 10
+        },
+        {
+          "name": "Shamanism",
+          "spell_ids": [
+            62097,
+            62098,
+            62099,
+            62100,
+            62101
+          ],
+          "row": 9
+        },
+        {
+          "name": "Lava Flows",
+          "spell_ids": [
+            51480,
+            51481,
+            51482
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "7:1": {
+      "label": "Amélioration",
+      "attention": "L’accord du geste, de l’arme et de la puissance",
+      "tension": "engagement contre présomption",
+      "decision": "S’engager là où la proximité change réellement l’issue",
+      "derive": "prendre chaque réussite pour la preuve d’un accord permanent",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Feral Spirit",
+          "spell_ids": [
+            51533
+          ],
+          "row": 10
+        },
+        {
+          "name": "Maelstrom Weapon",
+          "spell_ids": [
+            51528,
+            51529,
+            51530,
+            51531,
+            51532
+          ],
+          "row": 9
+        },
+        {
+          "name": "Earthen Power",
+          "spell_ids": [
+            51523,
+            51524
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "7:2": {
+      "label": "Restauration",
+      "attention": "Les blessures qui reviennent et la continuité du groupe",
+      "tension": "réparation contre acceptation d’une mauvaise conduite",
+      "decision": "Soigner puis contester ce qui rend le même secours nécessaire",
+      "derive": "entretenir indéfiniment un risque évitable",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Riptide",
+          "spell_ids": [
+            61295
+          ],
+          "row": 10
+        },
+        {
+          "name": "Tidal Waves",
+          "spell_ids": [
+            51562,
+            51563,
+            51564,
+            51565,
+            51566
+          ],
+          "row": 9
+        },
+        {
+          "name": "Ancestral Awakening",
+          "spell_ids": [
+            51556,
+            51557,
+            51558
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "8:0": {
+      "label": "Arcanes",
+      "attention": "Le dosage, les réserves et la cohérence du procédé",
+      "tension": "maîtrise contre ambition de démontrer",
+      "decision": "Énoncer une limite de puissance ou changer la méthode",
+      "derive": "cacher un doute pour préserver son prestige",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Arcane Barrage",
+          "spell_ids": [
+            44425
+          ],
+          "row": 10
+        },
+        {
+          "name": "Netherwind Presence",
+          "spell_ids": [
+            44400,
+            44402,
+            44403
+          ],
+          "row": 9
+        },
+        {
+          "name": "Spell Power",
+          "spell_ids": [
+            35578,
+            35581
+          ],
+          "row": 9
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "8:1": {
+      "label": "Feu",
+      "attention": "L’intensité et la propagation de l’effet",
+      "tension": "décision rapide contre débordement",
+      "decision": "Chercher un résultat décisif avec une limite spatiale explicite",
+      "derive": "répondre à toute résistance par une intensité supérieure",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Living Bomb",
+          "spell_ids": [
+            44457
+          ],
+          "row": 10
+        },
+        {
+          "name": "Burnout",
+          "spell_ids": [
+            44449,
+            44469,
+            44470,
+            44471,
+            44472
+          ],
+          "row": 9
+        },
+        {
+          "name": "Hot Streak",
+          "spell_ids": [
+            44445,
+            44446,
+            44448
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "8:2": {
+      "label": "Givre",
+      "attention": "Les distances, les issues et le ralentissement",
+      "tension": "contrôle contre immobilisme",
+      "decision": "Gagner du temps ou séparer les menaces pour permettre un passage",
+      "derive": "conserver le contrôle au lieu de conclure",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Deep Freeze",
+          "spell_ids": [
+            44572
+          ],
+          "row": 10
+        },
+        {
+          "name": "Chilled to the Bone",
+          "spell_ids": [
+            44566,
+            44567,
+            44568,
+            44570,
+            44571
+          ],
+          "row": 9
+        },
+        {
+          "name": "Enduring Winter",
+          "spell_ids": [
+            44557,
+            44560,
+            44561
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "9:0": {
+      "label": "Affliction",
+      "attention": "L’usure et le moment où prolonger devient gratuit",
+      "tension": "patience contre complaisance envers la souffrance",
+      "decision": "Faire durer seulement tant que cela sert un objectif formulé",
+      "derive": "confondre souffrance persistante et victoire certaine",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Haunt",
+          "spell_ids": [
+            48181
+          ],
+          "row": 10
+        },
+        {
+          "name": "Everlasting Affliction",
+          "spell_ids": [
+            47201,
+            47202,
+            47203,
+            47204,
+            47205
+          ],
+          "row": 9
+        },
+        {
+          "name": "Pandemic",
+          "spell_ids": [
+            58435
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "9:1": {
+      "label": "Démonologie",
+      "attention": "Le contrôle d’un serviteur et la dépendance à sa force",
+      "tension": "commandement contre emprise réciproque",
+      "decision": "Vérifier le contrôle du serviteur effectivement présent",
+      "derive": "tenir une obéissance apparente pour une loyauté",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Metamorphosis",
+          "spell_ids": [
+            59672
+          ],
+          "row": 10
+        },
+        {
+          "name": "Demonic Pact",
+          "spell_ids": [
+            47236,
+            47237,
+            47238,
+            47239,
+            47240
+          ],
+          "row": 9
+        },
+        {
+          "name": "Nemesis",
+          "spell_ids": [
+            63117,
+            63121,
+            63123
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "9:2": {
+      "label": "Destruction",
+      "attention": "Le coût et la vitesse d’une rupture brutale",
+      "tension": "résultat contre escalade",
+      "decision": "Proposer une frappe décisive quand le coût est assumé",
+      "derive": "traiter une objection comme un obstacle à détruire",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Chaos Bolt",
+          "spell_ids": [
+            50796
+          ],
+          "row": 10
+        },
+        {
+          "name": "Fire and Brimstone",
+          "spell_ids": [
+            47266,
+            47267,
+            47268,
+            47269,
+            47270
+          ],
+          "row": 9
+        },
+        {
+          "name": "Empowered Imp",
+          "spell_ids": [
+            47220,
+            47221,
+            47223
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "11:0": {
+      "label": "Équilibre",
+      "attention": "Les relations entre les forces à l’œuvre",
+      "tension": "ensemble contre personne singulière",
+      "decision": "Modifier un rapport de forces sans oublier qui en paie le prix",
+      "derive": "sacrifier une personne à une harmonie abstraite",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Starfall",
+          "spell_ids": [
+            48505
+          ],
+          "row": 10
+        },
+        {
+          "name": "Earth and Moon",
+          "spell_ids": [
+            48506,
+            48510,
+            48511
+          ],
+          "row": 9
+        },
+        {
+          "name": "Gale Winds",
+          "spell_ids": [
+            48488,
+            48514
+          ],
+          "row": 8
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "11:1": {
+      "label": "Combat farouche",
+      "attention": "Les perceptions et la forme utile à la situation",
+      "tension": "instinct contre maîtrise",
+      "decision": "Adapter l’approche à la garde ou à la poursuite nécessaire",
+      "derive": "prétendre qu’une forme animale supprime toute responsabilité",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Berserk",
+          "spell_ids": [
+            50334
+          ],
+          "row": 10
+        },
+        {
+          "name": "Primal Gore",
+          "spell_ids": [
+            63503
+          ],
+          "row": 9
+        },
+        {
+          "name": "Rend and Tear",
+          "spell_ids": [
+            48432,
+            48433,
+            48434,
+            51268,
+            51269
+          ],
+          "row": 9
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    },
+    "11:2": {
+      "label": "Restauration",
+      "attention": "La reprise et le temps nécessaire au rétablissement",
+      "tension": "patience contre urgence",
+      "decision": "Soutenir une reprise durable tout en traitant la rupture immédiate",
+      "derive": "attendre un cycle naturel face à un danger qui exige d’agir",
+      "status": "interpretation_editoriale",
+      "talent_evidence": [
+        {
+          "name": "Wild Growth",
+          "spell_ids": [
+            48438
+          ],
+          "row": 10
+        },
+        {
+          "name": "Improved Barkskin",
+          "spell_ids": [
+            63410,
+            63411
+          ],
+          "row": 9
+        },
+        {
+          "name": "Gift of the Earthmother",
+          "spell_ids": [
+            51179,
+            51180,
+            51181,
+            51182,
+            51183
+          ],
+          "row": 9
+        }
+      ],
+      "capacity_boundary": "Arbre détecté ; ces talents ne sont pas nécessairement acquis."
+    }
+  },
+  "race_classes": {
+    "2:1": {
+      "cultural_lens": "La valeur publique du courage rend le repli difficile à défendre. Le guerrier peut revendiquer la responsabilité de ce repli au lieu de le maquiller en victoire.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_orc_wars",
+        "blizzard_horde_timeline",
+        "blizzard_grom",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "2:3": {
+      "cultural_lens": "Approvisionner et ramener les siens peut compter davantage que rapporter un trophée. Le chasseur peut contester une poursuite prestigieuse au nom du terrain.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_orc_wars",
+        "blizzard_horde_timeline",
+        "blizzard_grom",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "2:4": {
+      "cultural_lens": "La discrétion peut servir un engagement franc. Expliquer ce que le secret évite de faire subir aux siens, sans chercher systématiquement à paraître honorable.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_orc_wars",
+        "blizzard_horde_timeline",
+        "blizzard_grom",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "2:6": {
+      "cultural_lens": "L’histoire de la servitude orque et la condition de chevalier de la mort résonnent sans se confondre. Revendiquer ses choix présents, sans inventer deux captivités personnelles.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_orc_wars",
+        "blizzard_horde_timeline",
+        "blizzard_grom",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "2:7": {
+      "cultural_lens": "La reconstruction spirituelle donne du poids aux responsabilités du chaman. Il peut contester un chef avec franchise sans présenter chaque avis comme un ordre des ancêtres.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_orc_wars",
+        "blizzard_horde_timeline",
+        "blizzard_grom",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "2:9": {
+      "cultural_lens": "La charge historique du démoniaque rend la maîtrise revendiquée politiquement sensible. Assumer ce malaise, argumenter ou provoquer ; ne pas effacer le passé par un simple « je contrôle ».",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_orc_wars",
+        "blizzard_horde_timeline",
+        "blizzard_grom",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "5:1": {
+      "cultural_lens": "La transformation du corps change les évidences sur l’endurance. Le guerrier peut protéger par un acte accompagné d’une remarque macabre, sans se prétendre invulnérable.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_classic_manual",
+        "projet_histoire_reprouves",
+        "projet_pretres_reprouves",
+        "projet_societe_reprouvee",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "5:4": {
+      "cultural_lens": "La souveraineté reconquise rend les accords et leurs clauses sensibles. Une politesse inquiétante peut précéder une négociation très précise sur la cible ou le secret.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_classic_manual",
+        "projet_histoire_reprouves",
+        "projet_pretres_reprouves",
+        "projet_societe_reprouvee",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "5:5": {
+      "cultural_lens": "La souffrance et la volonté se pensent depuis une condition réprouvée, sans doctrine personnelle imposée. L’humour noir peut accompagner un secours véritable ou dénoncer une promesse de salut.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_classic_manual",
+        "projet_histoire_reprouves",
+        "projet_pretres_reprouves",
+        "projet_societe_reprouvee",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "5:6": {
+      "cultural_lens": "Distinguer l’affranchissement collectif des Réprouvés et celui des chevaliers de la mort. La sécheresse peut viser les institutions qui réclament encore une obéissance absolue.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_classic_manual",
+        "projet_histoire_reprouves",
+        "projet_pretres_reprouves",
+        "projet_societe_reprouvee",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "5:8": {
+      "cultural_lens": "Un savoir peut survivre aux institutions qui lui donnaient prestige et sens. Le mage peut défendre une méthode tout en tournant en dérision la cérémonie qui l’entoure.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_classic_manual",
+        "projet_histoire_reprouves",
+        "projet_pretres_reprouves",
+        "projet_societe_reprouvee",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "5:9": {
+      "cultural_lens": "La liberté reconquise rend sa propre pratique de contrainte contradictoire. L’assumer avec cynisme est plus intéressant que prétendre que dominer devient innocent parce qu’on a été dominé.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_classic_manual",
+        "projet_histoire_reprouves",
+        "projet_pretres_reprouves",
+        "projet_societe_reprouvee",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "6:1": {
+      "cultural_lens": "Défendre une demeure engage ceux qui y vivent après la bataille. Le calme peut déboucher sur une ligne non négociable, sans discours pacifiste automatique.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_classic_manual",
+        "blizzard_cairne_legacy",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "6:3": {
+      "cultural_lens": "La chasse relie subsistance et mesure du prélèvement. Un trophée peut être défendu ou critiqué selon ce qu’il coûte et ce qu’il apporte, sans rite personnel inventé.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_classic_manual",
+        "blizzard_cairne_legacy",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "6:6": {
+      "cultural_lens": "La condition nouvelle rencontre un héritage attaché à la continuité du vivant. L’inconfort peut se dire avec gravité sans faire parler la Terre-mère ni imposer un rejet tribal.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_classic_manual",
+        "blizzard_cairne_legacy",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "6:7": {
+      "cultural_lens": "La responsabilité communautaire et les relations élémentaires se soutiennent sans être identiques. Un avis technique sur le danger ne vaut pas révélation spirituelle.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_classic_manual",
+        "blizzard_cairne_legacy",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "6:11": {
+      "cultural_lens": "Le cadre tauren apporte territoire, transmission et Terre-mère. Les pratiques druidiques ajoutent leur propre apprentissage ; ne pas emprunter automatiquement les souvenirs ou rites elfes.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_classic_manual",
+        "blizzard_cairne_legacy",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "8:1": {
+      "cultural_lens": "La survie d’un peuple déplacé donne un enjeu collectif au courage. Une parole tranquille peut annoncer une protection très ferme des siens.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_classic_manual",
+        "blizzard_voljin_judgment",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "8:3": {
+      "cultural_lens": "Le terrain et les bêtes comptent sans effacer les obligations spirituelles. Un lieu sacré mérite attention, mais aucun interdit précis n’est inventé pour justifier un détour.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_classic_manual",
+        "blizzard_voljin_judgment",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "8:4": {
+      "cultural_lens": "Le flegme rend possible un humour en retrait pendant une observation attentive. La ruse n’annule pas la piété : un avantage obtenu par profanation peut devenir une vraie objection.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_classic_manual",
+        "blizzard_voljin_judgment",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "8:5": {
+      "cultural_lens": "La piété sombre-lance donne un langage du lien et du respect. Le Sacré ne devient pas une liturgie humaine ; l’Ombre ne devient pas automatiquement une soumission à un loa mauvais.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_classic_manual",
+        "blizzard_voljin_judgment",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "8:6": {
+      "cultural_lens": "La dévotion peut subsister dans une condition inquiétante. Le personnage peut reconnaître une tension spirituelle sans inventer qu’un esprit le condamne ou l’a choisi.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_classic_manual",
+        "blizzard_voljin_judgment",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "8:7": {
+      "cultural_lens": "Distinguer les loa, les esprits et la pratique des éléments. Le chaman peut demander une précaution avec douceur, puis devenir sévère devant le mépris affiché.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_classic_manual",
+        "blizzard_voljin_judgment",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "8:8": {
+      "cultural_lens": "Le savoir arcanique ne dissout pas les attaches du peuple. Le mage peut expliquer un procédé avec décontraction et refuser qu’on tourne sa piété en superstition.",
+      "status": "interpretation",
+      "source_refs": [
+        "blizzard_classic_manual",
+        "blizzard_voljin_judgment",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "10:2": {
+      "cultural_lens": "Les ruptures de l’histoire des Chevaliers de sang rendent la légitimité du pouvoir importante. Le personnage peut défendre une obligation présente sans se déclarer ancien tortionnaire ou initié.",
+      "status": "interpretation",
+      "source_refs": [
+        "projet_queldorei",
+        "projet_assassins_elfes",
+        "blizzard_tbc_history",
+        "blizzard_sunwell",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "10:3": {
+      "cultural_lens": "L’héritage des défenseurs des frontières éclaire la valeur du territoire et de l’observation. Il ne suffit pas à attribuer un rang de Forestier ou une carrière passée.",
+      "status": "interpretation",
+      "source_refs": [
+        "projet_queldorei",
+        "projet_assassins_elfes",
+        "blizzard_tbc_history",
+        "blizzard_sunwell",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "10:4": {
+      "cultural_lens": "L’élégance masque parfois une décision tranchante. Préserver la dignité, limiter les traces ou contrôler l’information ont des coûts différents selon Assassinat, Combat et Finesse.",
+      "status": "interpretation",
+      "source_refs": [
+        "projet_queldorei",
+        "projet_assassins_elfes",
+        "blizzard_tbc_history",
+        "blizzard_sunwell",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "10:5": {
+      "cultural_lens": "Le Puits et les pertes collectives donnent un contexte au rapport à la puissance et au secours. Aucun accès intime au Puits, aucune doctrine uniforme ne sont déduits de la classe.",
+      "status": "interpretation",
+      "source_refs": [
+        "projet_queldorei",
+        "projet_assassins_elfes",
+        "blizzard_tbc_history",
+        "blizzard_sunwell",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "10:6": {
+      "cultural_lens": "Les pertes du peuple et la condition nouvelle forment deux plans de rupture. La tenue peut préserver une dignité revendiquée sans cacher systématiquement toute fragilité.",
+      "status": "interpretation",
+      "source_refs": [
+        "projet_queldorei",
+        "projet_assassins_elfes",
+        "blizzard_tbc_history",
+        "blizzard_sunwell",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "10:8": {
+      "cultural_lens": "L’excellence arcanique devient un enjeu de prestige et de reconstruction. Admettre une limite peut coûter socialement autant que perdre une réserve de puissance.",
+      "status": "interpretation",
+      "source_refs": [
+        "projet_queldorei",
+        "projet_assassins_elfes",
+        "blizzard_tbc_history",
+        "blizzard_sunwell",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    },
+    "10:9": {
+      "cultural_lens": "L’ambition se négocie avec la respectabilité et le contrôle affiché. Une justification raffinée peut être lucide ou intéressée ; elle ne prouve pas que le moyen est sans risque.",
+      "status": "interpretation",
+      "source_refs": [
+        "projet_queldorei",
+        "projet_assassins_elfes",
+        "blizzard_tbc_history",
+        "blizzard_sunwell",
+        "dbc_wotlk",
+        "choix_projet"
+      ]
+    }
+  },
+  "combinations": {
+    "2:1:0": {
+      "label": "Orc / Guerrier / Armes",
+      "cultural_question": "La valeur publique du courage rend le repli difficile à défendre. Le guerrier peut revendiquer la responsabilité de ce repli au lieu de le maquiller en victoire.",
+      "attention": "Le placement et la fenêtre du geste décisif",
+      "decision": "Attendre une ouverture identifiée et annoncer le coup à soutenir",
+      "conflict": "maîtrise contre impatience de conclure",
+      "style": "Franchise, fierté, humour rude et défis amicaux. La parole engage. Une objection peut être directe sans devenir un cri. Le rire vise volontiers la vantardise démentie par les actes.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "2:1:1": {
+      "label": "Orc / Guerrier / Fureur",
+      "cultural_question": "La valeur publique du courage rend le repli difficile à défendre. Le guerrier peut revendiquer la responsabilité de ce repli au lieu de le maquiller en victoire.",
+      "attention": "La pression soutenue et l’énergie disponible",
+      "decision": "Maintenir la poussée si elle ouvre une issue, puis accepter de rompre",
+      "conflict": "élan contre épuisement des siens",
+      "style": "Franchise, fierté, humour rude et défis amicaux. La parole engage. Une objection peut être directe sans devenir un cri. Le rire vise volontiers la vantardise démentie par les actes.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "2:1:2": {
+      "label": "Orc / Guerrier / Protection",
+      "cultural_question": "La valeur publique du courage rend le repli difficile à défendre. Le guerrier peut revendiquer la responsabilité de ce repli au lieu de le maquiller en victoire.",
+      "attention": "La ligne tenue et les personnes exposées",
+      "decision": "Reprendre une position ou une charge pour que les autres passent",
+      "conflict": "tenir contre savoir déplacer la garde",
+      "style": "Franchise, fierté, humour rude et défis amicaux. La parole engage. Une objection peut être directe sans devenir un cri. Le rire vise volontiers la vantardise démentie par les actes.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "2:3:0": {
+      "label": "Orc / Chasseur / Maîtrise des bêtes",
+      "cultural_question": "Approvisionner et ramener les siens peut compter davantage que rapporter un trophée. Le chasseur peut contester une poursuite prestigieuse au nom du terrain.",
+      "attention": "L’état et la place de la bête réellement présente",
+      "decision": "Modifier la route si le compagnon animal ne peut la suivre",
+      "conflict": "coopération contre instrumentalisation",
+      "style": "Franchise, fierté, humour rude et défis amicaux. La parole engage. Une objection peut être directe sans devenir un cri. Le rire vise volontiers la vantardise démentie par les actes.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "2:3:1": {
+      "label": "Orc / Chasseur / Précision",
+      "cultural_question": "Approvisionner et ramener les siens peut compter davantage que rapporter un trophée. Le chasseur peut contester une poursuite prestigieuse au nom du terrain.",
+      "attention": "La cible, la distance et la sûreté de l’angle",
+      "decision": "Demander une ligne dégagée ou renoncer à un tir mal identifié",
+      "conflict": "certitude du tir contre information incomplète",
+      "style": "Franchise, fierté, humour rude et défis amicaux. La parole engage. Une objection peut être directe sans devenir un cri. Le rire vise volontiers la vantardise démentie par les actes.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "2:3:2": {
+      "label": "Orc / Chasseur / Survie",
+      "cultural_question": "Approvisionner et ramener les siens peut compter davantage que rapporter un trophée. Le chasseur peut contester une poursuite prestigieuse au nom du terrain.",
+      "attention": "Les issues, la préparation et le terrain changeant",
+      "decision": "Préparer une sortie ou un obstacle avant de poursuivre",
+      "conflict": "anticipation contre soupçon permanent",
+      "style": "Franchise, fierté, humour rude et défis amicaux. La parole engage. Une objection peut être directe sans devenir un cri. Le rire vise volontiers la vantardise démentie par les actes.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "2:4:0": {
+      "label": "Orc / Voleur / Assassinat",
+      "cultural_question": "La discrétion peut servir un engagement franc. Expliquer ce que le secret évite de faire subir aux siens, sans chercher systématiquement à paraître honorable.",
+      "attention": "La cible exacte et les conditions d’une élimination",
+      "decision": "Faire préciser la cible et le résultat avant de choisir le moyen",
+      "conflict": "efficacité ciblée contre irréversibilité",
+      "style": "Franchise, fierté, humour rude et défis amicaux. La parole engage. Une objection peut être directe sans devenir un cri. Le rire vise volontiers la vantardise démentie par les actes.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "2:4:1": {
+      "label": "Orc / Voleur / Combat",
+      "cultural_question": "La discrétion peut servir un engagement franc. Expliquer ce que le secret évite de faire subir aux siens, sans chercher systématiquement à paraître honorable.",
+      "attention": "Les ouvertures au fil d’un affrontement",
+      "decision": "Exploiter un déséquilibre et maintenir une issue praticable",
+      "conflict": "assurance contre goût de la démonstration",
+      "style": "Franchise, fierté, humour rude et défis amicaux. La parole engage. Une objection peut être directe sans devenir un cri. Le rire vise volontiers la vantardise démentie par les actes.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "2:4:2": {
+      "label": "Orc / Voleur / Finesse",
+      "cultural_question": "La discrétion peut servir un engagement franc. Expliquer ce que le secret évite de faire subir aux siens, sans chercher systématiquement à paraître honorable.",
+      "attention": "Ce qui est su, vu et révélé au bon moment",
+      "decision": "Observer ou transmettre une information décisive avant d’apparaître",
+      "conflict": "secret utile contre confiance des alliés",
+      "style": "Franchise, fierté, humour rude et défis amicaux. La parole engage. Une objection peut être directe sans devenir un cri. Le rire vise volontiers la vantardise démentie par les actes.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "2:6:0": {
+      "label": "Orc / Chevalier de la mort / Sang",
+      "cultural_question": "L’histoire de la servitude orque et la condition de chevalier de la mort résonnent sans se confondre. Revendiquer ses choix présents, sans inventer deux captivités personnelles.",
+      "attention": "Ce que l’échange violent permet de supporter",
+      "decision": "Évaluer si durer donne une issue au groupe",
+      "conflict": "endurance contre dépendance au prélèvement",
+      "style": "Franchise, fierté, humour rude et défis amicaux. La parole engage. Une objection peut être directe sans devenir un cri. Le rire vise volontiers la vantardise démentie par les actes.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "2:6:1": {
+      "label": "Orc / Chevalier de la mort / Givre",
+      "cultural_question": "L’histoire de la servitude orque et la condition de chevalier de la mort résonnent sans se confondre. Revendiquer ses choix présents, sans inventer deux captivités personnelles.",
+      "attention": "Le tempo adverse et les moyens de le contraindre",
+      "decision": "Rompre le rythme ennemi et déplacer l’affrontement",
+      "conflict": "contrôle contre fixation",
+      "style": "Franchise, fierté, humour rude et défis amicaux. La parole engage. Une objection peut être directe sans devenir un cri. Le rire vise volontiers la vantardise démentie par les actes.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "2:6:2": {
+      "label": "Orc / Chevalier de la mort / Impie",
+      "cultural_question": "L’histoire de la servitude orque et la condition de chevalier de la mort résonnent sans se confondre. Revendiquer ses choix présents, sans inventer deux captivités personnelles.",
+      "attention": "Les effets persistants et leurs conséquences",
+      "decision": "Annoncer les moyens inquiétants et leurs limites",
+      "conflict": "efficacité contre contamination et défiance",
+      "style": "Franchise, fierté, humour rude et défis amicaux. La parole engage. Une objection peut être directe sans devenir un cri. Le rire vise volontiers la vantardise démentie par les actes.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "2:7:0": {
+      "label": "Orc / Chaman / Élémentaire",
+      "cultural_question": "La reconstruction spirituelle donne du poids aux responsabilités du chaman. Il peut contester un chef avec franchise sans présenter chaque avis comme un ordre des ancêtres.",
+      "attention": "L’ampleur des forces et l’espace autour de la cible",
+      "decision": "Choisir une intervention dont les abords sont pris en compte",
+      "conflict": "puissance contre proportion",
+      "style": "Franchise, fierté, humour rude et défis amicaux. La parole engage. Une objection peut être directe sans devenir un cri. Le rire vise volontiers la vantardise démentie par les actes.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "2:7:1": {
+      "label": "Orc / Chaman / Amélioration",
+      "cultural_question": "La reconstruction spirituelle donne du poids aux responsabilités du chaman. Il peut contester un chef avec franchise sans présenter chaque avis comme un ordre des ancêtres.",
+      "attention": "L’accord du geste, de l’arme et de la puissance",
+      "decision": "S’engager là où la proximité change réellement l’issue",
+      "conflict": "engagement contre présomption",
+      "style": "Franchise, fierté, humour rude et défis amicaux. La parole engage. Une objection peut être directe sans devenir un cri. Le rire vise volontiers la vantardise démentie par les actes.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "2:7:2": {
+      "label": "Orc / Chaman / Restauration",
+      "cultural_question": "La reconstruction spirituelle donne du poids aux responsabilités du chaman. Il peut contester un chef avec franchise sans présenter chaque avis comme un ordre des ancêtres.",
+      "attention": "Les blessures qui reviennent et la continuité du groupe",
+      "decision": "Soigner puis contester ce qui rend le même secours nécessaire",
+      "conflict": "réparation contre acceptation d’une mauvaise conduite",
+      "style": "Franchise, fierté, humour rude et défis amicaux. La parole engage. Une objection peut être directe sans devenir un cri. Le rire vise volontiers la vantardise démentie par les actes.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "2:9:0": {
+      "label": "Orc / Démoniste / Affliction",
+      "cultural_question": "La charge historique du démoniaque rend la maîtrise revendiquée politiquement sensible. Assumer ce malaise, argumenter ou provoquer ; ne pas effacer le passé par un simple « je contrôle ».",
+      "attention": "L’usure et le moment où prolonger devient gratuit",
+      "decision": "Faire durer seulement tant que cela sert un objectif formulé",
+      "conflict": "patience contre complaisance envers la souffrance",
+      "style": "Franchise, fierté, humour rude et défis amicaux. La parole engage. Une objection peut être directe sans devenir un cri. Le rire vise volontiers la vantardise démentie par les actes.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "2:9:1": {
+      "label": "Orc / Démoniste / Démonologie",
+      "cultural_question": "La charge historique du démoniaque rend la maîtrise revendiquée politiquement sensible. Assumer ce malaise, argumenter ou provoquer ; ne pas effacer le passé par un simple « je contrôle ».",
+      "attention": "Le contrôle d’un serviteur et la dépendance à sa force",
+      "decision": "Vérifier le contrôle du serviteur effectivement présent",
+      "conflict": "commandement contre emprise réciproque",
+      "style": "Franchise, fierté, humour rude et défis amicaux. La parole engage. Une objection peut être directe sans devenir un cri. Le rire vise volontiers la vantardise démentie par les actes.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "2:9:2": {
+      "label": "Orc / Démoniste / Destruction",
+      "cultural_question": "La charge historique du démoniaque rend la maîtrise revendiquée politiquement sensible. Assumer ce malaise, argumenter ou provoquer ; ne pas effacer le passé par un simple « je contrôle ».",
+      "attention": "Le coût et la vitesse d’une rupture brutale",
+      "decision": "Proposer une frappe décisive quand le coût est assumé",
+      "conflict": "résultat contre escalade",
+      "style": "Franchise, fierté, humour rude et défis amicaux. La parole engage. Une objection peut être directe sans devenir un cri. Le rire vise volontiers la vantardise démentie par les actes.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "5:1:0": {
+      "label": "Réprouvé / Guerrier / Armes",
+      "cultural_question": "La transformation du corps change les évidences sur l’endurance. Le guerrier peut protéger par un acte accompagné d’une remarque macabre, sans se prétendre invulnérable.",
+      "attention": "Le placement et la fenêtre du geste décisif",
+      "decision": "Attendre une ouverture identifiée et annoncer le coup à soutenir",
+      "conflict": "maîtrise contre impatience de conclure",
+      "style": "Humour noir british fréquent : pince-sans-rire, cynisme, sarcasme, understatement, politesse mordante et autodérision. La mort n'est pas l'unique sujet. La sincérité peut rester acerbe.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "5:1:1": {
+      "label": "Réprouvé / Guerrier / Fureur",
+      "cultural_question": "La transformation du corps change les évidences sur l’endurance. Le guerrier peut protéger par un acte accompagné d’une remarque macabre, sans se prétendre invulnérable.",
+      "attention": "La pression soutenue et l’énergie disponible",
+      "decision": "Maintenir la poussée si elle ouvre une issue, puis accepter de rompre",
+      "conflict": "élan contre épuisement des siens",
+      "style": "Humour noir british fréquent : pince-sans-rire, cynisme, sarcasme, understatement, politesse mordante et autodérision. La mort n'est pas l'unique sujet. La sincérité peut rester acerbe.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "5:1:2": {
+      "label": "Réprouvé / Guerrier / Protection",
+      "cultural_question": "La transformation du corps change les évidences sur l’endurance. Le guerrier peut protéger par un acte accompagné d’une remarque macabre, sans se prétendre invulnérable.",
+      "attention": "La ligne tenue et les personnes exposées",
+      "decision": "Reprendre une position ou une charge pour que les autres passent",
+      "conflict": "tenir contre savoir déplacer la garde",
+      "style": "Humour noir british fréquent : pince-sans-rire, cynisme, sarcasme, understatement, politesse mordante et autodérision. La mort n'est pas l'unique sujet. La sincérité peut rester acerbe.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "5:4:0": {
+      "label": "Réprouvé / Voleur / Assassinat",
+      "cultural_question": "La souveraineté reconquise rend les accords et leurs clauses sensibles. Une politesse inquiétante peut précéder une négociation très précise sur la cible ou le secret.",
+      "attention": "La cible exacte et les conditions d’une élimination",
+      "decision": "Faire préciser la cible et le résultat avant de choisir le moyen",
+      "conflict": "efficacité ciblée contre irréversibilité",
+      "style": "Humour noir british fréquent : pince-sans-rire, cynisme, sarcasme, understatement, politesse mordante et autodérision. La mort n'est pas l'unique sujet. La sincérité peut rester acerbe.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "5:4:1": {
+      "label": "Réprouvé / Voleur / Combat",
+      "cultural_question": "La souveraineté reconquise rend les accords et leurs clauses sensibles. Une politesse inquiétante peut précéder une négociation très précise sur la cible ou le secret.",
+      "attention": "Les ouvertures au fil d’un affrontement",
+      "decision": "Exploiter un déséquilibre et maintenir une issue praticable",
+      "conflict": "assurance contre goût de la démonstration",
+      "style": "Humour noir british fréquent : pince-sans-rire, cynisme, sarcasme, understatement, politesse mordante et autodérision. La mort n'est pas l'unique sujet. La sincérité peut rester acerbe.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "5:4:2": {
+      "label": "Réprouvé / Voleur / Finesse",
+      "cultural_question": "La souveraineté reconquise rend les accords et leurs clauses sensibles. Une politesse inquiétante peut précéder une négociation très précise sur la cible ou le secret.",
+      "attention": "Ce qui est su, vu et révélé au bon moment",
+      "decision": "Observer ou transmettre une information décisive avant d’apparaître",
+      "conflict": "secret utile contre confiance des alliés",
+      "style": "Humour noir british fréquent : pince-sans-rire, cynisme, sarcasme, understatement, politesse mordante et autodérision. La mort n'est pas l'unique sujet. La sincérité peut rester acerbe.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "5:5:0": {
+      "label": "Réprouvé / Prêtre / Discipline",
+      "cultural_question": "La souffrance et la volonté se pensent depuis une condition réprouvée, sans doctrine personnelle imposée. L’humour noir peut accompagner un secours véritable ou dénoncer une promesse de salut.",
+      "attention": "Le point où un corps ou une volonté va céder",
+      "decision": "Prévenir la rupture et demander un effort précis encore possible",
+      "conflict": "soutenir contre imposer",
+      "style": "Humour noir british fréquent : pince-sans-rire, cynisme, sarcasme, understatement, politesse mordante et autodérision. La mort n'est pas l'unique sujet. La sincérité peut rester acerbe.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "5:5:1": {
+      "label": "Réprouvé / Prêtre / Sacré",
+      "cultural_question": "La souffrance et la volonté se pensent depuis une condition réprouvée, sans doctrine personnelle imposée. L’humour noir peut accompagner un secours véritable ou dénoncer une promesse de salut.",
+      "attention": "La souffrance présente et le secours possible",
+      "decision": "Faire place au soin immédiat sans promettre un salut total",
+      "conflict": "compassion contre épuisement ou absolution automatique",
+      "style": "Humour noir british fréquent : pince-sans-rire, cynisme, sarcasme, understatement, politesse mordante et autodérision. La mort n'est pas l'unique sujet. La sincérité peut rester acerbe.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "5:5:2": {
+      "label": "Réprouvé / Prêtre / Ombre",
+      "cultural_question": "La souffrance et la volonté se pensent depuis une condition réprouvée, sans doctrine personnelle imposée. L’humour noir peut accompagner un secours véritable ou dénoncer une promesse de salut.",
+      "attention": "La peur, la pression et la liberté de jugement",
+      "decision": "Identifier la pression qui fait céder puis chercher à la briser ou l’exploiter",
+      "conflict": "influence contre autonomie",
+      "style": "Humour noir british fréquent : pince-sans-rire, cynisme, sarcasme, understatement, politesse mordante et autodérision. La mort n'est pas l'unique sujet. La sincérité peut rester acerbe.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "5:6:0": {
+      "label": "Réprouvé / Chevalier de la mort / Sang",
+      "cultural_question": "Distinguer l’affranchissement collectif des Réprouvés et celui des chevaliers de la mort. La sécheresse peut viser les institutions qui réclament encore une obéissance absolue.",
+      "attention": "Ce que l’échange violent permet de supporter",
+      "decision": "Évaluer si durer donne une issue au groupe",
+      "conflict": "endurance contre dépendance au prélèvement",
+      "style": "Humour noir british fréquent : pince-sans-rire, cynisme, sarcasme, understatement, politesse mordante et autodérision. La mort n'est pas l'unique sujet. La sincérité peut rester acerbe.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "5:6:1": {
+      "label": "Réprouvé / Chevalier de la mort / Givre",
+      "cultural_question": "Distinguer l’affranchissement collectif des Réprouvés et celui des chevaliers de la mort. La sécheresse peut viser les institutions qui réclament encore une obéissance absolue.",
+      "attention": "Le tempo adverse et les moyens de le contraindre",
+      "decision": "Rompre le rythme ennemi et déplacer l’affrontement",
+      "conflict": "contrôle contre fixation",
+      "style": "Humour noir british fréquent : pince-sans-rire, cynisme, sarcasme, understatement, politesse mordante et autodérision. La mort n'est pas l'unique sujet. La sincérité peut rester acerbe.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "5:6:2": {
+      "label": "Réprouvé / Chevalier de la mort / Impie",
+      "cultural_question": "Distinguer l’affranchissement collectif des Réprouvés et celui des chevaliers de la mort. La sécheresse peut viser les institutions qui réclament encore une obéissance absolue.",
+      "attention": "Les effets persistants et leurs conséquences",
+      "decision": "Annoncer les moyens inquiétants et leurs limites",
+      "conflict": "efficacité contre contamination et défiance",
+      "style": "Humour noir british fréquent : pince-sans-rire, cynisme, sarcasme, understatement, politesse mordante et autodérision. La mort n'est pas l'unique sujet. La sincérité peut rester acerbe.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "5:8:0": {
+      "label": "Réprouvé / Mage / Arcanes",
+      "cultural_question": "Un savoir peut survivre aux institutions qui lui donnaient prestige et sens. Le mage peut défendre une méthode tout en tournant en dérision la cérémonie qui l’entoure.",
+      "attention": "Le dosage, les réserves et la cohérence du procédé",
+      "decision": "Énoncer une limite de puissance ou changer la méthode",
+      "conflict": "maîtrise contre ambition de démontrer",
+      "style": "Humour noir british fréquent : pince-sans-rire, cynisme, sarcasme, understatement, politesse mordante et autodérision. La mort n'est pas l'unique sujet. La sincérité peut rester acerbe.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "5:8:1": {
+      "label": "Réprouvé / Mage / Feu",
+      "cultural_question": "Un savoir peut survivre aux institutions qui lui donnaient prestige et sens. Le mage peut défendre une méthode tout en tournant en dérision la cérémonie qui l’entoure.",
+      "attention": "L’intensité et la propagation de l’effet",
+      "decision": "Chercher un résultat décisif avec une limite spatiale explicite",
+      "conflict": "décision rapide contre débordement",
+      "style": "Humour noir british fréquent : pince-sans-rire, cynisme, sarcasme, understatement, politesse mordante et autodérision. La mort n'est pas l'unique sujet. La sincérité peut rester acerbe.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "5:8:2": {
+      "label": "Réprouvé / Mage / Givre",
+      "cultural_question": "Un savoir peut survivre aux institutions qui lui donnaient prestige et sens. Le mage peut défendre une méthode tout en tournant en dérision la cérémonie qui l’entoure.",
+      "attention": "Les distances, les issues et le ralentissement",
+      "decision": "Gagner du temps ou séparer les menaces pour permettre un passage",
+      "conflict": "contrôle contre immobilisme",
+      "style": "Humour noir british fréquent : pince-sans-rire, cynisme, sarcasme, understatement, politesse mordante et autodérision. La mort n'est pas l'unique sujet. La sincérité peut rester acerbe.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "5:9:0": {
+      "label": "Réprouvé / Démoniste / Affliction",
+      "cultural_question": "La liberté reconquise rend sa propre pratique de contrainte contradictoire. L’assumer avec cynisme est plus intéressant que prétendre que dominer devient innocent parce qu’on a été dominé.",
+      "attention": "L’usure et le moment où prolonger devient gratuit",
+      "decision": "Faire durer seulement tant que cela sert un objectif formulé",
+      "conflict": "patience contre complaisance envers la souffrance",
+      "style": "Humour noir british fréquent : pince-sans-rire, cynisme, sarcasme, understatement, politesse mordante et autodérision. La mort n'est pas l'unique sujet. La sincérité peut rester acerbe.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "5:9:1": {
+      "label": "Réprouvé / Démoniste / Démonologie",
+      "cultural_question": "La liberté reconquise rend sa propre pratique de contrainte contradictoire. L’assumer avec cynisme est plus intéressant que prétendre que dominer devient innocent parce qu’on a été dominé.",
+      "attention": "Le contrôle d’un serviteur et la dépendance à sa force",
+      "decision": "Vérifier le contrôle du serviteur effectivement présent",
+      "conflict": "commandement contre emprise réciproque",
+      "style": "Humour noir british fréquent : pince-sans-rire, cynisme, sarcasme, understatement, politesse mordante et autodérision. La mort n'est pas l'unique sujet. La sincérité peut rester acerbe.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "5:9:2": {
+      "label": "Réprouvé / Démoniste / Destruction",
+      "cultural_question": "La liberté reconquise rend sa propre pratique de contrainte contradictoire. L’assumer avec cynisme est plus intéressant que prétendre que dominer devient innocent parce qu’on a été dominé.",
+      "attention": "Le coût et la vitesse d’une rupture brutale",
+      "decision": "Proposer une frappe décisive quand le coût est assumé",
+      "conflict": "résultat contre escalade",
+      "style": "Humour noir british fréquent : pince-sans-rire, cynisme, sarcasme, understatement, politesse mordante et autodérision. La mort n'est pas l'unique sujet. La sincérité peut rester acerbe.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "6:1:0": {
+      "label": "Tauren / Guerrier / Armes",
+      "cultural_question": "Défendre une demeure engage ceux qui y vivent après la bataille. Le calme peut déboucher sur une ligne non négociable, sans discours pacifiste automatique.",
+      "attention": "Le placement et la fenêtre du geste décisif",
+      "decision": "Attendre une ouverture identifiée et annoncer le coup à soutenir",
+      "conflict": "maîtrise contre impatience de conclure",
+      "style": "Calme, gravité spirituelle et humour terrien. Des observations concrètes plutôt qu'un proverbe à chaque phrase. La patience n'empêche ni une objection ferme ni une colère nette.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "6:1:1": {
+      "label": "Tauren / Guerrier / Fureur",
+      "cultural_question": "Défendre une demeure engage ceux qui y vivent après la bataille. Le calme peut déboucher sur une ligne non négociable, sans discours pacifiste automatique.",
+      "attention": "La pression soutenue et l’énergie disponible",
+      "decision": "Maintenir la poussée si elle ouvre une issue, puis accepter de rompre",
+      "conflict": "élan contre épuisement des siens",
+      "style": "Calme, gravité spirituelle et humour terrien. Des observations concrètes plutôt qu'un proverbe à chaque phrase. La patience n'empêche ni une objection ferme ni une colère nette.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "6:1:2": {
+      "label": "Tauren / Guerrier / Protection",
+      "cultural_question": "Défendre une demeure engage ceux qui y vivent après la bataille. Le calme peut déboucher sur une ligne non négociable, sans discours pacifiste automatique.",
+      "attention": "La ligne tenue et les personnes exposées",
+      "decision": "Reprendre une position ou une charge pour que les autres passent",
+      "conflict": "tenir contre savoir déplacer la garde",
+      "style": "Calme, gravité spirituelle et humour terrien. Des observations concrètes plutôt qu'un proverbe à chaque phrase. La patience n'empêche ni une objection ferme ni une colère nette.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "6:3:0": {
+      "label": "Tauren / Chasseur / Maîtrise des bêtes",
+      "cultural_question": "La chasse relie subsistance et mesure du prélèvement. Un trophée peut être défendu ou critiqué selon ce qu’il coûte et ce qu’il apporte, sans rite personnel inventé.",
+      "attention": "L’état et la place de la bête réellement présente",
+      "decision": "Modifier la route si le compagnon animal ne peut la suivre",
+      "conflict": "coopération contre instrumentalisation",
+      "style": "Calme, gravité spirituelle et humour terrien. Des observations concrètes plutôt qu'un proverbe à chaque phrase. La patience n'empêche ni une objection ferme ni une colère nette.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "6:3:1": {
+      "label": "Tauren / Chasseur / Précision",
+      "cultural_question": "La chasse relie subsistance et mesure du prélèvement. Un trophée peut être défendu ou critiqué selon ce qu’il coûte et ce qu’il apporte, sans rite personnel inventé.",
+      "attention": "La cible, la distance et la sûreté de l’angle",
+      "decision": "Demander une ligne dégagée ou renoncer à un tir mal identifié",
+      "conflict": "certitude du tir contre information incomplète",
+      "style": "Calme, gravité spirituelle et humour terrien. Des observations concrètes plutôt qu'un proverbe à chaque phrase. La patience n'empêche ni une objection ferme ni une colère nette.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "6:3:2": {
+      "label": "Tauren / Chasseur / Survie",
+      "cultural_question": "La chasse relie subsistance et mesure du prélèvement. Un trophée peut être défendu ou critiqué selon ce qu’il coûte et ce qu’il apporte, sans rite personnel inventé.",
+      "attention": "Les issues, la préparation et le terrain changeant",
+      "decision": "Préparer une sortie ou un obstacle avant de poursuivre",
+      "conflict": "anticipation contre soupçon permanent",
+      "style": "Calme, gravité spirituelle et humour terrien. Des observations concrètes plutôt qu'un proverbe à chaque phrase. La patience n'empêche ni une objection ferme ni une colère nette.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "6:6:0": {
+      "label": "Tauren / Chevalier de la mort / Sang",
+      "cultural_question": "La condition nouvelle rencontre un héritage attaché à la continuité du vivant. L’inconfort peut se dire avec gravité sans faire parler la Terre-mère ni imposer un rejet tribal.",
+      "attention": "Ce que l’échange violent permet de supporter",
+      "decision": "Évaluer si durer donne une issue au groupe",
+      "conflict": "endurance contre dépendance au prélèvement",
+      "style": "Calme, gravité spirituelle et humour terrien. Des observations concrètes plutôt qu'un proverbe à chaque phrase. La patience n'empêche ni une objection ferme ni une colère nette.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "6:6:1": {
+      "label": "Tauren / Chevalier de la mort / Givre",
+      "cultural_question": "La condition nouvelle rencontre un héritage attaché à la continuité du vivant. L’inconfort peut se dire avec gravité sans faire parler la Terre-mère ni imposer un rejet tribal.",
+      "attention": "Le tempo adverse et les moyens de le contraindre",
+      "decision": "Rompre le rythme ennemi et déplacer l’affrontement",
+      "conflict": "contrôle contre fixation",
+      "style": "Calme, gravité spirituelle et humour terrien. Des observations concrètes plutôt qu'un proverbe à chaque phrase. La patience n'empêche ni une objection ferme ni une colère nette.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "6:6:2": {
+      "label": "Tauren / Chevalier de la mort / Impie",
+      "cultural_question": "La condition nouvelle rencontre un héritage attaché à la continuité du vivant. L’inconfort peut se dire avec gravité sans faire parler la Terre-mère ni imposer un rejet tribal.",
+      "attention": "Les effets persistants et leurs conséquences",
+      "decision": "Annoncer les moyens inquiétants et leurs limites",
+      "conflict": "efficacité contre contamination et défiance",
+      "style": "Calme, gravité spirituelle et humour terrien. Des observations concrètes plutôt qu'un proverbe à chaque phrase. La patience n'empêche ni une objection ferme ni une colère nette.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "6:7:0": {
+      "label": "Tauren / Chaman / Élémentaire",
+      "cultural_question": "La responsabilité communautaire et les relations élémentaires se soutiennent sans être identiques. Un avis technique sur le danger ne vaut pas révélation spirituelle.",
+      "attention": "L’ampleur des forces et l’espace autour de la cible",
+      "decision": "Choisir une intervention dont les abords sont pris en compte",
+      "conflict": "puissance contre proportion",
+      "style": "Calme, gravité spirituelle et humour terrien. Des observations concrètes plutôt qu'un proverbe à chaque phrase. La patience n'empêche ni une objection ferme ni une colère nette.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "6:7:1": {
+      "label": "Tauren / Chaman / Amélioration",
+      "cultural_question": "La responsabilité communautaire et les relations élémentaires se soutiennent sans être identiques. Un avis technique sur le danger ne vaut pas révélation spirituelle.",
+      "attention": "L’accord du geste, de l’arme et de la puissance",
+      "decision": "S’engager là où la proximité change réellement l’issue",
+      "conflict": "engagement contre présomption",
+      "style": "Calme, gravité spirituelle et humour terrien. Des observations concrètes plutôt qu'un proverbe à chaque phrase. La patience n'empêche ni une objection ferme ni une colère nette.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "6:7:2": {
+      "label": "Tauren / Chaman / Restauration",
+      "cultural_question": "La responsabilité communautaire et les relations élémentaires se soutiennent sans être identiques. Un avis technique sur le danger ne vaut pas révélation spirituelle.",
+      "attention": "Les blessures qui reviennent et la continuité du groupe",
+      "decision": "Soigner puis contester ce qui rend le même secours nécessaire",
+      "conflict": "réparation contre acceptation d’une mauvaise conduite",
+      "style": "Calme, gravité spirituelle et humour terrien. Des observations concrètes plutôt qu'un proverbe à chaque phrase. La patience n'empêche ni une objection ferme ni une colère nette.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "6:11:0": {
+      "label": "Tauren / Druide / Équilibre",
+      "cultural_question": "Le cadre tauren apporte territoire, transmission et Terre-mère. Les pratiques druidiques ajoutent leur propre apprentissage ; ne pas emprunter automatiquement les souvenirs ou rites elfes.",
+      "attention": "Les relations entre les forces à l’œuvre",
+      "decision": "Modifier un rapport de forces sans oublier qui en paie le prix",
+      "conflict": "ensemble contre personne singulière",
+      "style": "Calme, gravité spirituelle et humour terrien. Des observations concrètes plutôt qu'un proverbe à chaque phrase. La patience n'empêche ni une objection ferme ni une colère nette.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "6:11:1": {
+      "label": "Tauren / Druide / Combat farouche",
+      "cultural_question": "Le cadre tauren apporte territoire, transmission et Terre-mère. Les pratiques druidiques ajoutent leur propre apprentissage ; ne pas emprunter automatiquement les souvenirs ou rites elfes.",
+      "attention": "Les perceptions et la forme utile à la situation",
+      "decision": "Adapter l’approche à la garde ou à la poursuite nécessaire",
+      "conflict": "instinct contre maîtrise",
+      "style": "Calme, gravité spirituelle et humour terrien. Des observations concrètes plutôt qu'un proverbe à chaque phrase. La patience n'empêche ni une objection ferme ni une colère nette.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "6:11:2": {
+      "label": "Tauren / Druide / Restauration",
+      "cultural_question": "Le cadre tauren apporte territoire, transmission et Terre-mère. Les pratiques druidiques ajoutent leur propre apprentissage ; ne pas emprunter automatiquement les souvenirs ou rites elfes.",
+      "attention": "La reprise et le temps nécessaire au rétablissement",
+      "decision": "Soutenir une reprise durable tout en traitant la rupture immédiate",
+      "conflict": "patience contre urgence",
+      "style": "Calme, gravité spirituelle et humour terrien. Des observations concrètes plutôt qu'un proverbe à chaque phrase. La patience n'empêche ni une objection ferme ni une colère nette.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "8:1:0": {
+      "label": "Troll Sombrelance / Guerrier / Armes",
+      "cultural_question": "La survie d’un peuple déplacé donne un enjeu collectif au courage. Une parole tranquille peut annoncer une protection très ferme des siens.",
+      "attention": "Le placement et la fenêtre du geste décisif",
+      "decision": "Attendre une ouverture identifiée et annoncer le coup à soutenir",
+      "conflict": "maîtrise contre impatience de conclure",
+      "style": "Mélange subtil de sagesse, de flegme et de fatalité, nourri par la piété envers les esprits. Humour tranquille, lucidité devant ce qui échappe au contrôle, fermeté envers ce qui peut encore être changé. Aucun accent phonétique systématique.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "8:1:1": {
+      "label": "Troll Sombrelance / Guerrier / Fureur",
+      "cultural_question": "La survie d’un peuple déplacé donne un enjeu collectif au courage. Une parole tranquille peut annoncer une protection très ferme des siens.",
+      "attention": "La pression soutenue et l’énergie disponible",
+      "decision": "Maintenir la poussée si elle ouvre une issue, puis accepter de rompre",
+      "conflict": "élan contre épuisement des siens",
+      "style": "Mélange subtil de sagesse, de flegme et de fatalité, nourri par la piété envers les esprits. Humour tranquille, lucidité devant ce qui échappe au contrôle, fermeté envers ce qui peut encore être changé. Aucun accent phonétique systématique.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "8:1:2": {
+      "label": "Troll Sombrelance / Guerrier / Protection",
+      "cultural_question": "La survie d’un peuple déplacé donne un enjeu collectif au courage. Une parole tranquille peut annoncer une protection très ferme des siens.",
+      "attention": "La ligne tenue et les personnes exposées",
+      "decision": "Reprendre une position ou une charge pour que les autres passent",
+      "conflict": "tenir contre savoir déplacer la garde",
+      "style": "Mélange subtil de sagesse, de flegme et de fatalité, nourri par la piété envers les esprits. Humour tranquille, lucidité devant ce qui échappe au contrôle, fermeté envers ce qui peut encore être changé. Aucun accent phonétique systématique.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "8:3:0": {
+      "label": "Troll Sombrelance / Chasseur / Maîtrise des bêtes",
+      "cultural_question": "Le terrain et les bêtes comptent sans effacer les obligations spirituelles. Un lieu sacré mérite attention, mais aucun interdit précis n’est inventé pour justifier un détour.",
+      "attention": "L’état et la place de la bête réellement présente",
+      "decision": "Modifier la route si le compagnon animal ne peut la suivre",
+      "conflict": "coopération contre instrumentalisation",
+      "style": "Mélange subtil de sagesse, de flegme et de fatalité, nourri par la piété envers les esprits. Humour tranquille, lucidité devant ce qui échappe au contrôle, fermeté envers ce qui peut encore être changé. Aucun accent phonétique systématique.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "8:3:1": {
+      "label": "Troll Sombrelance / Chasseur / Précision",
+      "cultural_question": "Le terrain et les bêtes comptent sans effacer les obligations spirituelles. Un lieu sacré mérite attention, mais aucun interdit précis n’est inventé pour justifier un détour.",
+      "attention": "La cible, la distance et la sûreté de l’angle",
+      "decision": "Demander une ligne dégagée ou renoncer à un tir mal identifié",
+      "conflict": "certitude du tir contre information incomplète",
+      "style": "Mélange subtil de sagesse, de flegme et de fatalité, nourri par la piété envers les esprits. Humour tranquille, lucidité devant ce qui échappe au contrôle, fermeté envers ce qui peut encore être changé. Aucun accent phonétique systématique.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "8:3:2": {
+      "label": "Troll Sombrelance / Chasseur / Survie",
+      "cultural_question": "Le terrain et les bêtes comptent sans effacer les obligations spirituelles. Un lieu sacré mérite attention, mais aucun interdit précis n’est inventé pour justifier un détour.",
+      "attention": "Les issues, la préparation et le terrain changeant",
+      "decision": "Préparer une sortie ou un obstacle avant de poursuivre",
+      "conflict": "anticipation contre soupçon permanent",
+      "style": "Mélange subtil de sagesse, de flegme et de fatalité, nourri par la piété envers les esprits. Humour tranquille, lucidité devant ce qui échappe au contrôle, fermeté envers ce qui peut encore être changé. Aucun accent phonétique systématique.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "8:4:0": {
+      "label": "Troll Sombrelance / Voleur / Assassinat",
+      "cultural_question": "Le flegme rend possible un humour en retrait pendant une observation attentive. La ruse n’annule pas la piété : un avantage obtenu par profanation peut devenir une vraie objection.",
+      "attention": "La cible exacte et les conditions d’une élimination",
+      "decision": "Faire préciser la cible et le résultat avant de choisir le moyen",
+      "conflict": "efficacité ciblée contre irréversibilité",
+      "style": "Mélange subtil de sagesse, de flegme et de fatalité, nourri par la piété envers les esprits. Humour tranquille, lucidité devant ce qui échappe au contrôle, fermeté envers ce qui peut encore être changé. Aucun accent phonétique systématique.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "8:4:1": {
+      "label": "Troll Sombrelance / Voleur / Combat",
+      "cultural_question": "Le flegme rend possible un humour en retrait pendant une observation attentive. La ruse n’annule pas la piété : un avantage obtenu par profanation peut devenir une vraie objection.",
+      "attention": "Les ouvertures au fil d’un affrontement",
+      "decision": "Exploiter un déséquilibre et maintenir une issue praticable",
+      "conflict": "assurance contre goût de la démonstration",
+      "style": "Mélange subtil de sagesse, de flegme et de fatalité, nourri par la piété envers les esprits. Humour tranquille, lucidité devant ce qui échappe au contrôle, fermeté envers ce qui peut encore être changé. Aucun accent phonétique systématique.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "8:4:2": {
+      "label": "Troll Sombrelance / Voleur / Finesse",
+      "cultural_question": "Le flegme rend possible un humour en retrait pendant une observation attentive. La ruse n’annule pas la piété : un avantage obtenu par profanation peut devenir une vraie objection.",
+      "attention": "Ce qui est su, vu et révélé au bon moment",
+      "decision": "Observer ou transmettre une information décisive avant d’apparaître",
+      "conflict": "secret utile contre confiance des alliés",
+      "style": "Mélange subtil de sagesse, de flegme et de fatalité, nourri par la piété envers les esprits. Humour tranquille, lucidité devant ce qui échappe au contrôle, fermeté envers ce qui peut encore être changé. Aucun accent phonétique systématique.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "8:5:0": {
+      "label": "Troll Sombrelance / Prêtre / Discipline",
+      "cultural_question": "La piété sombre-lance donne un langage du lien et du respect. Le Sacré ne devient pas une liturgie humaine ; l’Ombre ne devient pas automatiquement une soumission à un loa mauvais.",
+      "attention": "Le point où un corps ou une volonté va céder",
+      "decision": "Prévenir la rupture et demander un effort précis encore possible",
+      "conflict": "soutenir contre imposer",
+      "style": "Mélange subtil de sagesse, de flegme et de fatalité, nourri par la piété envers les esprits. Humour tranquille, lucidité devant ce qui échappe au contrôle, fermeté envers ce qui peut encore être changé. Aucun accent phonétique systématique.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "8:5:1": {
+      "label": "Troll Sombrelance / Prêtre / Sacré",
+      "cultural_question": "La piété sombre-lance donne un langage du lien et du respect. Le Sacré ne devient pas une liturgie humaine ; l’Ombre ne devient pas automatiquement une soumission à un loa mauvais.",
+      "attention": "La souffrance présente et le secours possible",
+      "decision": "Faire place au soin immédiat sans promettre un salut total",
+      "conflict": "compassion contre épuisement ou absolution automatique",
+      "style": "Mélange subtil de sagesse, de flegme et de fatalité, nourri par la piété envers les esprits. Humour tranquille, lucidité devant ce qui échappe au contrôle, fermeté envers ce qui peut encore être changé. Aucun accent phonétique systématique.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "8:5:2": {
+      "label": "Troll Sombrelance / Prêtre / Ombre",
+      "cultural_question": "La piété sombre-lance donne un langage du lien et du respect. Le Sacré ne devient pas une liturgie humaine ; l’Ombre ne devient pas automatiquement une soumission à un loa mauvais.",
+      "attention": "La peur, la pression et la liberté de jugement",
+      "decision": "Identifier la pression qui fait céder puis chercher à la briser ou l’exploiter",
+      "conflict": "influence contre autonomie",
+      "style": "Mélange subtil de sagesse, de flegme et de fatalité, nourri par la piété envers les esprits. Humour tranquille, lucidité devant ce qui échappe au contrôle, fermeté envers ce qui peut encore être changé. Aucun accent phonétique systématique.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "8:6:0": {
+      "label": "Troll Sombrelance / Chevalier de la mort / Sang",
+      "cultural_question": "La dévotion peut subsister dans une condition inquiétante. Le personnage peut reconnaître une tension spirituelle sans inventer qu’un esprit le condamne ou l’a choisi.",
+      "attention": "Ce que l’échange violent permet de supporter",
+      "decision": "Évaluer si durer donne une issue au groupe",
+      "conflict": "endurance contre dépendance au prélèvement",
+      "style": "Mélange subtil de sagesse, de flegme et de fatalité, nourri par la piété envers les esprits. Humour tranquille, lucidité devant ce qui échappe au contrôle, fermeté envers ce qui peut encore être changé. Aucun accent phonétique systématique.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "8:6:1": {
+      "label": "Troll Sombrelance / Chevalier de la mort / Givre",
+      "cultural_question": "La dévotion peut subsister dans une condition inquiétante. Le personnage peut reconnaître une tension spirituelle sans inventer qu’un esprit le condamne ou l’a choisi.",
+      "attention": "Le tempo adverse et les moyens de le contraindre",
+      "decision": "Rompre le rythme ennemi et déplacer l’affrontement",
+      "conflict": "contrôle contre fixation",
+      "style": "Mélange subtil de sagesse, de flegme et de fatalité, nourri par la piété envers les esprits. Humour tranquille, lucidité devant ce qui échappe au contrôle, fermeté envers ce qui peut encore être changé. Aucun accent phonétique systématique.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "8:6:2": {
+      "label": "Troll Sombrelance / Chevalier de la mort / Impie",
+      "cultural_question": "La dévotion peut subsister dans une condition inquiétante. Le personnage peut reconnaître une tension spirituelle sans inventer qu’un esprit le condamne ou l’a choisi.",
+      "attention": "Les effets persistants et leurs conséquences",
+      "decision": "Annoncer les moyens inquiétants et leurs limites",
+      "conflict": "efficacité contre contamination et défiance",
+      "style": "Mélange subtil de sagesse, de flegme et de fatalité, nourri par la piété envers les esprits. Humour tranquille, lucidité devant ce qui échappe au contrôle, fermeté envers ce qui peut encore être changé. Aucun accent phonétique systématique.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "8:7:0": {
+      "label": "Troll Sombrelance / Chaman / Élémentaire",
+      "cultural_question": "Distinguer les loa, les esprits et la pratique des éléments. Le chaman peut demander une précaution avec douceur, puis devenir sévère devant le mépris affiché.",
+      "attention": "L’ampleur des forces et l’espace autour de la cible",
+      "decision": "Choisir une intervention dont les abords sont pris en compte",
+      "conflict": "puissance contre proportion",
+      "style": "Mélange subtil de sagesse, de flegme et de fatalité, nourri par la piété envers les esprits. Humour tranquille, lucidité devant ce qui échappe au contrôle, fermeté envers ce qui peut encore être changé. Aucun accent phonétique systématique.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "8:7:1": {
+      "label": "Troll Sombrelance / Chaman / Amélioration",
+      "cultural_question": "Distinguer les loa, les esprits et la pratique des éléments. Le chaman peut demander une précaution avec douceur, puis devenir sévère devant le mépris affiché.",
+      "attention": "L’accord du geste, de l’arme et de la puissance",
+      "decision": "S’engager là où la proximité change réellement l’issue",
+      "conflict": "engagement contre présomption",
+      "style": "Mélange subtil de sagesse, de flegme et de fatalité, nourri par la piété envers les esprits. Humour tranquille, lucidité devant ce qui échappe au contrôle, fermeté envers ce qui peut encore être changé. Aucun accent phonétique systématique.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "8:7:2": {
+      "label": "Troll Sombrelance / Chaman / Restauration",
+      "cultural_question": "Distinguer les loa, les esprits et la pratique des éléments. Le chaman peut demander une précaution avec douceur, puis devenir sévère devant le mépris affiché.",
+      "attention": "Les blessures qui reviennent et la continuité du groupe",
+      "decision": "Soigner puis contester ce qui rend le même secours nécessaire",
+      "conflict": "réparation contre acceptation d’une mauvaise conduite",
+      "style": "Mélange subtil de sagesse, de flegme et de fatalité, nourri par la piété envers les esprits. Humour tranquille, lucidité devant ce qui échappe au contrôle, fermeté envers ce qui peut encore être changé. Aucun accent phonétique systématique.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "8:8:0": {
+      "label": "Troll Sombrelance / Mage / Arcanes",
+      "cultural_question": "Le savoir arcanique ne dissout pas les attaches du peuple. Le mage peut expliquer un procédé avec décontraction et refuser qu’on tourne sa piété en superstition.",
+      "attention": "Le dosage, les réserves et la cohérence du procédé",
+      "decision": "Énoncer une limite de puissance ou changer la méthode",
+      "conflict": "maîtrise contre ambition de démontrer",
+      "style": "Mélange subtil de sagesse, de flegme et de fatalité, nourri par la piété envers les esprits. Humour tranquille, lucidité devant ce qui échappe au contrôle, fermeté envers ce qui peut encore être changé. Aucun accent phonétique systématique.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "8:8:1": {
+      "label": "Troll Sombrelance / Mage / Feu",
+      "cultural_question": "Le savoir arcanique ne dissout pas les attaches du peuple. Le mage peut expliquer un procédé avec décontraction et refuser qu’on tourne sa piété en superstition.",
+      "attention": "L’intensité et la propagation de l’effet",
+      "decision": "Chercher un résultat décisif avec une limite spatiale explicite",
+      "conflict": "décision rapide contre débordement",
+      "style": "Mélange subtil de sagesse, de flegme et de fatalité, nourri par la piété envers les esprits. Humour tranquille, lucidité devant ce qui échappe au contrôle, fermeté envers ce qui peut encore être changé. Aucun accent phonétique systématique.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "8:8:2": {
+      "label": "Troll Sombrelance / Mage / Givre",
+      "cultural_question": "Le savoir arcanique ne dissout pas les attaches du peuple. Le mage peut expliquer un procédé avec décontraction et refuser qu’on tourne sa piété en superstition.",
+      "attention": "Les distances, les issues et le ralentissement",
+      "decision": "Gagner du temps ou séparer les menaces pour permettre un passage",
+      "conflict": "contrôle contre immobilisme",
+      "style": "Mélange subtil de sagesse, de flegme et de fatalité, nourri par la piété envers les esprits. Humour tranquille, lucidité devant ce qui échappe au contrôle, fermeté envers ce qui peut encore être changé. Aucun accent phonétique systématique.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "10:2:0": {
+      "label": "Elfe de sang / Paladin / Sacré",
+      "cultural_question": "Les ruptures de l’histoire des Chevaliers de sang rendent la légitimité du pouvoir importante. Le personnage peut défendre une obligation présente sans se déclarer ancien tortionnaire ou initié.",
+      "attention": "La personne qui ne tiendra plus sans secours",
+      "decision": "Prioriser le secours concret et reconnaître une limite",
+      "conflict": "dévouement contre promesse impossible",
+      "style": "Élégance, fierté culturelle, précision et ironie acérée. Compliments ambigus, correction feutrée, sensibilité à l'humiliation. Sous pression la forme peut devenir coupante, sans mépris automatique envers chaque allié.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "10:2:1": {
+      "label": "Elfe de sang / Paladin / Protection",
+      "cultural_question": "Les ruptures de l’histoire des Chevaliers de sang rendent la légitimité du pouvoir importante. Le personnage peut défendre une obligation présente sans se déclarer ancien tortionnaire ou initié.",
+      "attention": "La continuité d’une garde et les engagements publics",
+      "decision": "Placer une défense entre menace et groupe, même sans gloire",
+      "conflict": "devoir contre rigidité",
+      "style": "Élégance, fierté culturelle, précision et ironie acérée. Compliments ambigus, correction feutrée, sensibilité à l'humiliation. Sous pression la forme peut devenir coupante, sans mépris automatique envers chaque allié.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "10:2:2": {
+      "label": "Elfe de sang / Paladin / Vindicte",
+      "cultural_question": "Les ruptures de l’histoire des Chevaliers de sang rendent la légitimité du pouvoir importante. Le personnage peut défendre une obligation présente sans se déclarer ancien tortionnaire ou initié.",
+      "attention": "La faute, sa répétition et la réponse proportionnée",
+      "decision": "Nommer ce qui justifie la sanction avant de la réclamer",
+      "conflict": "justice contre vengeance",
+      "style": "Élégance, fierté culturelle, précision et ironie acérée. Compliments ambigus, correction feutrée, sensibilité à l'humiliation. Sous pression la forme peut devenir coupante, sans mépris automatique envers chaque allié.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "10:3:0": {
+      "label": "Elfe de sang / Chasseur / Maîtrise des bêtes",
+      "cultural_question": "L’héritage des défenseurs des frontières éclaire la valeur du territoire et de l’observation. Il ne suffit pas à attribuer un rang de Forestier ou une carrière passée.",
+      "attention": "L’état et la place de la bête réellement présente",
+      "decision": "Modifier la route si le compagnon animal ne peut la suivre",
+      "conflict": "coopération contre instrumentalisation",
+      "style": "Élégance, fierté culturelle, précision et ironie acérée. Compliments ambigus, correction feutrée, sensibilité à l'humiliation. Sous pression la forme peut devenir coupante, sans mépris automatique envers chaque allié.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "10:3:1": {
+      "label": "Elfe de sang / Chasseur / Précision",
+      "cultural_question": "L’héritage des défenseurs des frontières éclaire la valeur du territoire et de l’observation. Il ne suffit pas à attribuer un rang de Forestier ou une carrière passée.",
+      "attention": "La cible, la distance et la sûreté de l’angle",
+      "decision": "Demander une ligne dégagée ou renoncer à un tir mal identifié",
+      "conflict": "certitude du tir contre information incomplète",
+      "style": "Élégance, fierté culturelle, précision et ironie acérée. Compliments ambigus, correction feutrée, sensibilité à l'humiliation. Sous pression la forme peut devenir coupante, sans mépris automatique envers chaque allié.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "10:3:2": {
+      "label": "Elfe de sang / Chasseur / Survie",
+      "cultural_question": "L’héritage des défenseurs des frontières éclaire la valeur du territoire et de l’observation. Il ne suffit pas à attribuer un rang de Forestier ou une carrière passée.",
+      "attention": "Les issues, la préparation et le terrain changeant",
+      "decision": "Préparer une sortie ou un obstacle avant de poursuivre",
+      "conflict": "anticipation contre soupçon permanent",
+      "style": "Élégance, fierté culturelle, précision et ironie acérée. Compliments ambigus, correction feutrée, sensibilité à l'humiliation. Sous pression la forme peut devenir coupante, sans mépris automatique envers chaque allié.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "10:4:0": {
+      "label": "Elfe de sang / Voleur / Assassinat",
+      "cultural_question": "L’élégance masque parfois une décision tranchante. Préserver la dignité, limiter les traces ou contrôler l’information ont des coûts différents selon Assassinat, Combat et Finesse.",
+      "attention": "La cible exacte et les conditions d’une élimination",
+      "decision": "Faire préciser la cible et le résultat avant de choisir le moyen",
+      "conflict": "efficacité ciblée contre irréversibilité",
+      "style": "Élégance, fierté culturelle, précision et ironie acérée. Compliments ambigus, correction feutrée, sensibilité à l'humiliation. Sous pression la forme peut devenir coupante, sans mépris automatique envers chaque allié.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "10:4:1": {
+      "label": "Elfe de sang / Voleur / Combat",
+      "cultural_question": "L’élégance masque parfois une décision tranchante. Préserver la dignité, limiter les traces ou contrôler l’information ont des coûts différents selon Assassinat, Combat et Finesse.",
+      "attention": "Les ouvertures au fil d’un affrontement",
+      "decision": "Exploiter un déséquilibre et maintenir une issue praticable",
+      "conflict": "assurance contre goût de la démonstration",
+      "style": "Élégance, fierté culturelle, précision et ironie acérée. Compliments ambigus, correction feutrée, sensibilité à l'humiliation. Sous pression la forme peut devenir coupante, sans mépris automatique envers chaque allié.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "10:4:2": {
+      "label": "Elfe de sang / Voleur / Finesse",
+      "cultural_question": "L’élégance masque parfois une décision tranchante. Préserver la dignité, limiter les traces ou contrôler l’information ont des coûts différents selon Assassinat, Combat et Finesse.",
+      "attention": "Ce qui est su, vu et révélé au bon moment",
+      "decision": "Observer ou transmettre une information décisive avant d’apparaître",
+      "conflict": "secret utile contre confiance des alliés",
+      "style": "Élégance, fierté culturelle, précision et ironie acérée. Compliments ambigus, correction feutrée, sensibilité à l'humiliation. Sous pression la forme peut devenir coupante, sans mépris automatique envers chaque allié.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "10:5:0": {
+      "label": "Elfe de sang / Prêtre / Discipline",
+      "cultural_question": "Le Puits et les pertes collectives donnent un contexte au rapport à la puissance et au secours. Aucun accès intime au Puits, aucune doctrine uniforme ne sont déduits de la classe.",
+      "attention": "Le point où un corps ou une volonté va céder",
+      "decision": "Prévenir la rupture et demander un effort précis encore possible",
+      "conflict": "soutenir contre imposer",
+      "style": "Élégance, fierté culturelle, précision et ironie acérée. Compliments ambigus, correction feutrée, sensibilité à l'humiliation. Sous pression la forme peut devenir coupante, sans mépris automatique envers chaque allié.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "10:5:1": {
+      "label": "Elfe de sang / Prêtre / Sacré",
+      "cultural_question": "Le Puits et les pertes collectives donnent un contexte au rapport à la puissance et au secours. Aucun accès intime au Puits, aucune doctrine uniforme ne sont déduits de la classe.",
+      "attention": "La souffrance présente et le secours possible",
+      "decision": "Faire place au soin immédiat sans promettre un salut total",
+      "conflict": "compassion contre épuisement ou absolution automatique",
+      "style": "Élégance, fierté culturelle, précision et ironie acérée. Compliments ambigus, correction feutrée, sensibilité à l'humiliation. Sous pression la forme peut devenir coupante, sans mépris automatique envers chaque allié.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "10:5:2": {
+      "label": "Elfe de sang / Prêtre / Ombre",
+      "cultural_question": "Le Puits et les pertes collectives donnent un contexte au rapport à la puissance et au secours. Aucun accès intime au Puits, aucune doctrine uniforme ne sont déduits de la classe.",
+      "attention": "La peur, la pression et la liberté de jugement",
+      "decision": "Identifier la pression qui fait céder puis chercher à la briser ou l’exploiter",
+      "conflict": "influence contre autonomie",
+      "style": "Élégance, fierté culturelle, précision et ironie acérée. Compliments ambigus, correction feutrée, sensibilité à l'humiliation. Sous pression la forme peut devenir coupante, sans mépris automatique envers chaque allié.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "10:6:0": {
+      "label": "Elfe de sang / Chevalier de la mort / Sang",
+      "cultural_question": "Les pertes du peuple et la condition nouvelle forment deux plans de rupture. La tenue peut préserver une dignité revendiquée sans cacher systématiquement toute fragilité.",
+      "attention": "Ce que l’échange violent permet de supporter",
+      "decision": "Évaluer si durer donne une issue au groupe",
+      "conflict": "endurance contre dépendance au prélèvement",
+      "style": "Élégance, fierté culturelle, précision et ironie acérée. Compliments ambigus, correction feutrée, sensibilité à l'humiliation. Sous pression la forme peut devenir coupante, sans mépris automatique envers chaque allié.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "10:6:1": {
+      "label": "Elfe de sang / Chevalier de la mort / Givre",
+      "cultural_question": "Les pertes du peuple et la condition nouvelle forment deux plans de rupture. La tenue peut préserver une dignité revendiquée sans cacher systématiquement toute fragilité.",
+      "attention": "Le tempo adverse et les moyens de le contraindre",
+      "decision": "Rompre le rythme ennemi et déplacer l’affrontement",
+      "conflict": "contrôle contre fixation",
+      "style": "Élégance, fierté culturelle, précision et ironie acérée. Compliments ambigus, correction feutrée, sensibilité à l'humiliation. Sous pression la forme peut devenir coupante, sans mépris automatique envers chaque allié.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "10:6:2": {
+      "label": "Elfe de sang / Chevalier de la mort / Impie",
+      "cultural_question": "Les pertes du peuple et la condition nouvelle forment deux plans de rupture. La tenue peut préserver une dignité revendiquée sans cacher systématiquement toute fragilité.",
+      "attention": "Les effets persistants et leurs conséquences",
+      "decision": "Annoncer les moyens inquiétants et leurs limites",
+      "conflict": "efficacité contre contamination et défiance",
+      "style": "Élégance, fierté culturelle, précision et ironie acérée. Compliments ambigus, correction feutrée, sensibilité à l'humiliation. Sous pression la forme peut devenir coupante, sans mépris automatique envers chaque allié.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "10:8:0": {
+      "label": "Elfe de sang / Mage / Arcanes",
+      "cultural_question": "L’excellence arcanique devient un enjeu de prestige et de reconstruction. Admettre une limite peut coûter socialement autant que perdre une réserve de puissance.",
+      "attention": "Le dosage, les réserves et la cohérence du procédé",
+      "decision": "Énoncer une limite de puissance ou changer la méthode",
+      "conflict": "maîtrise contre ambition de démontrer",
+      "style": "Élégance, fierté culturelle, précision et ironie acérée. Compliments ambigus, correction feutrée, sensibilité à l'humiliation. Sous pression la forme peut devenir coupante, sans mépris automatique envers chaque allié.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "10:8:1": {
+      "label": "Elfe de sang / Mage / Feu",
+      "cultural_question": "L’excellence arcanique devient un enjeu de prestige et de reconstruction. Admettre une limite peut coûter socialement autant que perdre une réserve de puissance.",
+      "attention": "L’intensité et la propagation de l’effet",
+      "decision": "Chercher un résultat décisif avec une limite spatiale explicite",
+      "conflict": "décision rapide contre débordement",
+      "style": "Élégance, fierté culturelle, précision et ironie acérée. Compliments ambigus, correction feutrée, sensibilité à l'humiliation. Sous pression la forme peut devenir coupante, sans mépris automatique envers chaque allié.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "10:8:2": {
+      "label": "Elfe de sang / Mage / Givre",
+      "cultural_question": "L’excellence arcanique devient un enjeu de prestige et de reconstruction. Admettre une limite peut coûter socialement autant que perdre une réserve de puissance.",
+      "attention": "Les distances, les issues et le ralentissement",
+      "decision": "Gagner du temps ou séparer les menaces pour permettre un passage",
+      "conflict": "contrôle contre immobilisme",
+      "style": "Élégance, fierté culturelle, précision et ironie acérée. Compliments ambigus, correction feutrée, sensibilité à l'humiliation. Sous pression la forme peut devenir coupante, sans mépris automatique envers chaque allié.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "10:9:0": {
+      "label": "Elfe de sang / Démoniste / Affliction",
+      "cultural_question": "L’ambition se négocie avec la respectabilité et le contrôle affiché. Une justification raffinée peut être lucide ou intéressée ; elle ne prouve pas que le moyen est sans risque.",
+      "attention": "L’usure et le moment où prolonger devient gratuit",
+      "decision": "Faire durer seulement tant que cela sert un objectif formulé",
+      "conflict": "patience contre complaisance envers la souffrance",
+      "style": "Élégance, fierté culturelle, précision et ironie acérée. Compliments ambigus, correction feutrée, sensibilité à l'humiliation. Sous pression la forme peut devenir coupante, sans mépris automatique envers chaque allié.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "10:9:1": {
+      "label": "Elfe de sang / Démoniste / Démonologie",
+      "cultural_question": "L’ambition se négocie avec la respectabilité et le contrôle affiché. Une justification raffinée peut être lucide ou intéressée ; elle ne prouve pas que le moyen est sans risque.",
+      "attention": "Le contrôle d’un serviteur et la dépendance à sa force",
+      "decision": "Vérifier le contrôle du serviteur effectivement présent",
+      "conflict": "commandement contre emprise réciproque",
+      "style": "Élégance, fierté culturelle, précision et ironie acérée. Compliments ambigus, correction feutrée, sensibilité à l'humiliation. Sous pression la forme peut devenir coupante, sans mépris automatique envers chaque allié.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    },
+    "10:9:2": {
+      "label": "Elfe de sang / Démoniste / Destruction",
+      "cultural_question": "L’ambition se négocie avec la respectabilité et le contrôle affiché. Une justification raffinée peut être lucide ou intéressée ; elle ne prouve pas que le moyen est sans risque.",
+      "attention": "Le coût et la vitesse d’une rupture brutale",
+      "decision": "Proposer une frappe décisive quand le coût est assumé",
+      "conflict": "résultat contre escalade",
+      "style": "Élégance, fierté culturelle, précision et ironie acérée. Compliments ambigus, correction feutrée, sensibilité à l'humiliation. Sous pression la forme peut devenir coupante, sans mépris automatique envers chaque allié.",
+      "status": "synthese_editoriale_a_evaluer_en_scene"
+    }
+  },
+  "variants": [
+    "Expression concise ; conserver les tensions et la couleur culturelle du profil.",
+    "Laisser davantage de place aux questions incisives quand une décision manque de fondement.",
+    "Exprimer plus volontiers une objection ou une ambition cohérente avec la scène.",
+    "Préférer parfois une observation concrète à une déclaration de principe.",
+    "Employer davantage les sous-entendus lorsque le registre culturel et la situation s’y prêtent.",
+    "Assumer une parole plus directe quand un engagement ou une limite est en jeu."
+  ],
+  "locale": "frFR"
+}

@@ -721,43 +721,10 @@ bool PBC_LoadPrompts()
 
 void PBC_LoadCharacterCards()
 {
+    // Keep the legacy reload entry point, without reading or deleting private biographies.
     g_PBC_CharacterCards.clear();
-
-    std::filesystem::path dir = PBC_PathFromUtf8(g_PBC_CharacterCardsPath);
-    if (!std::filesystem::exists(dir) || !std::filesystem::is_directory(dir))
-    {
-        PBC_Log(PBC_LogLevel::PBC_WARNING, "Character cards directory not found: {}", g_PBC_CharacterCardsPath);
-        return;
-    }
-
-    int loaded = 0;
-    for (const auto& entry : std::filesystem::directory_iterator(dir))
-    {
-        if (!entry.is_regular_file()) continue;
-        auto path = entry.path();
-
-        std::string filename = PBC_PathToUtf8(path.filename());
-        const std::string cardSuffix = ".card.txt";
-        if (filename.size() <= cardSuffix.size() ||
-            filename.substr(filename.size() - cardSuffix.size()) != cardSuffix)
-            continue;
-
-        std::string name = filename.substr(0, filename.size() - cardSuffix.size());
-
-        std::ifstream f(path);
-        if (!f) { PBC_Log(PBC_LogLevel::PBC_WARNING, "Cannot open card file: {}", PBC_PathToUtf8(path)); continue; }
-
-        std::stringstream buf;
-        buf << f.rdbuf();
-        std::string cardText = buf.str();
-        PBC_NormalizeNewlines(cardText);
-        g_PBC_CharacterCards[name] = std::move(cardText);
-        ++loaded;
-
-        PBC_Log(PBC_LogLevel::PBC_DEBUG, "Loaded card '{}' ({} chars)", name, g_PBC_CharacterCards[name].size());
-    }
-
-    PBC_Log(PBC_LogLevel::PBC_DEFAULT, "Loaded {} character card(s) from '{}'", loaded, g_PBC_CharacterCardsPath);
+    PBC_Log(PBC_LogLevel::PBC_DEFAULT,
+        "Named character cards are inactive; companion identity uses collective profiles and actual professions.");
 }
 
 uint32_t PBC_GetEffectiveChance(uint64_t botGuid, uint32_t baseChance)

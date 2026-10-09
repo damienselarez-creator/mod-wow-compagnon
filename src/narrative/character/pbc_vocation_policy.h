@@ -51,7 +51,9 @@ inline bool Professions(std::string const& input)
     auto words = Words(input);
     for (auto const* term : {"metier", "metiers", "artisanat", "forge", "forgeron", "minage",
         "alchimie", "herboristerie", "couture", "enchantement", "depecage", "travail du cuir",
-        "ingenierie", "joaillerie", "calligraphie"})
+        "ingenierie", "joaillerie", "calligraphie", "profession", "professions", "craft",
+        "blacksmithing", "mining", "alchemy", "herbalism", "tailoring", "enchanting", "skinning",
+        "leatherworking", "engineering", "jewelcrafting", "inscription"})
         if (Has(words, term))
             return true;
     return false;
@@ -62,17 +64,21 @@ inline bool Topic(std::string const& input)
     auto words = Words(input);
     bool directed = false;
     for (auto const* term : {"tu", "tes", "ton", "ta", "toi", "te", "je veux", "je voudrais",
-        "je prefere", "je te conseille", "apprends", "vocation"})
+        "je prefere", "je te conseille", "apprends", "vocation", "you", "your",
+        "i want", "i would like", "i prefer", "learn"})
         directed = directed || Has(words, term);
     return directed && (Professions(input) || Has(words, "vocation") || Has(words, "specialite") ||
-        Has(words, "specialisation") || Has(words, "voie de combat"));
+        Has(words, "specialisation") || Has(words, "voie de combat") || Has(words, "specialisation") ||
+        Has(words, "specialization") || Has(words, "combat path"));
 }
 
 inline bool Hesitation(std::string const& input)
 {
     auto words = Words(input);
     for (auto const* term : {"pas", "non", "jamais", "sans", "peut etre", "si", "pourquoi",
-        "comment", "exemple", "quel", "quelle", "quels", "quelles", "est ce", "sais tu"})
+        "comment", "exemple", "quel", "quelle", "quels", "quelles", "est ce", "sais tu",
+        "not", "no", "never", "without", "maybe", "if", "why", "how", "example", "what", "which",
+        "don t", "do not"})
         if (Has(words, term))
             return true;
     return input.find('?') != std::string::npos;
@@ -86,7 +92,7 @@ inline std::string ActivityIntent(std::string const& input)
     bool politeRequest = false;
     // Polite requests are accepted only when their entire remaining clause is an action.
     for (auto const* prefix : {"s il te plait", "je voudrais que tu", "j aimerais que tu",
-        "peux tu", "pourrais tu", "tu peux"})
+        "peux tu", "pourrais tu", "tu peux", "please", "can you", "could you", "i would like you to"})
     {
         auto part = Words(prefix);
         if (words.rfind(part, 0) == 0)
@@ -96,7 +102,7 @@ inline std::string ActivityIntent(std::string const& input)
             break;
         }
     }
-    for (auto const* suffix : {"s il te plait", "merci"})
+    for (auto const* suffix : {"s il te plait", "merci", "please", "thank you"})
     {
         auto part = Words(suffix);
         if (words.size() >= part.size() && words.ends_with(part))
@@ -105,24 +111,29 @@ inline std::string ActivityIntent(std::string const& input)
     if (Hesitation(words) || (!politeRequest && input.find('?') != std::string::npos))
         return "";
     for (auto const* phrase : {"reste avec moi", "rester avec moi", "reste pres de moi", "suis moi",
-        "me suivre", "reviens pres de moi", "arrete tes apprentissages", "on repart ensemble"})
+        "me suivre", "reviens pres de moi", "arrete tes apprentissages", "on repart ensemble",
+        "stay with me", "follow me", "come back to me", "stop your training"})
         if (words == Words(phrase))
             return "follow";
     for (auto const* phrase : {"va voir ton maitre de metier", "va voir tes maitres de metier",
         "va voir tes maitres de metiers",
         "va voir ton maitre de profession", "va voir tes maitres de profession",
-        "aller voir tes maitres de metier", "occupe toi de ta formation professionnelle"})
+        "aller voir tes maitres de metier", "occupe toi de ta formation professionnelle",
+        "visit your profession trainer", "visit your profession trainers", "train your professions"})
         if (words == Words(phrase))
             return "training_professions";
-    for (auto const* phrase : {"va voir ton maitre de classe", "aller voir ton maitre de classe"})
+    for (auto const* phrase : {"va voir ton maitre de classe", "aller voir ton maitre de classe",
+        "visit your class trainer", "train your class skills"})
         if (words == Words(phrase))
             return "training_class";
     for (auto const* phrase : {"va voir tes maitres", "va voir ton maitre", "va apprendre tes competences",
         "occupe toi de ta formation", "occupe toi de tes apprentissages", "va te former",
-        "aller te former", "aller voir tes maitres", "apprendre tes competences"})
+        "aller te former", "aller voir tes maitres", "apprendre tes competences",
+        "visit your trainers", "go train", "train your skills"})
         if (words == Words(phrase))
             return "training";
-    for (auto const* phrase : {"reprends tes activites", "reprendre tes activites", "reprends tes habitudes"})
+    for (auto const* phrase : {"reprends tes activites", "reprendre tes activites", "reprends tes habitudes",
+        "resume your activities", "resume your usual activities"})
         if (words == Words(phrase))
             return "normal";
     return "";
@@ -137,7 +148,8 @@ inline bool Confirmation(std::string const& input)
         "bonne idee", "oui bonne idee", "vas y", "oui vas y", "ca me semble bien",
         "ca me parait bien", "ca me parait utile", "oui ca me parait utile",
         "fais comme tu le sens", "je te laisse choisir", "tu peux choisir",
-        "choisis toi meme", "comme tu veux"})
+        "choisis toi meme", "comme tu veux", "yes", "yes that works", "agreed", "good idea",
+        "go ahead", "you can choose", "choose for yourself", "as you wish"})
         if (words == Words(phrase))
             return true;
     return false;
@@ -155,7 +167,8 @@ inline bool IncludesAlias(std::string const& words, std::string const& alias)
             break;
         auto term = normalized.substr(at, end - at);
         at = end + 1;
-        if (term.empty() || term == "et" || term == "de" || term == "du" || term == "le" || term == "la")
+        if (term.empty() || term == "et" || term == "de" || term == "du" || term == "le" || term == "la" ||
+            term == "and" || term == "of" || term == "the")
             continue;
         meaningful = true;
         if (!Has(words, term))
@@ -173,9 +186,10 @@ inline int Select(std::string input, std::vector<std::vector<std::string>> const
     if (Confirmation(input) && input != "oui" && input != "d'accord" &&
         (Has(Words(input), "choisir") || Has(Words(input), "sens")))
         return preferred;
-    if (input == "choisis" || input == "choisis toi-meme" || input == "comme tu veux")
+    if (input == "choisis" || input == "choisis toi-meme" || input == "comme tu veux" ||
+        input == "choose" || input == "choose for yourself" || input == "as you wish")
         return preferred;
-    for (std::string const prefix : {"je prefere ", "choisis ", "je choisis "})
+    for (std::string const prefix : {"je prefere ", "choisis ", "je choisis ", "i prefer ", "choose ", "i choose "})
         if (input.rfind(prefix, 0) == 0)
         {
             input.erase(0, prefix.size());
@@ -197,7 +211,8 @@ inline int Select(std::string input, std::vector<std::vector<std::string>> const
     for (auto const* phrase : {"je veux", "je voudrais", "j aimerais", "je prefere", "je choisis", "choisis",
         "je te propose", "je te conseille", "tu devrais",
         "tu peux apprendre", "apprends", "deviens", "partons sur", "prenons", "allons sur",
-        "me semblent bien", "me semble bien", "oui pour"})
+        "me semblent bien", "me semble bien", "oui pour", "i want", "i would like", "i prefer",
+        "i choose", "choose", "i suggest", "you should", "you can learn", "learn", "let us choose"})
         intent = intent || Has(words, phrase);
     if (!intent)
         return -1;
