@@ -1,3 +1,6 @@
+if("${MODULE_MOD-WOW-COMPAGNON}" STREQUAL "disabled")
+  return()
+endif()
 # A single module owns both gameplay and narrative registration.
 foreach(legacy mod-playerbots mod-pbc mod-playerbots-characters)
   string(TOUPPER "${legacy}" legacy_upper)

@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.16)
+project(companion_loot_sources LANGUAGES CXX)
+enable_testing()
+add_executable(loot_source_test loot_source_test.cpp)
+target_compile_features(loot_source_test PRIVATE cxx_std_20)
+target_include_directories(loot_source_test PRIVATE ../../src/gameplay/Bot)
+add_test(NAME native_loot_source_index COMMAND loot_source_test)

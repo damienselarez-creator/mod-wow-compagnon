@@ -1,0 +1,13 @@
+/build*/
+/artifacts*/
+/runtime/
+/conf/*.conf
+/conf/conf.sh
+/connections/*
+!/connections/*.example
+/characters/*
+!/characters/Example.card.txt
+/knowledge/*.probes.json
+*.log
+__pycache__/
+.agents/plans/
