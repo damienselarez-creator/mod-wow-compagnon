@@ -381,12 +381,16 @@ bool CraftRandomItemAction::UseStrictPriority() const
 
 bool CraftRandomItemAction::AcceptSpell(SpellInfo const* spellInfo)
 {
-    if (spellInfo->Effects[EFFECT_0].Effect != SPELL_EFFECT_CREATE_ITEM ||
-        spellInfo->ReagentCount[EFFECT_0] <= 0 || spellInfo->SchoolMask != 0)
+    if (spellInfo->Effects[EFFECT_0].Effect != SPELL_EFFECT_CREATE_ITEM)
         return false;
     if (UseStrictPriority())
     {
         // CanCastSpell probes intentionally ignore reagent costs; filter unavailable recipes before ranking.
+        bool hasReagents = false;
+        for (uint32 count : spellInfo->ReagentCount)
+            hasReagents = hasReagents || count != 0;
+        if (!hasReagents)
+            return false;
         for (uint32 index = 0; index < MAX_SPELL_REAGENTS; ++index)
             if (spellInfo->Reagent[index] > 0 &&
                 bot->GetItemCount(uint32(spellInfo->Reagent[index]), false) < spellInfo->ReagentCount[index])
@@ -403,7 +407,7 @@ bool CraftRandomItemAction::AcceptSpell(SpellInfo const* spellInfo)
         return skill && IsProfessionSkill(skill->SkillLine) && bot->HasSkill(skill->SkillLine) &&
             found != known.end() && found->second->State != PLAYERSPELL_REMOVED && found->second->Active;
     }
-    return true;
+    return spellInfo->ReagentCount[EFFECT_0] > 0 && spellInfo->SchoolMask == 0;
 }
 
 uint32 CraftRandomItemAction::GetSpellPriority(SpellInfo const* spellInfo)

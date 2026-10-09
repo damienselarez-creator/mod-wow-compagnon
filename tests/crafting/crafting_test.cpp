@@ -159,6 +159,10 @@ int main()
     ai.context.usages[1] = ITEM_USAGE_EQUIP;
     friendAi.context.usages[1] = ITEM_USAGE_EQUIP;
     assert(action.AcceptSpell(&recipe));
+    recipe.SchoolMask = 1;
+    assert(action.AcceptSpell(&recipe)); // Physical profession spells remain eligible.
+    ai.managed = false; assert(!action.AcceptSpell(&recipe));
+    ai.managed = true;
     self.counts[1000] = 0; assert(!action.AcceptSpell(&recipe));
     self.counts[1000] = 1;
     recipe.Totem[0] = 5956; assert(!action.AcceptSpell(&recipe));
