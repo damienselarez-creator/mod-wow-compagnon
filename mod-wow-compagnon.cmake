@@ -1,7 +1,9 @@
 # A single module owns both gameplay and narrative registration.
 foreach(legacy mod-playerbots mod-pbc mod-playerbots-characters)
+  string(TOUPPER "${legacy}" legacy_upper)
+  set(legacy_variable "MODULE_${legacy_upper}")
   if(IS_DIRECTORY "${CMAKE_SOURCE_DIR}/modules/${legacy}/src"
-      AND NOT "${MODULE_${legacy}}" STREQUAL "disabled")
+      AND NOT "${${legacy_variable}}" STREQUAL "disabled")
     message(FATAL_ERROR "Disable or remove ${legacy} before enabling mod-wow-compagnon")
   endif()
 endforeach()
