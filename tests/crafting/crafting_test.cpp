@@ -210,5 +210,6 @@ int main()
     SortSpells(candidates, true);
     assert(candidates[0].first == 1 && candidates[1].first == 9999);
     SortSpells(candidates, false); assert(candidates[0].first == 10000);
-    std::cout << "PASS: production crafting usefulness, self before group, learned recipes, caps, binding, priority sort\n";
+    std::cout << "PASS: production crafting usefulness, self before group, learned recipes, "
+        "caps, binding, priority sort\n";
 }

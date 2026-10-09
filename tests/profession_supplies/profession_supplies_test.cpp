@@ -317,5 +317,6 @@ int main()
     for (uint8 slot = 19; slot < 23; ++slot)
         bagBot.positions[uint16(255 << 8) | slot] = &specialty;
     assert(!ChooseBag(&bagBot, &bags, 20).item);
-    std::cout << "PASS: real profession supply discovery and vendor choice, tools, vials, parchment, reserves, affordable bag upgrades\n";
+    std::cout << "PASS: real profession supply discovery and vendor choice, tools, vials, "
+        "parchment, reserves, affordable bag upgrades\n";
 }

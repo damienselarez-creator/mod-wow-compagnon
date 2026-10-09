@@ -308,7 +308,8 @@ bool CastRandomSpellAction::Execute(Event event)
 
         if (isCast)
         {
-            if (MultiCast && !strictPriority && ((wo && bot->HasInArc(CAST_ANGLE_IN_FRONT, wo, sPlayerbotAIConfig.sightDistance))))
+            if (MultiCast && !strictPriority && wo &&
+                bot->HasInArc(CAST_ANGLE_IN_FRONT, wo, sPlayerbotAIConfig.sightDistance))
             {
                 std::ostringstream cmd;
                 cmd << "castnc " << chat->FormatWorldobject(wo) + " " << spellId << " " << 19;
@@ -367,7 +368,8 @@ namespace
         calculator.SetItemSetBonus(false);
         calculator.SetOverflowPenalty(false);
         Item* equipped = recipient->GetItemByPos(destination);
-        float current = equipped ? calculator.CalculateItem(equipped->GetEntry(), equipped->GetItemRandomPropertyId()) : 0;
+        float current = equipped ?
+            calculator.CalculateItem(equipped->GetEntry(), equipped->GetItemRandomPropertyId()) : 0;
         return calculator.CalculateItem(item->ItemId) > current;
     }
 }
