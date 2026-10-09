@@ -384,6 +384,17 @@ bool CraftRandomItemAction::AcceptSpell(SpellInfo const* spellInfo)
         return false;
     if (UseStrictPriority())
     {
+        // CanCastSpell probes intentionally ignore reagent costs; filter unavailable recipes before ranking.
+        for (uint32 index = 0; index < MAX_SPELL_REAGENTS; ++index)
+            if (spellInfo->Reagent[index] > 0 &&
+                bot->GetItemCount(uint32(spellInfo->Reagent[index]), false) < spellInfo->ReagentCount[index])
+                return false;
+        for (uint32 tool : spellInfo->Totem)
+            if (tool && !bot->GetItemCount(tool, false))
+                return false;
+        for (uint32 category : spellInfo->TotemCategory)
+            if (category && !bot->HasItemTotemCategory(category))
+                return false;
         auto const* skill = PlayerbotSpellRepository::Instance().GetSkillLine(spellInfo->Id);
         auto const& known = bot->GetSpellMap();
         auto found = known.find(spellInfo->Id);
@@ -403,7 +414,9 @@ uint32 CraftRandomItemAction::GetSpellPriority(SpellInfo const* spellInfo)
         if (CompanionCraftUseful(bot, item))
             return 100;
         // Keep one pending batch for the group; do not recreate goods awaiting delivery.
-        if (item->Bonding == BIND_WHEN_PICKED_UP || bot->GetItemCount(item->ItemId, true))
+        bool tradable = item->Bonding == NO_BIND || item->Bonding == BIND_WHEN_EQUIPPED ||
+            item->Bonding == BIND_WHEN_USE;
+        if (!tradable || bot->GetItemCount(item->ItemId, true))
             return 0;
         if (Group* group = bot->GetGroup())
             for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())

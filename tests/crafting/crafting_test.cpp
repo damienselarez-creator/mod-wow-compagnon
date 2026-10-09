@@ -18,6 +18,7 @@ using int32 = int32_t;
 constexpr uint32 EQUIP_ERR_OK = 0, EFFECT_0 = 0, SPELL_EFFECT_CREATE_ITEM = 24;
 constexpr uint8 NULL_SLOT = 255, INVENTORY_SLOT_BAG_START = 19, INVENTORY_SLOT_BAG_END = 23;
 constexpr uint32 ITEM_CLASS_CONSUMABLE = 0, ITEM_CLASS_CONTAINER = 1, ITEM_CLASS_WEAPON = 2, ITEM_CLASS_ARMOR = 4;
+constexpr uint32 MAX_SPELL_REAGENTS = 8, NO_BIND = 0, BIND_WHEN_EQUIPPED = 2, BIND_WHEN_USE = 3;
 constexpr uint32 POWER_MANA = 0, BIND_WHEN_PICKED_UP = 1, PLAYERSPELL_REMOVED = 1;
 enum ItemUsage { ITEM_USAGE_NONE, ITEM_USAGE_EQUIP, ITEM_USAGE_REPLACE, ITEM_USAGE_AMMO,
     ITEM_USAGE_QUEST, ITEM_USAGE_SKILL, ITEM_USAGE_USE };
@@ -38,7 +39,9 @@ struct SpellInfo
 {
     uint32 Id = 0;
     struct EffectData { uint32 Effect = SPELL_EFFECT_CREATE_ITEM, ItemType = 0; } Effects[1];
-    uint32 ReagentCount[1] = {1}, SchoolMask = 0;
+    uint32 ReagentCount[MAX_SPELL_REAGENTS] = {1}, SchoolMask = 0;
+    int32 Reagent[MAX_SPELL_REAGENTS] = {1000};
+    uint32 Totem[2]{}, TotemCategory[2]{};
 };
 struct KnownSpell { uint32 State = 0; bool Active = true; };
 struct PlayerbotAI;
@@ -64,6 +67,7 @@ struct Player
     bool IsInWorld() const { return world; }
     int GetMap() const { return 1; }
     float GetDistance(Player* other) const { return other->distance; }
+    bool HasItemTotemCategory(uint32) const { return false; }
     bool HasSkill(uint32) const { return profession; }
     auto const& GetSpellMap() const { return spells; }
 };
@@ -150,10 +154,17 @@ int main()
     Group group{&otherRef}; self.group = &group;
     CraftRandomItemAction action{&ai, &self};
     KnownSpell known; self.spells[100] = &known;
+    self.counts[1000] = 1;
     SpellInfo recipe; recipe.Id = 100; recipe.Effects[0].ItemType = 1;
     ai.context.usages[1] = ITEM_USAGE_EQUIP;
     friendAi.context.usages[1] = ITEM_USAGE_EQUIP;
     assert(action.AcceptSpell(&recipe));
+    self.counts[1000] = 0; assert(!action.AcceptSpell(&recipe));
+    self.counts[1000] = 1;
+    recipe.Totem[0] = 5956; assert(!action.AcceptSpell(&recipe));
+    self.counts[5956] = 1; assert(action.AcceptSpell(&recipe));
+    recipe.TotemCategory[0] = 162; assert(!action.AcceptSpell(&recipe));
+    recipe.TotemCategory[0] = 0; recipe.Totem[0] = 0;
     assert(action.GetSpellPriority(&recipe) == 100);
     ai.context.usages[1] = ITEM_USAGE_NONE;
     assert(action.GetSpellPriority(&recipe) == 50);
@@ -178,7 +189,13 @@ int main()
     recipe.Effects[0].ItemType = 3;
     assert(action.GetSpellPriority(&recipe) == 100); // Personal bag comes before group needs.
     Bag bag{{&objectMgr.items[3]}};
-    for (uint8 slot = 19; slot < 23; ++slot) self.bags[slot] = &bag;
+    for (uint8 slot = 19; slot < 22; ++slot) self.bags[slot] = &bag;
+    self.counts[3] = 3;
+    assert(action.GetSpellPriority(&recipe) == 100); // Existing equipped copies still allow the fourth bag.
+    self.bags[22] = &bag;
+    self.counts[3] = 4;
+    assert(action.GetSpellPriority(&recipe) == 0); // Four equipped copies also prevent a group batch.
+    self.counts[3] = 0;
     assert(action.GetSpellPriority(&recipe) == 50);
     recipe.Effects[0].ItemType = 4;
     Item gear{&objectMgr.items[1]}; human.equipped = &gear;
