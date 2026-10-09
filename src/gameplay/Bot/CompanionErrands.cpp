@@ -329,7 +329,7 @@ namespace
                     continue;
                 uint32 item = uint32(spell->Reagent[i]);
                 auto const* proto = sObjectMgr->GetItemTemplate(item);
-                if (!proto || proto->GetMaxStackSize() <= 1)
+                if (!proto)
                     continue;
                 uint32 desired = std::min<uint32>(proto->GetMaxStackSize(), CompanionErrands::SupplyStockLimit);
                 desired = std::min(desired, std::max(CompanionErrands::SupplyStock, spell->ReagentCount[i]));
@@ -379,6 +379,10 @@ namespace
                 offer->maxcount) : std::numeric_limits<uint32>::max();
             uint32 batches = CompanionErrands::SupplyBatches(held, desired, item->BuyCount, price,
                 bot->GetMoney(), reserve, available);
+            uint64 rawPrice = uint64(item->BuyPrice) * batches;
+            if (rawPrice > MAX_MONEY_AMOUNT || !CompanionErrands::CanSpend(bot->GetMoney(),
+                uint32(std::floor(uint32(rawPrice) * discount)), reserve))
+                continue;
             ItemPosCountVec destination;
             if (!batches || bot->CanStoreNewItem(NULL_BAG, NULL_SLOT, destination, item->ItemId,
                 batches * item->BuyCount) != EQUIP_ERR_OK)

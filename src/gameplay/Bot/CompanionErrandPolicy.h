@@ -37,7 +37,7 @@ namespace CompanionErrands
     inline uint32_t SupplyBatches(uint32_t held, uint32_t desired, uint32_t pack,
         uint32_t price, uint32_t money, uint32_t reserve, uint32_t available)
     {
-        if (held >= desired || !pack || desired > SupplyStockLimit || money < reserve)
+        if (held >= desired || !pack || pack > SupplyStockLimit || desired > SupplyStockLimit || money < reserve)
             return 0;
         uint32_t batches = (desired - held + pack - 1) / pack;
         batches = std::min(batches, available / pack);

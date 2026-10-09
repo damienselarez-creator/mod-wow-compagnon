@@ -14,6 +14,8 @@
 #include <vector>
 
 using uint32 = uint32_t;
+using uint64 = uint64_t;
+constexpr uint32 MAX_MONEY_AMOUNT = 2147483647;
 using int32 = int32_t;
 constexpr uint32 SKILL_MINING = 186, SKILL_SKINNING = 393, SKILL_BLACKSMITHING = 164;
 constexpr uint32 SKILL_ENGINEERING = 202, SKILL_INSCRIPTION = 773;
@@ -198,6 +200,21 @@ int main()
     bot.skills[773] = 450;
     assert(!NeededProfessionSupplies(&bot).desired.count(39354));
 
+    // Non-stackable consumable components, such as a copper rod for enchanting, are purchased once.
+    objectMgr.items[6217] = {6217, 0, 1, 1, 5};
+    spellMgr.spells[103].Reagent[0] = 6217;
+    spellMgr.spells[103].ReagentCount[0] = 1;
+    lines[103] = {333, 1, 75};
+    Player enchanter;
+    enchanter.skills[333] = 1;
+    enchanter.spells[103] = &active;
+    VendorItemData rods{{{6217}}};
+    assert(ChooseProfessionSupply(&enchanter, &rods, 20,
+        NeededProfessionSupplies(&enchanter)).batches == 1);
+    enchanter.inventory[6217] = 1;
+    assert(!ChooseProfessionSupply(&enchanter, &rods, 20,
+        NeededProfessionSupplies(&enchanter)).item);
+
     // Tools expressed as categories accept a compatible vendor tool and skip an owned equivalent.
     spellMgr.spells[100].TotemCategory[0] = 162;
     bot.categories.clear();
@@ -231,5 +248,6 @@ int main()
     assert(CompanionErrands::SupplyBatches(0, 10, 5, 4, 24, 20, 100) == 1);
     assert(CompanionErrands::SupplyBatches(10, 10, 5, 4, 100, 20, 100) == 0);
     assert(CompanionErrands::SupplyBatches(0, 10, 0, 4, 100, 20, 100) == 0);
+    assert(CompanionErrands::SupplyBatches(0, 10, UINT32_MAX, 4, 100, 20, UINT32_MAX) == 0);
     std::cout << "PASS: real profession supply discovery and vendor choice, tools, vials, parchment, reserves\n";
 }
