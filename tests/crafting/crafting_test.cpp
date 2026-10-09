@@ -174,6 +174,8 @@ int main()
     assert(action.GetSpellPriority(&recipe) == 0);
     ai.context.usages[1] = ITEM_USAGE_EQUIP;
     assert(action.GetSpellPriority(&recipe) == 100); // Bind-on-pickup is allowed for oneself.
+    self.counts[1000] = 1;
+    assert(action.AcceptSpell(&recipe));
     known.Active = false; assert(!action.AcceptSpell(&recipe));
     known.Active = true; known.State = PLAYERSPELL_REMOVED; assert(!action.AcceptSpell(&recipe));
     known.State = 0; self.profession = false; assert(!action.AcceptSpell(&recipe));

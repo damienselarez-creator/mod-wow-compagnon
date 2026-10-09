@@ -5,6 +5,7 @@
  */
 
 #include "EquipAction.h"
+#include "CompanionErrands.h"
 #include "Event.h"
 #include "ItemCountValue.h"
 #include "ItemPackets.h"
@@ -344,6 +345,11 @@ ItemIds EquipAction::SelectInventoryItemsToEquip()
 
         ItemTemplate const* itemTemplate = item->GetTemplate();
         if (!itemTemplate)
+            continue;
+
+        // Managed companions exchange bags through their errands, preserving profession bags and contents.
+        if (IsCompanionInventoryManaged(botAI) && IsManagedCompanion(botAI) &&
+            itemTemplate->Class == ITEM_CLASS_CONTAINER)
             continue;
 
         //TODO Expand to Glyphs and Gems, that can be placed in equipment
