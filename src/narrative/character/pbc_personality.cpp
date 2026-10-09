@@ -8,10 +8,12 @@
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "WorldSession.h"
+#include <algorithm>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <map>
+#include <limits>
 #include <mutex>
 #include <sstream>
 
@@ -65,7 +67,7 @@ bool Eligible(Player* actor, Player* target)
     auto result = CharacterDatabase.Query(statement);
     if (!result)
         return false;
-    uint32 oldest = UINT32_MAX;
+    uint32 oldest = std::numeric_limits<uint32>::max();
     bool found = false;
     do
     {

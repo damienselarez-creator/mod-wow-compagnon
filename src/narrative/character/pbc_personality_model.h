@@ -3,6 +3,7 @@
 
 #include "pbc_json.h"
 #include <array>
+#include <limits>
 #include <set>
 #include <string>
 
@@ -47,12 +48,16 @@ inline bool PBC_ValidPersonalitySheet(pbc_json const& sheet, pbc_json const& cat
     try
     {
         for (auto field : {"account", "race", "class"})
-            if (!sheet.at(field).is_number_unsigned() || sheet.at(field).get<uint32_t>() == 0)
+            if (!sheet.at(field).is_number_unsigned() || sheet.at(field).get<uint64_t>() == 0 ||
+                sheet.at(field).get<uint64_t>() > std::numeric_limits<uint32_t>::max())
                 return false;
-        if (!sheet.at("tab").is_number_integer() || sheet.at("tab").get<int>() < 0 ||
-            sheet.at("tab").get<int>() > 2 || !sheet.at("professions").is_array() ||
+        if (!sheet.at("tab").is_number_integer() || sheet.at("tab").get<int64_t>() < 0 ||
+            sheet.at("tab").get<int64_t>() > 2 || !sheet.at("professions").is_array() ||
             sheet.at("professions").size() != 2)
             return false;
+        for (auto const& skill : sheet.at("professions"))
+            if (!skill.is_number_unsigned() || skill.get<uint64_t>() > 65535)
+                return false;
         std::set<uint32_t> const primary = {164, 165, 171, 182, 186, 197, 202, 333, 393, 755, 773};
         auto skills = sheet.at("professions").get<std::array<uint32_t, 2>>();
         if (!primary.contains(skills[0]) || !primary.contains(skills[1]) || skills[0] == skills[1])
