@@ -68,7 +68,7 @@ def main():
             lines.append("| " + " | ".join(cells) + " |")
         lines.extend(["", "Source: `knowledge/personality-traits.json`. "
                       "Generator: `tools/generate_personality_traits.py`.", ""])
-        (ROOT / "docs" / ("PERSONALITY_TRAITS." + locale + ".md")).write_text("\n".join(lines), encoding="utf-8")
+        (ROOT / "docs" / ("PERSONALITY_TRAITS." + locale + ".md")).write_text("\n".join(lines), encoding="utf-8", newline="\n")
     print("Validated: 30 qualities, 30 flaws, independent 3 + 3, French and English labels.")
 
 
