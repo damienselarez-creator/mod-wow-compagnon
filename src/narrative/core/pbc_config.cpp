@@ -3,6 +3,7 @@
 #include "pbc_character.h"
 #include "pbc_lore.h"
 #include "pbc_archetype.h"
+#include "pbc_personality.h"
 #include "pbc_database.h"
 #include "pbc_llm.h"
 #include "pbc_http.h"
@@ -536,6 +537,18 @@ void PBC_LoadConfig(bool /*isStartup*/)
         archetypeStatus);
     PBC_Log(archetypeLoaded ? PBC_LogLevel::PBC_DEFAULT : PBC_LogLevel::PBC_ERROR,
         "Archetypes: {}", archetypeStatus);
+    auto archetypesPath = sConfigMgr->GetOption<std::string>("PBC.ArchetypesPath", "");
+    auto vocationsPath = sConfigMgr->GetOption<std::string>("PBC.VocationsFile", "");
+    auto traitsDefault = archetypesPath.empty() ? std::string{} :
+        (std::filesystem::path(archetypesPath).parent_path() / "personality-traits.json").string();
+    auto sheetsDefault = vocationsPath.empty() ? std::string{} :
+        (std::filesystem::path(vocationsPath).parent_path() / "companion-personalities.json").string();
+    std::string personalityStatus;
+    bool personalityLoaded = PBC_LoadPersonality(
+        sConfigMgr->GetOption<std::string>("PBC.PersonalityCatalog", traitsDefault),
+        sConfigMgr->GetOption<std::string>("PBC.PersonalityFile", sheetsDefault), personalityStatus);
+    PBC_Log(personalityLoaded ? PBC_LogLevel::PBC_DEFAULT : PBC_LogLevel::PBC_ERROR,
+        "Personality: {}", personalityStatus);
     std::string loreStatus;
     bool loreLoaded = PBC_LoadLore(
         sConfigMgr->GetOption<std::string>("PBC.HistoryCorpusPath", ""),

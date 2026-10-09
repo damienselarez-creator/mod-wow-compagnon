@@ -1,5 +1,6 @@
 #include "pbc_group_helpers.h"
 #include "pbc_vocation.h"
+#include "pbc_personality.h"
 #include "pbc_character.h"
 #include "pbc_lore.h"
 #include "pbc_archetype.h"
@@ -834,6 +835,9 @@ PBC_CharacterSnapshot PBC_SnapshotCharacter(Player* bot, Player* listener)
     // Pre-render the character card and context once here so the event thread
     // never needs to call into game data.
     snap.characterCard = PBC_GetCharacterCard(bot, snap.clientLocale);
+    snap.personalitySheet = PBC_PersonalitySheet(bot);
+    snap.personalityGender = bot->getGender();
+    snap.personalityContext = PBC_PersonalityContext(snap.personalitySheet, snap.personalityGender, snap.clientLocale);
     snap.context       = PBC_GetCharacterContext(bot) + PBC_VocationContext(bot);
 
     // Capture raw template variables
@@ -1004,6 +1008,7 @@ std::string PBC_BuildUserPromptFromSnapshot(const PBC_CharacterSnapshot& snap,
         eventLine, documentary, snap.clientLocale);
     out += PBC_AdventureContext(snap.charGuidRaw, snap.whisperTargetGuid.GetCounter(),
         snap.adventureGroupPlayers, eventLine);
+    out += snap.personalityContext;
     out += PBC_CompanionLanguageInstruction(snap.clientLocale);
     return out;
 }

@@ -350,3 +350,8 @@ PBC.NarrativeInitiative = 0
 
 # Agreed companion vocations: opt-in persistent state file; empty disables.
 PBC.VocationsFile = ""
+
+# Permanent companion sheets (private runtime data). If unset, paths are derived
+# from ArchetypesPath and VocationsFile respectively. No corpus chunks required.
+# PBC.PersonalityCatalog = "/absolute/path/knowledge/personality-traits.json"
+# PBC.PersonalityFile = "/absolute/path/private/companion-personalities.json"

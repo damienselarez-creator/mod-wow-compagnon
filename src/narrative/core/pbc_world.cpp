@@ -4,6 +4,7 @@
 #include "pbc_character.h"
 #include "pbc_archetype.h"
 #include "pbc_companion_language.h"
+#include "pbc_personality.h"
 #include "pbc_event_dispatch.h"
 #include "pbc_poll.h"
 #include "pbc_event_processor.h"
@@ -491,6 +492,8 @@ void PBC_WorldScript::OnUpdate(uint32_t diff)
                     auto* listener = snap.whisperTargetGuid.IsEmpty()
                         ? nullptr : ObjectAccessor::FindPlayer(snap.whisperTargetGuid);
                     snap.clientLocale = PBC_CompanionClientLocale(bot, listener);
+                    snap.personalityContext = PBC_PersonalityContext(snap.personalitySheet,
+                        snap.personalityGender, snap.clientLocale);
                     snap.characterCard = PBC_ArchetypeCard(snap.archetypeRace, snap.archetypeClass,
                         snap.archetypeSpecialization, snap.charGuidRaw, snap.clientLocale);
                 }

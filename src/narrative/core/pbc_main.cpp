@@ -1,4 +1,5 @@
 #include "pbc_vocation.h"
+#include "pbc_personality.h"
 #include "pbc_config.h"
 #include "pbc_world.h"
 #include "pbc_commands.h"
@@ -21,5 +22,6 @@ void AddCompanionNarrativeScripts()
     new PBC_CommandScript();
     AddPBCAdventureScripts();
     AddPBCVocationScripts();
+    AddPBCPersonalityScripts();
 }
 

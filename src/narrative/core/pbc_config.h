@@ -119,6 +119,9 @@ struct PBC_CharacterSnapshot
 
     // Pre-rendered prompt fragments (captured on main thread)
     std::string characterCard;
+    pbc_json personalitySheet;
+    uint8_t personalityGender = 2;
+    std::string personalityContext;
     std::string context;
 
     // Raw template variables for re-rendering per-event user prompts
