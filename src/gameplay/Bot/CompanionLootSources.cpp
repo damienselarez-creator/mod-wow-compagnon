@@ -52,7 +52,7 @@ bool CompanionLootSources::Load()
     {
         PreparedStatement<CompanionLootConnection> statement(kind, 0);
         PreparedQueryResult result(connection.Query(&statement));
-        if (!result)
+        if (!result || !result->GetRowCount())
             continue;
 
         do
