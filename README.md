@@ -4,6 +4,10 @@ Un module AzerothCore unique : comportements de jeu, progression, dialogue,
 vocations, culture et mémoire d'aventures sont développés et livrés ensemble.
 Playerbots et PBC sont intégrés dans ce dépôt, sans sous-modules externes.
 
+Le [tableau des stéréotypes](docs/STEREOTYPES.frFR.md) recense les profils,
+leurs traits et les propositions de métiers.
+An [English catalogue](docs/STEREOTYPES.enUS.md) is also available.
+
 ## Installation
 
 Cloner ce dépôt dans `modules/mod-wow-compagnon` d'AzerothCore. Retirer les anciens
