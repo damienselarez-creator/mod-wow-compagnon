@@ -72,7 +72,7 @@ bool CompanionLootSources::Load()
         } while (result->NextRow());
     }
     CompanionLootConnection::index.store(std::move(index));
-    LOG_INFO("playerbots.companion", "[Companion] Native-compatible loot source index: {} rows", count);
+    LOG_INFO("server.loading", "[Companion] Native-compatible loot source index: {} rows", count);
     return true;
 }
 
