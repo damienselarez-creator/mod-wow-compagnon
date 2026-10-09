@@ -330,7 +330,14 @@ namespace
         uint32 held = recipient->GetItemCount(item->ItemId, true);
         if (item->Class == ITEM_CLASS_CONTAINER)
         {
-            if (held || item->BagFamily)
+            if (item->BagFamily)
+                return false;
+            // Equipped copies do not prevent filling the remaining bag slots.
+            for (uint8 slot = INVENTORY_SLOT_BAG_START; slot < INVENTORY_SLOT_BAG_END; ++slot)
+                if (Bag* bag = recipient->GetBagByPos(slot))
+                    if (held && bag->GetTemplate()->ItemId == item->ItemId)
+                        --held;
+            if (held)
                 return false;
             for (uint8 slot = INVENTORY_SLOT_BAG_START; slot < INVENTORY_SLOT_BAG_END; ++slot)
             {
@@ -380,7 +387,7 @@ bool CraftRandomItemAction::AcceptSpell(SpellInfo const* spellInfo)
         auto const* skill = PlayerbotSpellRepository::Instance().GetSkillLine(spellInfo->Id);
         auto const& known = bot->GetSpellMap();
         auto found = known.find(spellInfo->Id);
-        return skill && IsProfession(skill->SkillLine) && bot->HasSkill(skill->SkillLine) &&
+        return skill && IsProfessionSkill(skill->SkillLine) && bot->HasSkill(skill->SkillLine) &&
             found != known.end() && found->second->State != PLAYERSPELL_REMOVED && found->second->Active;
     }
     return true;

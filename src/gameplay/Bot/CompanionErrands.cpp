@@ -424,6 +424,24 @@ namespace
         return selected;
     }
 
+    uint16 FindOwnedBagUpgrade(Player* bot, uint32 capacity)
+    {
+        auto useful = [capacity](Item* item)
+        {
+            return item && item->IsBag() && !item->GetTemplate()->BagFamily &&
+                item->GetTemplate()->ContainerSlots > capacity;
+        };
+        for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
+            if (useful(bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot)))
+                return uint16(INVENTORY_SLOT_BAG_0 << 8) | slot;
+        for (uint8 slot = INVENTORY_SLOT_BAG_START; slot < INVENTORY_SLOT_BAG_END; ++slot)
+            if (Bag* bag = bot->GetBagByPos(slot))
+                for (uint32 inside = 0; inside < bag->GetBagSize(); ++inside)
+                    if (useful(bot->GetItemByPos(slot, uint8(inside))))
+                        return uint16(slot << 8) | uint8(inside);
+        return 0;
+    }
+
     BagPurchase ChooseBag(Player* bot, VendorItemData const* goods, uint32 reserve, Creature* vendor = nullptr)
     {
         uint8 target = SmallestGeneralBagSlot(bot);
@@ -432,13 +450,11 @@ namespace
         Bag* current = bot->GetBagByPos(target);
         uint32 capacity = current ? current->GetBagSize() : 0;
         uint8 storage = current ? NULL_SLOT : target;
+        if (FindOwnedBagUpgrade(bot, capacity))
+            return {};
         for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
         {
             Item* item = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
-            // Use owned upgrades first; a failed exchange must not cause another purchase.
-            if (item && item->IsBag() && !item->GetTemplate()->BagFamily &&
-                item->GetTemplate()->ContainerSlots > capacity)
-                return {};
             if (!item && current && storage == NULL_SLOT)
                 storage = slot;
         }
@@ -476,17 +492,24 @@ namespace
             return;
         Bag* current = bot->GetBagByPos(target);
         uint32 capacity = current ? current->GetBagSize() : 0;
-        for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
+        uint16 source = FindOwnedBagUpgrade(bot, capacity);
+        if (!source)
+            return;
+        // Move an upgrade out of another bag before exchanging bag contents natively.
+        if (uint8(source >> 8) != INVENTORY_SLOT_BAG_0)
         {
-            Item* item = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
-            if (item && item->IsBag() && !item->GetTemplate()->BagFamily &&
-                item->GetTemplate()->ContainerSlots > capacity)
-            {
-                bot->SwapItem(uint16(INVENTORY_SLOT_BAG_0 << 8) | slot,
-                    uint16(INVENTORY_SLOT_BAG_0 << 8) | target);
+            for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
+                if (!bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot))
+                {
+                    uint16 temporary = uint16(INVENTORY_SLOT_BAG_0 << 8) | slot;
+                    bot->SwapItem(source, temporary);
+                    source = temporary;
+                    break;
+                }
+            if (uint8(source >> 8) != INVENTORY_SLOT_BAG_0)
                 return;
-            }
         }
+        bot->SwapItem(source, uint16(INVENTORY_SLOT_BAG_0 << 8) | target);
     }
 
     uint32 RepairEquipment(Player* bot, Creature* vendor, uint32 reserve)

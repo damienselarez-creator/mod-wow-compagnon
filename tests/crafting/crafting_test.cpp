@@ -121,7 +121,7 @@ struct PlayerbotSpellRepository
     static PlayerbotSpellRepository& Instance() { static PlayerbotSpellRepository r; return r; }
     auto GetSkillLine(uint32) const { return &line; }
 };
-bool IsProfession(uint32) { return true; }
+bool IsProfessionSkill(uint32) { return true; }
 struct CraftRandomItemAction
 {
     PlayerbotAI* botAI;

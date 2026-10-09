@@ -309,7 +309,7 @@ int main()
     assert(!ChooseBag(&bagBot, &bags, 20, &npc).item);
     npc.available = 1;
     assert(ChooseBag(&bagBot, &bags, 20, &npc).item == 201);
-    bagBot.positions[uint16(255 << 8) | 23] = &large;
+    bagBot.positions[uint16(19 << 8) | 0] = &large;
     assert(!ChooseBag(&bagBot, &bags, 20).item);
     EquipOwnedBagUpgrade(&bagBot);
     assert(bagBot.GetBagByPos(20) == &large && bagBot.GetBagByPos(19) == &specialty);
