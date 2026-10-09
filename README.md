@@ -122,4 +122,3 @@ prevent duplicate purchases. Reagent stock aims for ten, is capped at twenty and
 vendor pack sizes; non-stackable components are bought once. At the skill cap, recent-tier
 recipes remain supplied. Purchases use the companion's own gold and preserve the reserve,
 free bag space, vendor stock and normal travel safety. No items are granted.
-
