@@ -590,6 +590,18 @@ namespace
                     return false;
                 nextVisit[_character] = now + VisitInterval;
             }
+            // Apply a previously withdrawn stack one native use at a time; do not replace enchantments.
+            for (Item* item : ai->GetInventoryItems())
+                if (EnhancementSpell(item->GetTemplate()))
+                {
+                    auto targets = EnhancementTargets(player, item->GetTemplate());
+                    if (!targets.empty())
+                    {
+                        BankUseItem use(ai);
+                        if (use.Enhance(item, targets.front()))
+                            return true;
+                    }
+                }
             auto plan = PlanInventory(player);
             std::set<uint32> donated;
             uint32 deposits = 0;
