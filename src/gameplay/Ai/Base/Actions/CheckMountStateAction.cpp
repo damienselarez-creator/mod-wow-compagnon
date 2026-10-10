@@ -5,6 +5,7 @@
  */
 
 #include "CheckMountStateAction.h"
+#include "CompanionErrands.h"
 #include "PlayerbotsDatabase.h"
 #include "AreaDefines.h"
 #include "BattleGroundTactics.h"
@@ -149,6 +150,9 @@ bool CheckMountStateAction::Execute(Event /*event*/)
 
 bool CheckMountStateAction::isUseful()
 {
+    if (IsCompanionGathering(botAI) ||
+        (IsCompanionInventoryManaged(botAI) && bot->IsNonMeleeSpellCast(false)))
+        return false;
     // Not useful when:
     if (botAI->IsInVehicle() || bot->isDead() || bot->HasUnitState(UNIT_STATE_IN_FLIGHT) ||
         !bot->IsOutdoors() || bot->InArena())
@@ -395,6 +399,9 @@ bool CheckMountStateAction::TryPreferredMount(Player* master) const
     if (chosenMountId == 0)
         return false;
 
+    if (IsCompanionInventoryManaged(botAI) && !bot->HasSpell(chosenMountId))
+        return false;
+
     // Check if spell exists
     if (!sSpellMgr->GetSpellInfo(chosenMountId))
     {
@@ -406,7 +413,10 @@ bool CheckMountStateAction::TryPreferredMount(Player* master) const
     if (bot->isMoving())
         bot->StopMoving();
 
-    // Check if spell can be cast - for now allow all, even if the bot does not have the actual mount
+    if (IsCompanionInventoryManaged(botAI))
+        return botAI->CanCastSpell(chosenMountId, bot) && botAI->CastSpell(chosenMountId, bot);
+
+    // Legacy preferred mounts for independent random bots.
     //if (botAI->CanCastSpell(mountId, botAI->GetBot()))
     //{
     botAI->CastSpell(chosenMountId, botAI->GetBot());
@@ -423,7 +433,8 @@ bool CheckMountStateAction::TryRandomMountFiltered(std::map<int32, std::vector<u
     {
         int32 currentSpeed = it->first;
 
-        if ((masterSpeed > 59 && currentSpeed < 99) || (masterSpeed > 149 && currentSpeed < 279))
+        if (!IsCompanionInventoryManaged(botAI) &&
+            ((masterSpeed > 59 && currentSpeed < 99) || (masterSpeed > 149 && currentSpeed < 279)))
             continue;
 
         // Pick a random mount from the candidate group.

@@ -33,7 +33,7 @@ public:
     LootObject& operator=(LootObject const& other) = default;
 
     bool IsEmpty() { return !guid; }
-    bool IsLootPossible(Player* bot);
+    bool IsLootPossible(Player* bot, bool checkHeight = true);
     void Refresh(Player* bot, ObjectGuid guid);
     WorldObject* GetWorldObject(Player* bot);
     ObjectGuid guid;

@@ -91,9 +91,11 @@ namespace CompanionErrands
         return uint64_t(cost) + reserve <= money;
     }
 
+    constexpr float GatherRadius = 80.0f;
+
     inline bool HerbWithinLeash(float botToHerb, float masterToHerb, float botToMaster)
     {
-        return botToHerb <= 40.0f && masterToHerb <= 60.0f && botToMaster <= 60.0f;
+        return botToHerb <= GatherRadius && masterToHerb <= GatherRadius && botToMaster <= 40.0f;
     }
 }
 #endif

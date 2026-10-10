@@ -47,11 +47,11 @@ bool AddAllLootAction::AddLoot(ObjectGuid guid) { return AI_VALUE(LootObjectStac
 
 bool AddGatheringLootAction::AddLoot(ObjectGuid guid)
 {
-    // Managed companions gather through the bounded, interruptible errand action.
-    if (IsManagedCompanion(botAI))
-        return false;
-
     LootObject loot(bot, guid);
+    // Keep native skinning; plants and ore use bounded companion detours.
+    if (IsCompanionInventoryManaged(botAI) && guid.IsGameObject() &&
+        (loot.skillId == SKILL_MINING || loot.skillId == SKILL_HERBALISM))
+        return false;
 
     WorldObject* wo = loot.GetWorldObject(bot);
     if (loot.IsEmpty() || !wo)

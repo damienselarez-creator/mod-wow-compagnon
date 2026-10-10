@@ -28,6 +28,7 @@ void CancelCompanionErrands(PlayerbotAI* ai);
 void RequestCompanionTraining(PlayerbotAI* ai);
 void SetCompanionNarrativeFocus(ObjectGuid guid, std::string const& focus);
 std::string GetCompanionNarrativeFocus(ObjectGuid guid);
+bool IsCompanionGathering(PlayerbotAI* ai);
 bool IsCompanionGatherLoot(PlayerbotAI* ai, ObjectGuid guid);
 void FinishCompanionGather(PlayerbotAI* ai, ObjectGuid guid);
 

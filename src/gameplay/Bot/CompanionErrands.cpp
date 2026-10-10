@@ -16,6 +16,8 @@
 #include "Playerbots.h"
 #include "PlayerbotSpellRepository.h"
 #include "Trainer.h"
+#include "NearestGameObjects.h"
+#include "UseItemAction.h"
 
 #include <algorithm>
 #include <cmath>
@@ -43,8 +45,8 @@ namespace
             {status, trainer, spell, learned, bot->GetMoney(), 0}};
     }
 
-    enum Timer : uint32 { Decision = 1, TownScan, HerbScan, Deadline, Progress, Resume, ClearRejected, VerifyLesson };
-    enum class Errand { None, Trainer, Herb, Return, PoisonVendor, Bags, ProfessionVendor, GuildBank };
+    enum Timer : uint32 { Decision = 1, TownScan, HerbScan, Deadline, Progress, Resume, ClearRejected, VerifyLesson, MountRetry };
+    enum class Errand { None, Trainer, Herb, Return, PoisonVendor, Bags, ProfessionVendor, GuildBank, MountVendor };
     constexpr float TownRadius = 1500.0f;
 
     bool Eligible(PlayerbotAI* ai)
@@ -55,7 +57,8 @@ namespace
             master->GetSession()->IsLoggingOut() || !master->IsAlive() || !bot->IsAlive() ||
             master->IsBeingTeleported() || bot->IsBeingTeleported() || master->GetMap() != bot->GetMap() ||
             !(master->GetPhaseMask() & bot->GetPhaseMask()) || bot->InBattleground() || bot->GetMap()->IsDungeon() ||
-            bot->IsInCombat() || master->IsInCombat() || bot->IsInFlight() || master->IsInFlight() ||
+            bot->IsInCombat() || master->IsInCombat() || bot->IsFlying() || master->IsFlying() ||
+            bot->IsFalling() || master->IsFalling() || bot->IsInFlight() || master->IsInFlight() ||
             bot->GetTransport() || master->GetTransport() || bot->GetVehicle() || master->GetVehicle() ||
             !ai->HasStrategy("follow", BOT_STATE_NON_COMBAT) ||
             ai->HasStrategy("stay", BOT_STATE_NON_COMBAT) || ai->HasStrategy("passive", BOT_STATE_NON_COMBAT))
@@ -118,6 +121,89 @@ namespace
             }
         return 0;
     }
+
+    bool TeachesRiding(uint32 id, uint32 depth = 0)
+    {
+        if (depth > 3)
+            return false;
+        auto const* line = PlayerbotSpellRepository::Instance().GetSkillLine(id);
+        if (line && line->SkillLine == SKILL_RIDING)
+            return true;
+        if (auto const* spell = sSpellMgr->GetSpellInfo(id))
+            for (auto const& effect : spell->Effects)
+            {
+                if (effect.Effect == SPELL_EFFECT_SKILL && effect.MiscValue == SKILL_RIDING)
+                    return true;
+                if (effect.Effect == SPELL_EFFECT_LEARN_SPELL && TeachesRiding(effect.TriggerSpell, depth + 1))
+                    return true;
+            }
+        return false;
+    }
+
+    struct MountProfile
+    {
+        uint32 spell = 0;
+        int32 speed = 0;
+        bool flying = false;
+    };
+
+    MountProfile DescribeMount(uint32 id)
+    {
+        auto const* spell = sSpellMgr->GetSpellInfo(id);
+        if (!spell || !spell->HasAura(SPELL_AURA_MOUNTED))
+            return {};
+        MountProfile result{id};
+        for (auto const& effect : spell->Effects)
+        {
+            if (effect.ApplyAuraName == SPELL_AURA_MOD_INCREASE_MOUNTED_FLIGHT_SPEED)
+            {
+                result.flying = true;
+                result.speed = std::max(result.speed, effect.BasePoints);
+            }
+            else if (effect.ApplyAuraName == SPELL_AURA_MOD_INCREASE_MOUNTED_SPEED)
+                result.speed = std::max(result.speed, effect.BasePoints);
+        }
+        return result;
+    }
+
+    MountProfile MountFromItem(ItemTemplate const* item)
+    {
+        if (item)
+            for (auto const& spell : item->Spells)
+                if (spell.SpellTrigger == ITEM_SPELLTRIGGER_LEARN_SPELL_ID && spell.SpellId > 0)
+                    return DescribeMount(uint32(spell.SpellId));
+        return {};
+    }
+
+    bool NeedsMount(PlayerbotAI* ai, MountProfile const& candidate)
+    {
+        if (!candidate.spell || candidate.speed <= 0)
+            return false;
+        Player* bot = ai->GetBot();
+        for (auto const& [id, known] : bot->GetSpellMap())
+        {
+            if (known->State == PLAYERSPELL_REMOVED || !known->Active)
+                continue;
+            auto mount = DescribeMount(id);
+            if (mount.spell && mount.flying == candidate.flying && mount.speed >= candidate.speed)
+                return false;
+        }
+        // An unconsumed purchase must block another colour or another vendor's equivalent.
+        for (Item* item : ai->GetInventoryItems())
+        {
+            auto mount = MountFromItem(item->GetTemplate());
+            if (mount.spell && mount.flying == candidate.flying && mount.speed >= candidate.speed)
+                return false;
+        }
+        return true;
+    }
+
+    class MountItemUse : public UseItemAction
+    {
+    public:
+        explicit MountItemUse(PlayerbotAI* ai) : UseItemAction(ai, "companion mount use", true) { }
+        bool Learn(Item* item) { return UseItemAuto(item); }
+    };
 
     bool Protected(PlayerbotAI* ai, Item* item)
     {
@@ -274,6 +360,38 @@ namespace
                 return {item->ItemId, slots[family], batches};
         }
         return {};
+    }
+
+    PoisonPurchase ChooseMount(PlayerbotAI* ai, VendorItemData const* goods, uint32 reserve,
+        Creature* vendor = nullptr)
+    {
+        if (!goods || goods->Empty())
+            return {};
+        Player* bot = ai->GetBot();
+        PoisonPurchase best;
+        uint32 bestPrice = std::numeric_limits<uint32>::max();
+        int32 bestSpeed = 0;
+        for (uint32 slot = 0; slot < goods->GetItemCount(); ++slot)
+        {
+            auto const* offer = goods->GetItem(slot);
+            auto const* item = offer ? sObjectMgr->GetItemTemplate(offer->item) : nullptr;
+            if (!item || offer->ExtendedCost || item->BuyCount != 1 || item->BuyPrice <= 0 ||
+                bot->CanUseItem(item) != EQUIP_ERR_OK || !NeedsMount(ai, MountFromItem(item)))
+                continue;
+            int32 speed = MountFromItem(item).speed;
+            uint32 price = uint32(std::ceil(item->BuyPrice *
+                (vendor ? bot->GetReputationPriceDiscount(vendor) : 1.0f)));
+            ItemPosCountVec destination;
+            if (speed < bestSpeed || (speed == bestSpeed && price >= bestPrice) ||
+                !CompanionErrands::CanSpend(bot->GetMoney(), price, reserve) ||
+                (vendor && offer->maxcount && !vendor->GetVendorItemCurrentCount(offer)) ||
+                bot->CanStoreNewItem(NULL_BAG, NULL_SLOT, destination, item->ItemId, 1) != EQUIP_ERR_OK)
+                continue;
+            best = {item->ItemId, slot, 1};
+            bestPrice = price;
+            bestSpeed = speed;
+        }
+        return best;
     }
 
     struct ProfessionSupplies
@@ -555,11 +673,13 @@ namespace
     bool SafeHerb(Player* bot, GameObject* herb)
     {
         std::list<Unit*> units;
-        Acore::AnyUnfriendlyUnitInObjectRangeCheck check(bot, bot, 75.0f);
+        float radius = std::min(150.0f, bot->GetDistance(herb) + 30.0f);
+        Acore::AnyUnfriendlyUnitInObjectRangeCheck check(bot, bot, radius);
         Acore::UnitListSearcher<Acore::AnyUnfriendlyUnitInObjectRangeCheck> search(bot, units, check);
-        Cell::VisitObjects(bot, search, 75.0f);
+        Cell::VisitObjects(bot, search, radius);
         float dx = herb->GetPositionX() - bot->GetPositionX();
         float dy = herb->GetPositionY() - bot->GetPositionY();
+        float dz = herb->GetPositionZ() - bot->GetPositionZ();
         float length = dx * dx + dy * dy;
         for (Unit* unit : units)
         {
@@ -569,7 +689,7 @@ namespace
                 (unit->GetPositionY() - bot->GetPositionY()) * dy) / length, 0.0f, 1.0f) : 0.0f;
             float x = bot->GetPositionX() + t * dx;
             float y = bot->GetPositionY() + t * dy;
-            if (unit->GetDistance(x, y, bot->GetPositionZ()) < 25.0f)
+            if (unit->GetDistance(x, y, bot->GetPositionZ() + t * dz) < 25.0f)
                 return false;
         }
         return true;
@@ -585,6 +705,8 @@ struct CompanionErrandState
     bool herbDue = true;
     bool paused = false;
     bool gathering = false;
+    bool mountDue = true;
+    uint32 pendingMount = 0;
     uint32 spawn = 0;
     uint32 map = 0;
     uint32 zone = 0;
@@ -667,7 +789,7 @@ namespace
             }
             if (state.kind == Errand::Bags)
                 state.rejectedBagVendors.insert(state.spawn);
-            if (state.kind == Errand::ProfessionVendor)
+            if (state.kind == Errand::ProfessionVendor || state.kind == Errand::MountVendor)
                 state.rejectedSupplyVendors.insert(state.spawn);
             if (state.kind == Errand::PoisonVendor)
                 state.rejectedVendors.insert(state.spawn);
@@ -750,7 +872,8 @@ namespace
         auto const focus = GetCompanionNarrativeFocus(bot->GetGUID());
         if ((focus == "training_class" && !classTrainer) || (focus == "training_professions" && classTrainer))
             return nullptr;
-        if (!classTrainer && trainer->GetTrainerType() != Trainer::Type::Tradeskill)
+        if (!classTrainer && trainer->GetTrainerType() != Trainer::Type::Tradeskill &&
+            trainer->GetTrainerType() != Trainer::Type::Mount)
             return nullptr;
         auto skills = CompanionVocation::Get(bot).professions;
         if (!skills[0])
@@ -762,7 +885,10 @@ namespace
         {
             if (ai->companionErrands->rejectedLessons.count(spell.SpellId))
                 continue;
-            if (!classTrainer)
+            bool riding = spell.ReqSkillLine == SKILL_RIDING || TeachesRiding(spell.SpellId);
+            if (riding && focus == "training_professions")
+                continue;
+            if (!classTrainer && !riding)
             {
                 uint32 skill = IsProfession(spell.ReqSkillLine) ? spell.ReqSkillLine :
                     ProfessionForSpell(spell.SpellId);
@@ -858,6 +984,9 @@ void UpdateCompanionErrands(PlayerbotAI* ai, uint32 elapsed)
                 state.rejectedHerbs.clear();
                 state.events.ScheduleEvent(ClearRejected, Milliseconds(300000));
                 break;
+            case MountRetry:
+                state.mountDue = true;
+                break;
             case Deadline:
             case Progress:
                 StopTrip(ai, true);
@@ -873,13 +1002,18 @@ void UpdateCompanionErrands(PlayerbotAI* ai, uint32 elapsed)
     if (GetCompanionNarrativeFocus(bot->GetGUID()) == "follow" ||
         !Eligible(ai) || master->GetGUID() != state.owner || bot->GetMapId() != state.map ||
         ((state.kind == Errand::Trainer || state.kind == Errand::PoisonVendor || state.kind == Errand::Bags ||
-            state.kind == Errand::ProfessionVendor) &&
+            state.kind == Errand::ProfessionVendor || state.kind == Errand::MountVendor) &&
             (!InTown(master) || master->GetZoneId() != state.zone ||
             (state.settlement ? Settlement(master) != state.settlement :
                 master->GetDistance(state.x, state.y, state.z) > TownRadius))) ||
-        (state.kind == Errand::Herb && (bot->GetDistance(master) > 60.0f ||
-            master->GetDistance(state.x, state.y, state.z) > 60.0f)))
+        (state.kind == Errand::Herb && (bot->GetDistance(master) > 120.0f ||
+            master->GetDistance(state.x, state.y, state.z) > 120.0f)))
         CancelCompanionErrands(ai);
+}
+
+bool IsCompanionGathering(PlayerbotAI* ai)
+{
+    return ai && ai->companionErrands && ai->companionErrands->kind == Errand::Herb;
 }
 
 bool IsCompanionGatherLoot(PlayerbotAI* ai, ObjectGuid guid)
@@ -923,12 +1057,41 @@ bool CompanionErrandAction::Execute(Event)
     state.ready = false;
     state.events.RescheduleEvent(Decision, Milliseconds(1000));
 
+    if (state.pendingMount && (bot->HasSpell(state.pendingMount) || state.mountDue))
+    {
+        LOG_INFO("playerbots.companion", "[Mount] {} spell={} learned={}",
+            bot->GetName(), state.pendingMount, bot->HasSpell(state.pendingMount));
+        state.pendingMount = 0;
+    }
+
     if (state.kind == Errand::None)
     {
         state.owner = master->GetGUID();
         state.map = bot->GetMapId();
         state.zone = master->GetZoneId();
         state.settlement = Settlement(master);
+        if (state.mountDue && InTown(master))
+        {
+            for (Item* item : botAI->GetInventoryItems())
+            {
+                auto mount = MountFromItem(item->GetTemplate());
+                if (!mount.spell || bot->HasSpell(mount.spell) || item->IsInTrade() ||
+                    bot->CanUseItem(item->GetTemplate()) != EQUIP_ERR_OK)
+                    continue;
+                if (bot->isMoving())
+                {
+                    bot->StopMoving();
+                    return true;
+                }
+                if (bot->IsMounted())
+                    bot->RemoveAurasByType(SPELL_AURA_MOUNTED);
+                state.mountDue = false;
+                state.pendingMount = mount.spell;
+                state.events.RescheduleEvent(MountRetry, Milliseconds(60000));
+                MountItemUse(botAI).Learn(item);
+                return true;
+            }
+        }
         if (state.townDue)
         {
             state.townDue = false;
@@ -989,6 +1152,12 @@ bool CompanionErrandAction::Execute(Event)
                         auto focus = GetCompanionNarrativeFocus(bot->GetGUID());
                         bool profession = trainer->GetTrainerType() != Trainer::Type::Class;
                         priority = focus == "craft" ? (profession ? 0.0 : 10000.0) : (profession ? 10000.0 : 0.0);
+                    }
+                    else if (!state.rejectedSupplyVendors.count(uint32(spawn)) &&
+                        ChooseMount(botAI, sObjectMgr->GetNpcVendorItemList(data.id), state.reserve).item)
+                    {
+                        candidate = Errand::MountVendor;
+                        priority = 12000.0;
                     }
                     else if (IsManagedCompanion(botAI) && !state.rejectedSupplyVendors.count(uint32(spawn)) &&
                         (ChooseProfessionSupply(bot, sObjectMgr->GetNpcVendorItemList(data.id),
@@ -1063,7 +1232,7 @@ bool CompanionErrandAction::Execute(Event)
                         RecordTraining(bot, "travelling", 0, 0, 0);
                     state.sold = 0;
                     state.repairs = 0;
-                    if (selected != Errand::ProfessionVendor)
+                    if (selected != Errand::ProfessionVendor && selected != Errand::MountVendor)
                         botAI->TellMaster(selected == Errand::Bags ?
                         "Je vais vendre mes objets gris inutiles et faire reparer mon equipement, puis je reviens." :
                         selected == Errand::Trainer ?
@@ -1077,21 +1246,40 @@ bool CompanionErrandAction::Execute(Event)
             state.herbDue = false;
             state.events.RescheduleEvent(HerbScan, Milliseconds(5000));
             if (!GetCompanionNarrativeFocus(bot->GetGUID()).starts_with("training") &&
-                IsManagedCompanion(botAI) && bot->HasSkill(SKILL_HERBALISM) && bot->HasSpell(2366) && HasBagRoom(bot) &&
-                bot->GetDistance(master) <= 40.0f && !master->IsMounted() && !bot->IsMounted())
+                IsCompanionInventoryManaged(botAI) &&
+                ((bot->HasSkill(SKILL_HERBALISM) && bot->HasSpell(2366)) ||
+                    (bot->HasSkill(SKILL_MINING) && bot->HasSpell(2575))) && HasBagRoom(bot) &&
+                bot->GetDistance(master) <= 40.0f && !(master->IsMounted() && master->isMoving()))
             {
-                float best = 40.0f;
-                for (ObjectGuid guid : context->GetValue<GuidVector>("nearest game objects")->Get())
+                float best = CompanionErrands::GatherRadius;
+                std::list<GameObject*> nodes;
+                AnyGameObjectInObjectRangeCheck check(bot, best);
+                Acore::GameObjectListSearcher<AnyGameObjectInObjectRangeCheck> search(bot, nodes, check);
+                Cell::VisitObjects(bot, search, best);
+                for (GameObject* herb : nodes)
                 {
-                    GameObject* herb = botAI->GetGameObject(guid);
+                    ObjectGuid guid = herb->GetGUID();
                     if (!herb || state.rejectedHerbs.count(guid) || !bot->CanSeeOrDetect(herb) ||
+                        herb->HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE) ||
+                        (herb->HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_INTERACT_COND) && !herb->ActivateToQuest(bot)) ||
+                        herb->GetGoState() != GO_STATE_READY ||
                         !herb->isSpawned() || herb->getLootState() != GO_READY ||
                         !CompanionErrands::HerbWithinLeash(bot->GetDistance(herb), master->GetDistance(herb),
                             bot->GetDistance(master)) || bot->GetDistance(herb) >= best ||
                         !bot->IsWithinLOSInMap(herb))
                         continue;
                     LootObject loot(bot, guid);
-                    if (loot.skillId != SKILL_HERBALISM || !loot.IsLootPossible(bot) || !SafeHerb(bot, herb))
+                    if ((loot.skillId != SKILL_HERBALISM && loot.skillId != SKILL_MINING) ||
+                        !bot->HasSpell(loot.skillId == SKILL_MINING ? 2575 : 2366) ||
+                        !loot.IsLootPossible(bot, false) || !SafeHerb(bot, herb))
+                        continue;
+                    bool claimed = false;
+                    for (GroupReference* ref = bot->GetGroup()->GetFirstMember(); ref; ref = ref->next())
+                        if (Player* member = ref->GetSource(); member && member != bot && member->IsInWorld() &&
+                            member->GetMap() == bot->GetMap())
+                            if (PlayerbotAI* other = GET_PLAYERBOT_AI(member))
+                                claimed = claimed || IsCompanionGatherLoot(other, guid);
+                    if (claimed)
                         continue;
                     best = bot->GetDistance(herb);
                     state.target = guid;
@@ -1102,14 +1290,14 @@ bool CompanionErrandAction::Execute(Event)
                 if (state.target)
                 {
                     state.kind = Errand::Herb;
-                    botAI->TellMaster("Je cueille cette plante et je vous rejoins.");
+                    // The bounded detour itself is sufficient; avoid repeated gathering chatter.
                 }
             }
         }
         if (state.kind == Errand::None)
             return false;
         state.closest = std::numeric_limits<float>::max();
-        state.events.RescheduleEvent(Deadline, Milliseconds(state.kind == Errand::Herb ? 30000 : 180000));
+        state.events.RescheduleEvent(Deadline, Milliseconds(state.kind == Errand::Herb ? 60000 : 180000));
         state.events.RescheduleEvent(Progress, Milliseconds(30000));
     }
 
@@ -1127,7 +1315,9 @@ bool CompanionErrandAction::Execute(Event)
     if (state.kind == Errand::Herb)
     {
         GameObject* herb = botAI->GetGameObject(state.target);
-        if (!herb || !herb->isSpawned() || !HasBagRoom(bot) || !SafeHerb(bot, herb))
+        if (!herb || !herb->isSpawned() || !HasBagRoom(bot) || !SafeHerb(bot, herb) ||
+            !bot->CanSeeOrDetect(herb) || herb->HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE) ||
+            (herb->HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_INTERACT_COND) && !herb->ActivateToQuest(bot)))
         {
             StopTrip(botAI, true);
             return false;
@@ -1142,9 +1332,18 @@ bool CompanionErrandAction::Execute(Event)
                     StopTrip(botAI, true);
                     return false;
                 }
-                bot->StopMoving();
+                if (bot->isMoving())
+                {
+                    bot->StopMoving();
+                    return true;
+                }
+                if (bot->IsMounted())
+                {
+                    bot->RemoveAurasByType(SPELL_AURA_MOUNTED);
+                    return true;
+                }
                 context->GetValue<LootObject>("loot target")->Set(loot);
-                state.gathering = botAI->CastSpell(2366, bot);
+                state.gathering = botAI->CastSpell(loot.skillId == SKILL_MINING ? 2575 : 2366, bot);
                 if (!state.gathering)
                     StopTrip(botAI, true);
             }
@@ -1221,13 +1420,15 @@ bool CompanionErrandAction::Execute(Event)
             state.z = npc->GetPositionZ();
         }
     }
-    if (state.kind == Errand::PoisonVendor || state.kind == Errand::ProfessionVendor)
+    if (state.kind == Errand::PoisonVendor || state.kind == Errand::ProfessionVendor ||
+        state.kind == Errand::MountVendor)
     {
         bool supplies = state.kind == Errand::ProfessionVendor;
+        bool mount = state.kind == Errand::MountVendor;
         Creature* npc = ObjectAccessor::GetSpawnedCreatureByDBGUID(bot->GetMapId(), state.spawn);
         if (npc && bot->GetNPCIfCanInteractWith(npc->GetGUID(), UNIT_NPC_FLAG_VENDOR))
         {
-            auto purchase = supplies ?
+            auto purchase = mount ? ChooseMount(botAI, npc->GetVendorItems(), state.reserve, npc) : supplies ?
                 ChooseProfessionSupply(bot, npc->GetVendorItems(), state.reserve, NeededProfessionSupplies(bot), npc) :
                 ChoosePoison(bot, npc->GetVendorItems(), state.reserve, PoisonStock(bot), npc);
             BagPurchase bag;
@@ -1259,7 +1460,7 @@ bool CompanionErrandAction::Execute(Event)
                     return true;
                 }
             }
-            if (supplies)
+            if (supplies || mount)
                 state.rejectedSupplyVendors.insert(state.spawn);
             else
                 state.rejectedVendors.insert(state.spawn);

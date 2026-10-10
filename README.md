@@ -37,6 +37,22 @@ ni la compatibilité avec toutes les anciennes versions du cœur.
 
 ## Organisation
 
+Les compagnons d'un joueur humain peuvent récolter plantes et filons visibles
+jusqu'à 80 mètres, avec métier, niveau et outils requis. Ils commencent à moins
+de 40 mètres du joueur et interrompent le détour au-delà de 120 mètres, en combat,
+en cas de danger repéré ou de trajet sans progrès. Une récolte dure au maximum
+60 secondes avant abandon. Ils évitent les ressources déjà visées par un autre
+compagnon du groupe. Les déplacements montés du joueur restent prioritaires.
+
+Pendant les haltes en ville, les compagnons peuvent payer les leçons d'équitation
+éligibles et acheter une monture auprès des services de la même localité. Les
+conditions natives de niveau, métier, réputation, stock et argent s'appliquent.
+Une réserve d'argent est conservée ; aucune compétence ou monture n'est offerte.
+Chez un vendeur, la meilleure vitesse abordable est choisie, puis le prix départage
+les variantes. Les montures connues ou encore dans les sacs empêchent les achats
+équivalents. L'objet acheté est utilisé par le mécanisme natif d'apprentissage.
+Ces haltes ne comprennent pas de voyage autonome vers une autre ville.
+
 - `src/gameplay/` : actions, combat, déplacement, équipement et formation.
 - `src/narrative/` : dialogue, culture, vocations et mémoire durable.
 - `src/companion_loader.cpp` : chargement unique du module.
