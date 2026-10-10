@@ -7,6 +7,7 @@
 #include "ReleaseSpiritAction.h"
 #include "Corpse.h"
 #include "CompanionRecoveryPolicy.h"
+#include "CompanionErrands.h"
 #include "Event.h"
 #include "GameGraveyard.h"
 #include "Log.h"
@@ -22,6 +23,20 @@ bool ReleaseSpiritAction::Execute(Event event)
 {
     if (bot->IsAlive())
     {
+        // A master's release packet is not an instruction to stay permanently.
+        // FollowAction pauses while that master is dead and resumes when alive.
+        if (IsCompanionInventoryManaged(botAI))
+        {
+            if (!bot->InBattleground() && !botAI->GetMaster()->IsAlive() &&
+                botAI->HasStrategy("follow", BOT_STATE_NON_COMBAT))
+            {
+                bot->GetMotionMaster()->Clear();
+                bot->StopMoving();
+                botAI->TellMasterNoFacing(PlayerbotTextMgr::instance().GetBotTextOrDefault(
+                    "release_spirit_not_dead_wait", "I am not dead, will wait here", {}));
+            }
+            return false;
+        }
         if (!bot->InBattleground())
         {
             botAI->TellMasterNoFacing(PlayerbotTextMgr::instance().GetBotTextOrDefault(

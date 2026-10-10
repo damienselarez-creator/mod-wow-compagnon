@@ -5,6 +5,7 @@
  */
 
 #include "FollowActions.h"
+#include "CompanionErrands.h"
 #include "Event.h"
 #include "Formations.h"
 #include "LastMovementValue.h"
@@ -98,6 +99,8 @@ namespace
 
 bool FollowAction::Execute(Event /*event*/)
 {
+    if (Unit* master = botAI->GetMaster(); master && !CanDeadFollow(master))
+        return false;
     Formation* formation = AI_VALUE(Formation*, "formation");
     std::string const target = formation->GetTargetName();
 
@@ -292,6 +295,12 @@ bool FollowAction::isUseful()
 
 bool FollowAction::CanDeadFollow(Unit* target)
 {
+    // Keep the follow strategy intact: no nearby resurrection packet is needed
+    // to resume after the human returns alive, even from a distant graveyard.
+    if (!bot->InBattleground() && IsCompanionInventoryManaged(botAI) && bot->IsAlive() &&
+        !botAI->GetMaster()->IsAlive())
+        return false;
+
     // In battleground, wait for spirit healer
     if (bot->InBattleground() && !bot->IsAlive())
         return false;

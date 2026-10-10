@@ -5,6 +5,7 @@
  */
 
 #include "ReviveFromCorpseAction.h"
+#include "CompanionErrands.h"
 #include "Corpse.h"
 #include "Event.h"
 #include "FleeManager.h"
@@ -22,7 +23,8 @@ bool ReviveFromCorpseAction::Execute(Event event)
 
     // follow group Leader when group Leader revives
     WorldPacket& p = event.getPacket();
-    if (!p.empty() && p.GetOpcode() == CMSG_RECLAIM_CORPSE && groupLeader && !corpse && bot->IsAlive())
+    if (!IsCompanionInventoryManaged(botAI) && !p.empty() && p.GetOpcode() == CMSG_RECLAIM_CORPSE &&
+        groupLeader && !corpse && bot->IsAlive())
     {
         if (ServerFacade::instance().IsDistanceLessThan(AI_VALUE2(float, "distance", "group leader"),
                                               sPlayerbotAIConfig.farDistance))
