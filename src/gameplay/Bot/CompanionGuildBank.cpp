@@ -164,10 +164,65 @@ namespace
             guild->MemberHasTabRights(player->GetGUID(), item.tab, GUILD_BANK_RIGHT_VIEW_TAB);
     }
 
+    SpellInfo const* EnhancementSpell(ItemTemplate const* item)
+    {
+        if (item->Class != ITEM_CLASS_CONSUMABLE && item->Class != ITEM_CLASS_TRADE_GOODS)
+            return nullptr;
+        for (auto const& use : item->Spells)
+            if (use.SpellTrigger == ITEM_SPELLTRIGGER_ON_USE ||
+                use.SpellTrigger == ITEM_SPELLTRIGGER_ON_NO_DELAY_USE)
+                if (auto const* spell = sSpellMgr->GetSpellInfo(use.SpellId))
+                    for (auto const& effect : spell->GetEffects())
+                        if (effect.IsEffect(SPELL_EFFECT_ENCHANT_ITEM) && effect.MiscValue > 0)
+                            return spell;
+        return nullptr;
+    }
+
+    std::vector<Item*> EnhancementTargets(Player* player, ItemTemplate const* item)
+    {
+        std::vector<Item*> targets;
+        auto const* spell = EnhancementSpell(item);
+        if (!spell || player->CanUseItem(item) != EQUIP_ERR_OK)
+            return targets;
+        for (auto const& effect : spell->GetEffects())
+            if (effect.IsEffect(SPELL_EFFECT_ENCHANT_ITEM))
+            {
+                auto const* enchantment = sSpellItemEnchantmentStore.LookupEntry(effect.MiscValue);
+                if (!enchantment || player->GetLevel() < enchantment->requiredLevel ||
+                    (enchantment->requiredSkill &&
+                        player->GetSkillValue(enchantment->requiredSkill) < enchantment->requiredSkillValue))
+                    return targets;
+                StatsWeightCalculator score(player);
+                bool useful = score.CalculateEnchant(effect.MiscValue) > 0.0f;
+                // Plain armor reinforcement also benefits casters whose armor weight is zero.
+                for (uint32 index = 0; index < MAX_SPELL_ITEM_ENCHANTMENT_EFFECTS; ++index)
+                    if (enchantment->type[index] == ITEM_ENCHANTMENT_TYPE_RESISTANCE &&
+                        enchantment->spellid[index] == SPELL_SCHOOL_NORMAL && enchantment->amount[index])
+                        useful = true;
+                if (!useful)
+                    return targets;
+            }
+        for (uint8 slot = EQUIPMENT_SLOT_START; slot < EQUIPMENT_SLOT_END; ++slot)
+            if (Item* equipment = player->GetItemByPos(INVENTORY_SLOT_BAG_0, slot))
+            {
+                auto const* proto = equipment->GetTemplate();
+                uint32 level = proto->RequiredLevel ? proto->RequiredLevel : proto->ItemLevel;
+                if (equipment->GetEnchantmentId(PERM_ENCHANTMENT_SLOT) ||
+                    !equipment->IsFitToSpellRequirements(spell) ||
+                    (!spell->HasAttribute(SPELL_ATTR2_ALLOW_LOW_LEVEL_BUFF) && level < spell->BaseLevel) ||
+                    (spell->MaxLevel && proto->ItemLevel > spell->MaxLevel))
+                    continue;
+                targets.push_back(equipment);
+            }
+        return targets;
+    }
+
     Kind ItemKind(ItemTemplate const* item)
     {
         if (item->TotemCategory)
             return Kind::Tools;
+        if (EnhancementSpell(item))
+            return Kind::Enhancements;
         switch (item->Class)
         {
             case ITEM_CLASS_CONTAINER: return Kind::Bags;
@@ -220,10 +275,19 @@ namespace
         return nullptr;
     }
 
-    bool NeedsArticle(PlayerbotAI* ai, ItemTemplate const* item)
+    uint32 NeededArticleCount(PlayerbotAI* ai, ItemTemplate const* item)
     {
         Player* player = ai->GetBot();
         uint32 held = player->GetItemCount(item->ItemId, true);
+        if (EnhancementSpell(item))
+            return CompanionSharing::Surplus(uint32(EnhancementTargets(player, item).size()), held);
+        Kind kind = ItemKind(item);
+        if (kind == Kind::Consumables && player->CanUseItem(item) == EQUIP_ERR_OK)
+        {
+            ItemUsage usage = ai->GetAiObjectContext()->GetValue<ItemUsage>("item usage", item->ItemId)->Get();
+            if (usage == ITEM_USAGE_USE || usage == ITEM_USAGE_AMMO)
+                return CompanionSharing::Surplus(10, held);
+        }
         if (item->Class == ITEM_CLASS_CONTAINER)
             for (uint8 slot = INVENTORY_SLOT_BAG_START; slot < INVENTORY_SLOT_BAG_END; ++slot)
                 if (Bag* bag = player->GetBagByPos(slot))
@@ -314,15 +378,18 @@ namespace
         if (proto->TotemCategory)
             keep = std::max(keep, uint32(1));
         bool eligible = plan.products.count(item->GetEntry()) || proto->Class == ITEM_CLASS_TRADE_GOODS ||
-            proto->Class == ITEM_CLASS_REAGENT || proto->Class == ITEM_CLASS_RECIPE || proto->Class == ITEM_CLASS_GEM;
+            proto->Class == ITEM_CLASS_REAGENT || proto->Class == ITEM_CLASS_RECIPE ||
+            proto->Class == ITEM_CLASS_GEM || EnhancementSpell(proto);
         if (!eligible)
             return 0;
-        if (proto->Class == ITEM_CLASS_CONTAINER)
+        if (EnhancementSpell(proto))
+            keep = std::max(keep, uint32(EnhancementTargets(player, proto).size()));
+        else if (proto->Class == ITEM_CLASS_CONTAINER)
         {
             if (Bag* bag = item->ToBag())
                 if (!bag->IsEmpty())
                     return 0;
-            if (NeedsArticle(ai, proto) || usage == ITEM_USAGE_EQUIP || usage == ITEM_USAGE_REPLACE)
+            if (NeededArticleCount(ai, proto) || usage == ITEM_USAGE_EQUIP || usage == ITEM_USAGE_REPLACE)
                 return 0;
         }
         else if (proto->Class == ITEM_CLASS_RECIPE)
@@ -362,6 +429,20 @@ namespace
     public:
         explicit BankUseItem(PlayerbotAI* ai) : UseItemAction(ai, "companion bank use", true) { }
         bool Learn(Item* item) { return UseItemAuto(item); }
+        bool Enhance(Item* item, Item* equipment)
+        {
+            auto const* spell = EnhancementSpell(item->GetTemplate());
+            if (!spell || equipment->GetEnchantmentId(PERM_ENCHANTMENT_SLOT) ||
+                !botAI->CanCastSpell(spell->Id, bot, false, equipment, item))
+                return false;
+            // One explicit item target; the native handler validates and consumes the reinforcement.
+            WorldPacket packet(CMSG_USE_ITEM);
+            packet << item->GetBagSlot() << item->GetSlot() << uint8(1) << spell->Id << item->GetGUID()
+                << uint32(0) << uint8(0) << uint32(TARGET_FLAG_ITEM) << equipment->GetGUID().WriteAsPacked();
+            bot->GetSession()->HandleUseItemOpcode(packet);
+            botAI->SetNextCheckDelay(spell->CalcCastTime() + sPlayerbotAIConfig.reactDelay);
+            return true;
+        }
         bool Socket(Item* equipment, Item* gem) { return SocketItem(equipment, gem, false); }
     };
 
@@ -373,25 +454,33 @@ namespace
         {
             auto const* proto = sObjectMgr->GetItemTemplate(item.entry);
             if (!proto || donated.count(item.entry) || ItemKind(proto) == Kind::Materials ||
-                !NeedsArticle(ai, proto) || !CanWithdraw(guild, player, item))
+                !NeededArticleCount(ai, proto) || !CanWithdraw(guild, player, item))
                 continue;
             Kind kind = ItemKind(proto);
-            if (!history.Reserve(player->GetGUID().GetCounter(), kind, now))
+            uint32 amount = CompanionSharing::TakeCount(kind, item.count, NeededArticleCount(ai, proto),
+                proto->GetMaxStackSize());
+            if (!amount || !history.Reserve(player->GetGUID().GetCounter(), kind, now))
                 continue;
-            if (!Withdraw(guild, player, item, CompanionSharing::TakeCount(kind, item.count, 1)))
+            if (!Withdraw(guild, player, item, amount))
             {
                 history.Cancel(player->GetGUID().GetCounter(), kind);
                 continue;
             }
-            LOG_INFO("playerbots", "Companion guild bank: {} takes item={} count=1; weekly family={}",
-                player->GetName(), item.entry, uint32(kind));
-            if (kind == Kind::Recipes || kind == Kind::Gems)
+            LOG_INFO("playerbots", "Companion guild bank: {} takes item={} count={}; weekly family={}",
+                player->GetName(), item.entry, amount, uint32(kind));
+            if (kind == Kind::Recipes || kind == Kind::Gems || kind == Kind::Enhancements)
                 for (Item* owned : ai->GetInventoryItems())
                     if (owned->GetEntry() == item.entry)
                     {
                         BankUseItem use(ai);
                         if (kind == Kind::Recipes)
                             use.Learn(owned);
+                        else if (kind == Kind::Enhancements)
+                        {
+                            auto targets = EnhancementTargets(player, proto);
+                            if (!targets.empty())
+                                use.Enhance(owned, targets.front());
+                        }
                         else if (Item* equipment = EmptyGemSocket(player, proto))
                             use.Socket(equipment, owned);
                         break;

@@ -13,15 +13,17 @@
 
 namespace CompanionSharing
 {
-    enum class Kind : uint8_t { Bags, Gems, Armor, Weapons, Recipes, Consumables, Tools, Materials };
+    enum class Kind : uint8_t { Bags, Gems, Armor, Weapons, Recipes, Consumables, Tools, Materials, Enhancements };
     constexpr uint64_t Week = 7 * 24 * 60 * 60;
     constexpr uint32_t MaterialLimit = 5;
     constexpr uint32_t RetainedReagents = 20;
 
-    inline uint32_t TakeCount(Kind kind, uint32_t stock, uint32_t missing)
+    inline uint32_t TakeCount(Kind kind, uint32_t stock, uint32_t missing, uint32_t stackLimit = 1)
     {
         if (!stock || !missing)
             return 0;
+        if (kind == Kind::Consumables || kind == Kind::Enhancements)
+            return std::min({stock, missing, stackLimit});
         if (kind != Kind::Materials)
             return 1;
         // A small part of the shared stock, at most enough for one craft.

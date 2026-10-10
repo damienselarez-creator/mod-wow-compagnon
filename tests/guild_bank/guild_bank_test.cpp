@@ -19,6 +19,12 @@ int main(int argc, char** argv)
     assert(TakeCount(Kind::Bags, 3, 4) == 1);
     assert(TakeCount(Kind::Gems, 20, 3) == 1);
     assert(TakeCount(Kind::Armor, 2, 1) == 1);
+    assert(TakeCount(Kind::Enhancements, 4, 4, 20) == 4);
+    assert(TakeCount(Kind::Enhancements, 20, 4, 20) == 4);
+    assert(TakeCount(Kind::Enhancements, 4, 2, 20) == 2);
+    assert(TakeCount(Kind::Consumables, 40, 30, 20) == 20);
+    assert(TakeCount(Kind::Gems, 20, 4, 20) == 1);
+    assert(TakeCount(Kind::Enhancements, 4, 4, 0) == 0);
     assert(TakeCount(Kind::Recipes, 0, 1) == 0);
     assert(TakeCount(Kind::Materials, 30, 12) == 5);
     assert(TakeCount(Kind::Materials, 3, 20) == 1);
@@ -29,6 +35,8 @@ int main(int argc, char** argv)
     assert(!first.Reserve(42, Kind::Gems, now + Week - 1));
     assert(first.Reserve(43, Kind::Gems, now));
     assert(first.Reserve(42, Kind::Bags, now));
+    assert(first.Reserve(42, Kind::Enhancements, now));
+    assert(!first.Reserve(42, Kind::Enhancements, now + 1));
     CompanionGuildBankStore restart;
     assert(restart.Load(path));
     assert(!restart.Reserve(42, Kind::Gems, now + 100));

@@ -154,9 +154,9 @@ Les compagnons configurés, groupés avec leur maître de la même guilde, peuve
 visiter un coffre proche en ville, hors combat. Ils déposent leurs surplus
 d'artisanat, composants et recettes inutiles, en conservant outils, objets de quête,
 améliorations et une réserve de composants pour leurs recettes connues.
-Un retrait doit apporter un bénéfice réel : **un objet par famille tous les sept jours**
+Un retrait doit apporter un bénéfice réel : **un retrait par famille de produits tous les sept jours**
 et par compagnon, même en changeant de modèle, d'onglet ou de guilde. Cela concerne
-sacs, gemmes à sertir, armures, armes, recettes, consommables et outils. Une gemme
+sacs, gemmes à sertir, armures, armes, recettes, consommables, outils et renforts. Une gemme
 doit convenir à une chasse vide et à la spécialité ; une recette doit être apprenable.
 Les matières premières se limitent aux composants manquants d'une fabrication
 personnelle : un petit panier hebdomadaire, au maximum cinq par composant et un
@@ -166,9 +166,9 @@ Les permissions natives du coffre sont respectées, sans les modifier.
 Configured companions in the same guild and group as their human owner can visit
 a nearby bank safely in town. They donate genuinely spare crafts, materials and
 recipes while keeping tools, quest items, upgrades and known-recipe supplies.
-Withdrawals require an actual benefit: **one item per family per companion in seven
+Withdrawals require an actual benefit: **one withdrawal per product family per companion in seven
 rolling days**, shared across item variants, tabs and guild changes. Families cover
-bags, socketable gems, armor, weapons, recipes, consumables and tools. Gems require
+bags, socketable gems, armor, weapons, recipes, consumables, tools and enhancements. Gems require
 a suitable empty socket and positive specialization value; recipes must be learnable.
 Materials are limited to one small weekly basket for a personal craft's missing
 ingredients, at most five per ingredient and one third of stock rounded up.
@@ -178,3 +178,19 @@ Enable `WoWCompagnon.GuildBank.Enabled` and restart. The private durable history
 defaults to `DataDir/companion-guild-bank-history.json`; preserve and back it up.
 If it cannot be read or saved safely, automatic withdrawals stop. The default
 distribution setting is disabled. This feature needs no core patch or new SQL.
+
+
+# Weekly withdrawal nuance / Nuance hebdomadaire
+
+Un retrait peut être un objet seul ou une pile utile : par exemple quatre renforts
+pour quatre pièces compatibles sans enchantement. La quantité est limitée au
+besoin réel, au stock du même emplacement et à la taille maximale d'une seule pile.
+Le retrait entier consomme le quota hebdomadaire ; aucune deuxième pile, même d'un
+autre modèle de la famille. Sacs, gemmes, équipements, outils et recettes restent
+limités à un exemplaire. Les enchantements existants ne sont pas remplacés.
+
+A withdrawal may be one item or one useful stack, such as four armor reinforcements
+for four compatible unenchanted pieces. Quantity is limited by actual need, the
+source slot and one native stack size. The whole withdrawal consumes the weekly
+quota, including when another item variant is offered. Bags, gems, gear, tools and
+recipes remain single items. Existing permanent enchantments are preserved.

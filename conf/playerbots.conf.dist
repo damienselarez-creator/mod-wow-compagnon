@@ -2784,8 +2784,8 @@ AiPlayerbot.CompanionCombatRefinement = 0
 
 # WoW Compagnon: guild-bank sharing (restart required).
 # Native guild rank/tab permissions always apply; no guild money is used.
-# Useful items: one per family/companion per rolling seven days, across item variants.
-# Families: bags, socketable gems, armor, weapons, recipes, consumables and tools.
+# Useful items: one withdrawal per family/companion per rolling seven days, across item variants.
+# Families: bags, socketable gems, armor, weapons, recipes, consumables, tools and enhancements.
 # Raw materials: one personal-craft basket per seven days; max 5 of each component,
 # at most ceil(shared stock / 3), and only actual missing recipe requirements.
 # Keep profession tools, quest items and at least 20 known-recipe reagents when held.
@@ -2795,3 +2795,19 @@ WoWCompagnon.GuildBank.Enabled = 0
 # Empty: DataDir/companion-guild-bank-history.json. Keep this private durable file.
 # Deleting it resets quotas. Back it up with character data; never publish it.
 WoWCompagnon.GuildBank.HistoryFile = ""
+
+
+# Weekly withdrawal nuance / Nuance hebdomadaire
+
+# Un retrait peut être un objet seul ou une pile utile : par exemple quatre renforts
+# pour quatre pièces compatibles sans enchantement. La quantité est limitée au
+# besoin réel, au stock du même emplacement et à la taille maximale d'une seule pile.
+# Le retrait entier consomme le quota hebdomadaire ; aucune deuxième pile, même d'un
+# autre modèle de la famille. Sacs, gemmes, équipements, outils et recettes restent
+# limités à un exemplaire. Les enchantements existants ne sont pas remplacés.
+
+# A withdrawal may be one item or one useful stack, such as four armor reinforcements
+# for four compatible unenchanted pieces. Quantity is limited by actual need, the
+# source slot and one native stack size. The whole withdrawal consumes the weekly
+# quota, including when another item variant is offered. Bags, gems, gear, tools and
+# recipes remain single items. Existing permanent enchantments are preserved.
