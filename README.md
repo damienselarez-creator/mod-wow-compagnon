@@ -146,3 +146,35 @@ It uses learned recipes, real reagents and native crafting requirements, one cra
 at a time. Group goods remain available for normal trading; automatic delivery is
 not implemented. Bind-on-pickup outputs are never crafted for others, and pending
 goods prevent duplicate group batches. No useless skill-grinding crafts are added.
+
+
+### Coffre de guilde / Guild bank
+
+Les compagnons configurés, groupés avec leur maître de la même guilde, peuvent
+visiter un coffre proche en ville, hors combat. Ils déposent leurs surplus
+d'artisanat, composants et recettes inutiles, en conservant outils, objets de quête,
+améliorations et une réserve de composants pour leurs recettes connues.
+Un retrait doit apporter un bénéfice réel : **un objet par famille tous les sept jours**
+et par compagnon, même en changeant de modèle, d'onglet ou de guilde. Cela concerne
+sacs, gemmes à sertir, armures, armes, recettes, consommables et outils. Une gemme
+doit convenir à une chasse vide et à la spécialité ; une recette doit être apprenable.
+Les matières premières se limitent aux composants manquants d'une fabrication
+personnelle : un petit panier hebdomadaire, au maximum cinq par composant et un
+tiers du stock arrondi au supérieur. Aucun argent de guilde n'est utilisé.
+Les permissions natives du coffre sont respectées, sans les modifier.
+
+Configured companions in the same guild and group as their human owner can visit
+a nearby bank safely in town. They donate genuinely spare crafts, materials and
+recipes while keeping tools, quest items, upgrades and known-recipe supplies.
+Withdrawals require an actual benefit: **one item per family per companion in seven
+rolling days**, shared across item variants, tabs and guild changes. Families cover
+bags, socketable gems, armor, weapons, recipes, consumables and tools. Gems require
+a suitable empty socket and positive specialization value; recipes must be learnable.
+Materials are limited to one small weekly basket for a personal craft's missing
+ingredients, at most five per ingredient and one third of stock rounded up.
+Native bank permissions remain authoritative; no guild money is used.
+
+Enable `WoWCompagnon.GuildBank.Enabled` and restart. The private durable history
+defaults to `DataDir/companion-guild-bank-history.json`; preserve and back it up.
+If it cannot be read or saved safely, automatic withdrawals stop. The default
+distribution setting is disabled. This feature needs no core patch or new SQL.

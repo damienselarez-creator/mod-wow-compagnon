@@ -1,4 +1,5 @@
 #include "CompanionErrands.h"
+#include "CompanionGuildBank.h"
 #include "CompanionVocation.h"
 
 #include "Bag.h"
@@ -43,7 +44,7 @@ namespace
     }
 
     enum Timer : uint32 { Decision = 1, TownScan, HerbScan, Deadline, Progress, Resume, ClearRejected, VerifyLesson };
-    enum class Errand { None, Trainer, Herb, Return, PoisonVendor, Bags, ProfessionVendor };
+    enum class Errand { None, Trainer, Herb, Return, PoisonVendor, Bags, ProfessionVendor, GuildBank };
     constexpr float TownRadius = 1500.0f;
 
     bool Eligible(PlayerbotAI* ai)
@@ -664,7 +665,23 @@ namespace
                 state.rejectedTrainers.insert(state.spawn);
                 RecordTraining(ai->GetBot(), "interrupted_or_unreachable", 0, state.pendingLesson, state.learned);
             }
-            if (state.kind == Errand::Bags)
+            if (state.kind == Errand::GuildBank)
+    {
+        GameObject* bank = botAI->GetGameObject(state.target);
+        if (!bank || !bank->isSpawned() || master->GetDistance(bank) > 30.0f)
+        {
+            StopTrip(botAI, false);
+            return false;
+        }
+        if (bot->GetGameObjectIfCanInteractWith(state.target, GAMEOBJECT_TYPE_GUILD_BANK))
+        {
+            bot->StopMoving();
+            QueueCompanionGuildBank(botAI, state.target);
+            Returning(botAI);
+            return true;
+        }
+    }
+    if (state.kind == Errand::Bags)
                 state.rejectedBagVendors.insert(state.spawn);
             if (state.kind == Errand::ProfessionVendor)
                 state.rejectedSupplyVendors.insert(state.spawn);
@@ -1027,6 +1044,27 @@ bool CompanionErrandAction::Execute(Event)
                         RecordTraining(bot, budgetBlocked ? "budget_insufficient" : "no_eligible_lesson", 0, 0, 0);
                 }
                 if (best == std::numeric_limits<double>::max() && IsManagedCompanion(botAI) &&
+                    CompanionGuildBankVisitDue(bot->GetGUID()) && !master->isMoving() &&
+                    bot->GetGuildId() && bot->GetGuildId() == master->GetGuildId())
+                {
+                    float distance = 30.0f;
+                    for (ObjectGuid guid : context->GetValue<GuidVector>("nearest game objects")->Get())
+                    {
+                        GameObject* bank = botAI->GetGameObject(guid);
+                        if (!bank || bank->GetGoType() != GAMEOBJECT_TYPE_GUILD_BANK || !bank->isSpawned() ||
+                            !bot->CanSeeOrDetect(bank) || !bot->IsWithinLOSInMap(bank) ||
+                            master->GetDistance(bank) > 30.0f || bot->GetDistance(bank) >= distance)
+                            continue;
+                        distance = bot->GetDistance(bank);
+                        state.kind = Errand::GuildBank;
+                        state.target = guid;
+                        state.x = bank->GetPositionX();
+                        state.y = bank->GetPositionY();
+                        state.z = bank->GetPositionZ();
+                    }
+                }
+                if (best == std::numeric_limits<double>::max() && state.kind == Errand::None &&
+                    IsManagedCompanion(botAI) &&
                     !master->isMoving() && !bot->isMoving() && !bot->IsMounted() &&
                     !bot->IsNonMeleeSpellCast(false) && bot->GetDistance(master) < 30.0f && HasBagRoom(bot))
                 {

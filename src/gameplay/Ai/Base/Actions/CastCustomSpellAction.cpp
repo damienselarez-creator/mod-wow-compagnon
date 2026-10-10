@@ -1,4 +1,5 @@
 #include "CompanionErrands.h"
+#include "CompanionGuildBank.h"
 #include "SelfbotInventory.h"
 /*
  * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
@@ -422,7 +423,8 @@ uint32 CraftRandomItemAction::GetSpellPriority(SpellInfo const* spellInfo)
         // Keep one pending batch for the group; do not recreate goods awaiting delivery.
         bool tradable = item->Bonding == NO_BIND || item->Bonding == BIND_WHEN_EQUIPPED ||
             item->Bonding == BIND_WHEN_USE;
-        if (!tradable || bot->GetItemCount(item->ItemId, true))
+        if (!tradable || bot->GetItemCount(item->ItemId, true) ||
+            CompanionGuildBankHasProduct(bot->GetGuildId(), item->ItemId))
             return 0;
         if (Group* group = bot->GetGroup())
             for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())

@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.16)
+project(companion_guild_bank_tests LANGUAGES CXX)
+enable_testing()
+add_executable(guild_bank_test guild_bank_test.cpp)
+target_compile_features(guild_bank_test PRIVATE cxx_std_17)
+target_include_directories(guild_bank_test PRIVATE ../../src/gameplay/Bot ../../src/narrative/llm ../../deps)
+add_test(NAME durable_weekly_guild_sharing COMMAND guild_bank_test "${CMAKE_CURRENT_BINARY_DIR}/history-test")

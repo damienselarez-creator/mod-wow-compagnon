@@ -56,6 +56,7 @@ struct Player
     Item* equipped = nullptr;
     bool usable = true, alive = true, world = true, profession = true;
     float distance = 0;
+    uint32 GetGuildId() const { return 1; }
     uint32 GetItemCount(uint32 id, bool) const { auto f = counts.find(id); return f == counts.end() ? 0 : f->second; }
     uint32 CanUseItem(ItemTemplate const*) const { return usable ? EQUIP_ERR_OK : 1; }
     Bag* GetBagByPos(uint8 slot) const { auto f = bags.find(slot); return f == bags.end() ? nullptr : f->second; }
@@ -99,6 +100,8 @@ struct PlayerbotAI
 #define AI_VALUE2(type, name, id) (botAI->context.GetValue<type>(name, std::to_string(id))->Get())
 bool IsCompanionInventoryManaged(PlayerbotAI* ai) { return ai->managed; }
 bool IsManagedCompanion(PlayerbotAI* ai) { return ai->managed; }
+bool bankStock = false;
+bool CompanionGuildBankHasProduct(uint32, uint32) { return bankStock; }
 struct ObjectMgr
 {
     std::map<uint32, ItemTemplate> items;
@@ -172,6 +175,12 @@ int main()
     assert(action.GetSpellPriority(&recipe) == 100);
     ai.context.usages[1] = ITEM_USAGE_NONE;
     assert(action.GetSpellPriority(&recipe) == 50);
+    bankStock = true;
+    assert(action.GetSpellPriority(&recipe) == 0);
+    ai.context.usages[1] = ITEM_USAGE_EQUIP;
+    assert(action.GetSpellPriority(&recipe) == 100);
+    ai.context.usages[1] = ITEM_USAGE_NONE;
+    bankStock = false;
     self.counts[1] = 1;
     assert(action.GetSpellPriority(&recipe) == 0); // Pending group batch prevents repeats.
     self.counts.clear(); objectMgr.items[1].Bonding = BIND_WHEN_PICKED_UP;

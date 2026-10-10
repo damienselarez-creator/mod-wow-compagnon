@@ -2780,3 +2780,18 @@ AiPlayerbot.CompanionTownCharacters = ""
 # Refine human-led companions: interrupts, emergency priorities, healing triage and crowd-control respect.
 # Disabled by default. Does not enable autonomous pulls or change random bots.
 AiPlayerbot.CompanionCombatRefinement = 0
+
+
+# WoW Compagnon: guild-bank sharing (restart required).
+# Native guild rank/tab permissions always apply; no guild money is used.
+# Useful items: one per family/companion per rolling seven days, across item variants.
+# Families: bags, socketable gems, armor, weapons, recipes, consumables and tools.
+# Raw materials: one personal-craft basket per seven days; max 5 of each component,
+# at most ceil(shared stock / 3), and only actual missing recipe requirements.
+# Keep profession tools, quest items and at least 20 known-recipe reagents when held.
+# Invalid/unwritable history disables withdrawals; deposits may continue.
+WoWCompagnon.GuildBank.Enabled = 0
+
+# Empty: DataDir/companion-guild-bank-history.json. Keep this private durable file.
+# Deleting it resets quotas. Back it up with character data; never publish it.
+WoWCompagnon.GuildBank.HistoryFile = ""
