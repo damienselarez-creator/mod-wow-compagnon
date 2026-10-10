@@ -5,10 +5,12 @@
 void AddCompanionGameplayScripts();
 void AddCompanionNarrativeScripts();
 void AddCompanionGuildBankScripts();
+void AddCompanionJourneyScripts();
 
 void Addmod_wow_compagnonScripts()
 {
     AddCompanionGameplayScripts();
     AddCompanionNarrativeScripts();
     AddCompanionGuildBankScripts();
+    AddCompanionJourneyScripts();
 }
