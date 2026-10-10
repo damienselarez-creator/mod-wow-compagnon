@@ -24,6 +24,7 @@ namespace
         std::optional<WorldLocation> home;
         uint32 area = 0;
         bool confirmed = false;
+        bool started = false;
         std::set<ObjectGuid> arrived;
         EventMap events;
         Clock::time_point expires;
@@ -81,7 +82,7 @@ namespace
         if (journey.home && !SameHome(master, *journey.home, journey.area))
             journey.home.reset();
 
-        if (journey.destination && AtDestination(master, *journey.destination))
+        if (journey.destination && journey.started && AtDestination(master, *journey.destination))
             journey.confirmed = true;
         bool const travel = journey.destination && journey.confirmed && SafeTravel(master);
         bool pending = false;
@@ -167,6 +168,7 @@ public:
         Journey& journey = journeys[player->GetGUID()];
         journey.destination = WorldLocation(map, x, y, z, orientation);
         journey.confirmed = false;
+        journey.started = false;
         journey.arrived.clear();
         Arm(journey);
         return true;
@@ -186,11 +188,30 @@ public:
 
     void OnPacketSent(WorldSession* session, WorldPacket const& packet) override
     {
-        if (packet.GetOpcode() != SMSG_PLAYERBOUND)
+        auto const opcode = packet.GetOpcode();
+        if (opcode != SMSG_PLAYERBOUND && opcode != SMSG_NEW_WORLD && opcode != MSG_MOVE_TELEPORT_ACK)
             return;
         Player* master = session ? session->GetPlayer() : nullptr;
         if (!Human(master) || !master->GetGroup())
             return;
+        if (opcode != SMSG_PLAYERBOUND)
+        {
+            if (opcode == MSG_MOVE_TELEPORT_ACK)
+            {
+                WorldPacket copy(packet);
+                copy.rpos(0);
+                ObjectGuid guid;
+                copy >> guid.ReadAsPacked();
+                if (guid != master->GetGUID())
+                    return;
+            }
+            // A before-teleport hook alone is insufficient: native admission may still reject it.
+            std::lock_guard<std::mutex> lock(journeysMutex);
+            auto it = journeys.find(master->GetGUID());
+            if (it != journeys.end() && it->second.destination)
+                it->second.started = true;
+            return;
+        }
         // PLAYERBOUND confirms an actual bind, unlike the bind-point packet also sent at login.
         MapEntry const* entry = sMapStore.LookupEntry(master->m_homebindMapId);
         if (!entry || entry->Instanceable())

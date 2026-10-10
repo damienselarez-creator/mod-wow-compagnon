@@ -115,6 +115,7 @@ struct Journey
     std::optional<WorldLocation> destination, home;
     uint32 area = 0;
     bool confirmed = false;
+    bool started = false;
     std::set<ObjectGuid> arrived;
 };
 #include "production.inc"
@@ -137,6 +138,9 @@ int main()
     Process(&human, journey); // Rejected or not yet completed master teleport.
     assert(bot.teleports == 0 && !journey.confirmed);
     human.pos = *journey.destination;
+    Process(&human, journey); // Walking to a refused teleport destination must not trigger a recall.
+    assert(bot.teleports == 0 && !journey.confirmed);
+    journey.started = true;
     bot.combat = true;
     Process(&human, journey);
     assert(bot.teleports == 0 && journey.confirmed && journey.destination);
@@ -150,6 +154,7 @@ int main()
     bot.pos = {};
     journey = {};
     journey.destination = human.pos;
+    journey.started = true;
     ai.stay = true;
     Process(&human, journey);
     assert(bot.teleports == 1 && !journey.destination);
@@ -200,6 +205,7 @@ int main()
     journey = {};
     journey.destination = human.pos;
     journey.home = WorldLocation{0, 5, 6, 7};
+    journey.started = true;
     journey.area = 42;
     Process(&human, journey);
     assert(bot.teleports == 2 && second.teleports == 1 && third.teleports == 1 && fourth.teleports == 1);
