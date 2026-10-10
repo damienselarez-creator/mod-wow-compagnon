@@ -74,6 +74,8 @@ namespace
                 {
                     uint8 tabs;
                     data >> tabs;
+                    if (tabs > GUILD_BANK_MAX_TABS)
+                        return;
                     for (uint8 index = 0; index < tabs; ++index)
                     {
                         std::string name, icon;
@@ -81,6 +83,8 @@ namespace
                     }
                 }
                 data >> slots;
+                if (slots > GUILD_BANK_MAX_SLOTS)
+                    return;
                 std::vector<BankItem> items;
                 for (uint8 index = 0; index < slots; ++index)
                 {
@@ -95,6 +99,8 @@ namespace
                     if (property)
                         data >> seed;
                     data >> count >> enchantment >> charges >> sockets;
+                    if (sockets > MAX_GEM_SOCKETS)
+                        return;
                     for (uint8 socket = 0; socket < sockets; ++socket)
                     {
                         uint8 position;
@@ -154,12 +160,14 @@ namespace
 
     bool CanWithdraw(Guild* guild, Player* player, BankItem const& item)
     {
-        return item.withdrawals != 0 &&
+        return (item.withdrawals > 0 || item.withdrawals == -1) &&
             guild->MemberHasTabRights(player->GetGUID(), item.tab, GUILD_BANK_RIGHT_VIEW_TAB);
     }
 
     Kind ItemKind(ItemTemplate const* item)
     {
+        if (item->TotemCategory)
+            return Kind::Tools;
         switch (item->Class)
         {
             case ITEM_CLASS_CONTAINER: return Kind::Bags;
@@ -168,6 +176,7 @@ namespace
             case ITEM_CLASS_WEAPON: return Kind::Weapons;
             case ITEM_CLASS_RECIPE: return Kind::Recipes;
             case ITEM_CLASS_CONSUMABLE: return Kind::Consumables;
+            case ITEM_CLASS_PROJECTILE: return Kind::Consumables;
             default: return item->TotemCategory ? Kind::Tools : Kind::Materials;
         }
     }
@@ -273,11 +282,12 @@ namespace
                 continue;
             for (uint32 tool : spell->Totem)
                 if (tool)
-                    plan.retained[tool] = 1;
+                    plan.retained[tool] = std::max(plan.retained[tool], uint32(1));
             for (uint32 index = 0; index < MAX_SPELL_REAGENTS; ++index)
                 if (spell->Reagent[index] > 0 && spell->ReagentCount[index])
                     plan.retained[uint32(spell->Reagent[index])] =
-                        std::max(CompanionSharing::RetainedReagents, spell->ReagentCount[index]);
+                        std::max({plan.retained[uint32(spell->Reagent[index])],
+                            CompanionSharing::RetainedReagents, spell->ReagentCount[index]});
             auto const* line = PlayerbotSpellRepository::Instance().GetSkillLine(id);
             if (line && IsProfessionSkill(line->SkillLine) && player->HasSkill(line->SkillLine))
                 for (auto const& effect : spell->GetEffects())
@@ -321,7 +331,9 @@ namespace
             keep = std::max(keep, uint32(EmptyGemSocket(player, proto) != nullptr));
         else if (usage == ITEM_USAGE_EQUIP || usage == ITEM_USAGE_REPLACE)
             return 0;
-        else if (usage == ITEM_USAGE_USE || usage == ITEM_USAGE_SKILL || usage == ITEM_USAGE_AMMO)
+        else if (usage == ITEM_USAGE_USE || usage == ITEM_USAGE_AMMO)
+            keep = std::max(keep, uint32(10));
+        else if (usage == ITEM_USAGE_SKILL)
             keep = std::max(keep, CompanionSharing::RetainedReagents);
         return std::min(item->GetCount(),
             CompanionSharing::Surplus(player->GetItemCount(item->GetEntry(), false), keep));
@@ -470,6 +482,9 @@ namespace
                 player->GetGroup() != master->GetGroup() || !player->GetGroup() ||
                 player->GetGuildId() != master->GetGuildId() || !player->GetGuildId() ||
                 player->GetMap() != master->GetMap() || player->GetTradeData() ||
+                player->IsBeingTeleported() || master->IsBeingTeleported() ||
+                !player->GetSession() || !master->GetSession() ||
+                player->GetSession()->IsLoggingOut() || master->GetSession()->IsLoggingOut() ||
                 player->IsNonMeleeSpellCast(false) || master->isMoving() || player->isMoving())
                 return false;
             GameObject* bank = ai->GetGameObject(_bank);
