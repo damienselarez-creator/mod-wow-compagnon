@@ -18,6 +18,9 @@ CompanionTrainingSnapshot GetCompanionTrainingSnapshot(ObjectGuid guid);
 
 struct CompanionErrandState;
 class Item;
+class Creature;
+bool CanTrainCompanionAt(PlayerbotAI* ai, Creature* npc);
+bool RequestCompanionTrainerVisit(PlayerbotAI* ai, Creature* npc);
 
 bool IsCompanionInventoryManaged(PlayerbotAI* ai);
 bool CanSellCompanionItem(PlayerbotAI* ai, Item* item);

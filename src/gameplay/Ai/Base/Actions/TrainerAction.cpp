@@ -5,6 +5,8 @@
  */
 
 #include "TrainerAction.h"
+#include "CompanionErrands.h"
+#include "TravelMgr.h"
 #include "AiFactory.h"
 #include "BisListMgr.h"
 #include "BudgetValues.h"
@@ -31,6 +33,9 @@ bool TrainerAction::Execute(Event event)
     // a single spell ID value from parameters. If someone wants to impl multiple
     // spells as parameters, check SkipSpellsListAction::parseIds as an example.
     uint32 spellId = chat->parseSpell(param);
+
+    if (!spellId && IsCompanionInventoryManaged(botAI))
+        return RequestCompanionTrainerVisit(botAI, target);
 
     bool learnSpells = param.find("learn") != std::string::npos || sRandomPlayerbotMgr.IsRandomBot(bot) ||
                        (sPlayerbotAIConfig.allowLearnTrainerSpells &&
@@ -67,6 +72,9 @@ bool TrainerAction::isPossible()
     if (!trainer->IsTrainerValidForPlayer(bot))
         return false;
 
+    if (IsCompanionInventoryManaged(botAI))
+        return CanTrainCompanionAt(botAI, target);
+
     for (Trainer::Spell const& spell : trainer->GetSpells())
     {
         Trainer::Spell const* trainerSpell = trainer->GetSpell(spell.SpellId);
@@ -97,6 +105,15 @@ Unit* TrainerAction::GetTarget()
 Creature* TrainerAction::GetCreatureTarget()
 {
     Unit* target = GetTarget();
+    if (IsCompanionInventoryManaged(botAI))
+    {
+        if (target && bot->GetNPCIfCanInteractWith(target->GetGUID(), UNIT_NPC_FLAG_TRAINER))
+            return target->ToCreature();
+        if (Creature* npc = AI_VALUE(GuidPosition, "rpg target").GetCreature())
+            if (bot->GetNPCIfCanInteractWith(npc->GetGUID(), UNIT_NPC_FLAG_TRAINER))
+                return npc;
+        target = bot->GetSelectedUnit();
+    }
     return target ? target->ToCreature() : nullptr;
 }
 

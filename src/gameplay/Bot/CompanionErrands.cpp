@@ -1,5 +1,7 @@
 #include "CompanionErrands.h"
 #include "CompanionGuildBank.h"
+#include "CompanionEquipment.h"
+#include "StatsWeightCalculator.h"
 #include "CompanionVocation.h"
 
 #include "Bag.h"
@@ -241,7 +243,7 @@ namespace
                 if (tool == proto->ItemId)
                     return true;
         }
-        for (uint32 slot = 0; slot < MAX_ENCHANTMENT_SLOT; ++slot)
+        for (uint32 slot = 0; slot < MAX_INSPECTED_ENCHANTMENT_SLOT; ++slot)
             if (item->GetEnchantmentId(EnchantmentSlot(slot)))
                 return true;
         return false;
@@ -758,11 +760,40 @@ bool IsCompanionInventoryManaged(PlayerbotAI* ai)
 
 bool CanSellCompanionItem(PlayerbotAI* ai, Item* item)
 {
-    if (!item || item->GetTemplate()->Quality != ITEM_QUALITY_POOR || Protected(ai, item))
+    if (!IsCompanionInventoryManaged(ai) || !item || Protected(ai, item))
         return false;
+    auto const* proto = item->GetTemplate();
     ItemUsage usage = ai->GetAiObjectContext()->GetValue<ItemUsage>("item usage", item->GetEntry())->Get();
-    return CompanionErrands::CanSellGrey(item->GetTemplate()->Quality, false,
-        usage == ITEM_USAGE_VENDOR || usage == ITEM_USAGE_AH || usage == ITEM_USAGE_NONE);
+    bool const unused = usage == ITEM_USAGE_VENDOR || usage == ITEM_USAGE_AH || usage == ITEM_USAGE_NONE;
+    if (proto->Quality == ITEM_QUALITY_POOR)
+        return CompanionErrands::CanSellGrey(proto->Quality, false, unused);
+    // Sell ordinary obsolete gear only after its usable replacement is actually equipped.
+    // Future gear, alternate layouts, jewellery, tools and epic keepsakes remain protected.
+    Player* bot = ai->GetBot();
+    if (!unused || proto->Quality > ITEM_QUALITY_RARE || bot->CanUseItem(proto) != EQUIP_ERR_OK ||
+        (!UsesCompanionArmorPriority(proto) && proto->Class != ITEM_CLASS_WEAPON) ||
+        (proto->Class == ITEM_CLASS_WEAPON && proto->SubClass == ITEM_SUBCLASS_WEAPON_MISC))
+        return false;
+    uint8 slot = ai->FindEquipSlot(proto, NULL_SLOT, true);
+    if (PrefersCompanionShield(ai) && IsCompanionShieldMainHand(proto->InventoryType))
+        slot = EQUIPMENT_SLOT_MAINHAND;
+    if (slot == NULL_SLOT)
+        return false;
+    Item* current = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
+    if (!current || current == item || (current->GetUInt32Value(ITEM_FIELD_MAXDURABILITY) &&
+        !current->GetUInt32Value(ITEM_FIELD_DURABILITY)))
+        return false;
+    auto const* equipped = current->GetTemplate();
+    if (proto->Class == ITEM_CLASS_WEAPON && proto->InventoryType != equipped->InventoryType)
+        return false;
+    if (PrefersCompanionShield(ai) && UsesCompanionArmorPriority(proto))
+        return CompareCompanionArmor(equipped, proto) > 0;
+    StatsWeightCalculator calculator(bot);
+    calculator.SetItemSetBonus(false);
+    calculator.SetOverflowPenalty(false);
+    return calculator.CalculateItem(current->GetEntry(), current->GetItemRandomPropertyId()) >
+        calculator.CalculateItem(item->GetEntry(), item->GetItemRandomPropertyId()) *
+            sPlayerbotAIConfig.equipUpgradeThreshold;
 }
 
 bool IsManagedCompanion(PlayerbotAI* ai)
@@ -883,7 +914,7 @@ namespace
         Trainer::Spell const* best = nullptr;
         for (auto const& spell : trainer->GetSpells())
         {
-            if (ai->companionErrands->rejectedLessons.count(spell.SpellId))
+            if (ai->companionErrands && ai->companionErrands->rejectedLessons.count(spell.SpellId))
                 continue;
             bool riding = spell.ReqSkillLine == SKILL_RIDING || TeachesRiding(spell.SpellId);
             if (riding && focus == "training_professions")
@@ -898,13 +929,52 @@ namespace
             }
             uint32 cost = uint32(std::floor(spell.MoneyCost * discount));
             if (trainer->CanTeachSpell(bot, &spell) &&
-                (!budget || CompanionErrands::CanSpend(bot->GetMoney(), cost, ai->companionErrands->reserve)) &&
+                (!budget || CompanionErrands::CanSpend(bot->GetMoney(), cost,
+                    ai->companionErrands ? ai->companionErrands->reserve : bot->GetMoney() / 5)) &&
                 (!best || spell.MoneyCost < best->MoneyCost ||
                     (spell.MoneyCost == best->MoneyCost && spell.SpellId < best->SpellId)))
                 best = trainer->GetSpell(spell.SpellId);
         }
         return best;
     }
+}
+
+bool CanTrainCompanionAt(PlayerbotAI* ai, Creature* npc)
+{
+    if (!IsCompanionInventoryManaged(ai) || !npc || !Eligible(ai) ||
+        GetCompanionNarrativeFocus(ai->GetBot()->GetGUID()) == "follow" ||
+        !ai->GetBot()->GetNPCIfCanInteractWith(npc->GetGUID(), UNIT_NPC_FLAG_TRAINER))
+        return false;
+    if (ai->companionErrands && ai->companionErrands->paused)
+        return false;
+    return ChooseLesson(ai, sObjectMgr->GetTrainer(npc->GetEntry()),
+        ai->GetBot()->GetReputationPriceDiscount(npc)) != nullptr;
+}
+
+bool RequestCompanionTrainerVisit(PlayerbotAI* ai, Creature* npc)
+{
+    if (!CanTrainCompanionAt(ai, npc) || !npc->GetSpawnId())
+        return false;
+    if (ai->companionErrands && ai->companionErrands->kind != Errand::None)
+        return ai->companionErrands->kind == Errand::Trainer &&
+            ai->companionErrands->spawn == npc->GetSpawnId();
+    RequestCompanionTraining(ai);
+    auto& state = *ai->companionErrands;
+    state.kind = Errand::Trainer;
+    state.spawn = uint32(npc->GetSpawnId());
+    state.owner = ai->GetMaster()->GetGUID();
+    state.map = ai->GetBot()->GetMapId();
+    state.zone = ai->GetMaster()->GetZoneId();
+    state.settlement = Settlement(ai->GetMaster());
+    state.reserve = ai->GetBot()->GetMoney() / 5;
+    state.learned = 0;
+    state.x = npc->GetPositionX();
+    state.y = npc->GetPositionY();
+    state.z = npc->GetPositionZ();
+    state.events.RescheduleEvent(Deadline, Milliseconds(180000));
+    state.events.RescheduleEvent(Progress, Milliseconds(30000));
+    RecordTraining(ai->GetBot(), "arrived", npc->GetEntry(), 0, 0);
+    return true;
 }
 
 void SetCompanionNarrativeFocus(ObjectGuid guid, std::string const& focus)
@@ -1099,10 +1169,10 @@ bool CompanionErrandAction::Execute(Event)
             if (InTown(master) && (IsManagedCompanion(botAI) || CanVisitTrainer(botAI) ||
                 (!master->isMoving() && bot->GetDistance(master) < 30.0f)))
             {
-                state.reserve = std::max(state.reserve, bot->GetMoney() / 5);
+                state.reserve = bot->GetMoney() / 5;
                 double best = std::numeric_limits<double>::max();
-                if (IsManagedCompanion(botAI))
-                    EquipOwnedBagUpgrade(bot);
+                botAI->DoSpecificAction("equip upgrade", Event(), true);
+                EquipOwnedBagUpgrade(bot);
                 auto const stock = PoisonStock(bot);
                 auto const supplies = IsManagedCompanion(botAI) ? NeededProfessionSupplies(bot) : ProfessionSupplies{};
                 bool sell = false;
@@ -1112,8 +1182,8 @@ bool CompanionErrandAction::Execute(Event)
                 bool repair = NeedsEquipmentRepair(bot);
                 if (!sell && NeedsBagSpace(bot) && !state.warnedBags)
                 {
-                    botAI->TellMaster("Mes sacs sont presque pleins. Je conserve les objets proteges; "
-                        "votre aide est necessaire.");
+                    botAI->TellMaster("Mes sacs sont presque pleins. Je cherche de la place "
+                        "en conservant mes objets utiles.");
                     state.warnedBags = true;
                 }
                 bool budgetBlocked = false;
@@ -1159,7 +1229,7 @@ bool CompanionErrandAction::Execute(Event)
                         candidate = Errand::MountVendor;
                         priority = 12000.0;
                     }
-                    else if (IsManagedCompanion(botAI) && !state.rejectedSupplyVendors.count(uint32(spawn)) &&
+                    else if (!state.rejectedSupplyVendors.count(uint32(spawn)) &&
                         (ChooseProfessionSupply(bot, sObjectMgr->GetNpcVendorItemList(data.id),
                             state.reserve, supplies).item ||
                         ChooseBag(bot, sObjectMgr->GetNpcVendorItemList(data.id), state.reserve).item))
@@ -1234,7 +1304,7 @@ bool CompanionErrandAction::Execute(Event)
                     state.repairs = 0;
                     if (selected != Errand::ProfessionVendor && selected != Errand::MountVendor)
                         botAI->TellMaster(selected == Errand::Bags ?
-                        "Je vais vendre mes objets gris inutiles et faire reparer mon equipement, puis je reviens." :
+                        "Je vais vendre mon equipement obsolete et mes objets inutiles, puis faire les reparations." :
                         selected == Errand::Trainer ?
                         "Je vais voir un maitre pour mes apprentissages, puis je vous rejoins." :
                         "Je vais acheter mes poisons, puis je vous rejoins.");
@@ -1528,7 +1598,10 @@ bool CompanionErrandAction::Execute(Event)
                 npc->GetEntry(), 0, state.learned);
             LOG_INFO("playerbots.companion", "[Training] {} finished trainer={} learned={} money={} reserve={} budget={}",
                 bot->GetName(), npc->GetEntry(), state.learned, bot->GetMoney(), state.reserve, budgetBlocked);
-            botAI->TellMaster("Visite terminee, je vous rejoins.");
+            botAI->TellMaster(budgetBlocked ? "Il me manque de l'argent disponible pour les lecons restantes." :
+                failed ? "L'apprentissage a echoue. Je conserve mon argent restant et reprendrai plus tard." :
+                state.learned ? "Mes nouvelles competences sont apprises. Je poursuis mes preparatifs." :
+                "Ce maitre n'a plus de lecon accessible pour mon niveau et mes competences.");
             state.events.RescheduleEvent(TownScan, Milliseconds(5000));
             Returning(botAI);
             return true;

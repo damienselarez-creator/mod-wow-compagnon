@@ -4,6 +4,7 @@
  * or (at your option) any later version.
  */
 
+#include "CompanionErrands.h"
 #include "RpgSubActions.h"
 #include "BudgetValues.h"
 #include "ChooseRpgTargetAction.h"
@@ -257,6 +258,15 @@ Event RpgSellAction::ActionEvent(Event /*event*/) { return Event("rpg action", "
 
 std::string const RpgRepairAction::ActionName() { return "repair"; }
 
+bool RpgTrainAction::Execute(Event event)
+{
+    if (!IsCompanionInventoryManaged(botAI))
+        return RpgSubAction::Execute(event);
+    bool const scheduled = RequestCompanionTrainerVisit(botAI, rpg->guidP().GetCreature());
+    rpg->AfterExecute(scheduled, true);
+    return scheduled;
+}
+
 bool RpgTrainAction::isUseful()
 {
     if (!rpg->InRange())
@@ -275,6 +285,8 @@ bool RpgTrainAction::isUseful()
 bool RpgTrainAction::isPossible()
 {
     GuidPosition gp = rpg->guidP();
+    if (IsCompanionInventoryManaged(botAI))
+        return CanTrainCompanionAt(botAI, gp.GetCreature());
 
     CreatureTemplate const* cinfo = gp.GetCreatureTemplate();
     if (!cinfo)

@@ -38,7 +38,14 @@ struct CompanionVocation
 };
 CompanionVocation vocation;
 CompanionVocation CompanionVocation::Get(Player*) { return vocation; }
-struct ItemTemplate { uint32 InventoryType; };
+constexpr uint32 ITEM_CLASS_ARMOR = 4;
+constexpr uint32 INVTYPE_HEAD = 1, INVTYPE_SHOULDERS = 3, INVTYPE_CHEST = 5, INVTYPE_WAIST = 6;
+constexpr uint32 INVTYPE_LEGS = 7, INVTYPE_FEET = 8, INVTYPE_WRISTS = 9, INVTYPE_HANDS = 10;
+constexpr uint32 INVTYPE_CLOAK = 16, INVTYPE_ROBE = 20;
+struct ItemTemplate
+{
+    uint32 InventoryType, Class = ITEM_CLASS_ARMOR, Armor = 0, Quality = 0, ItemLevel = 0;
+};
 struct ObjectMgr
 {
     std::map<uint32, ItemTemplate> items;
@@ -62,6 +69,19 @@ struct EquipAction
 
 int main()
 {
+    ItemTemplate worn{INVTYPE_HANDS, ITEM_CLASS_ARMOR, 68, 2, 15};
+    ItemTemplate upgrade{INVTYPE_HANDS, ITEM_CLASS_ARMOR, 73, 1, 12};
+    assert(UsesCompanionArmorPriority(&upgrade));
+    assert(CompareCompanionArmor(&upgrade, &worn) > 0);
+    assert(CompareCompanionArmor(&worn, &upgrade) < 0);
+    upgrade.Armor = worn.Armor;
+    assert(CompareCompanionArmor(&upgrade, &worn) < 0);
+    upgrade.Quality = worn.Quality;
+    upgrade.ItemLevel = 16;
+    assert(CompareCompanionArmor(&upgrade, &worn) > 0);
+    upgrade.ItemLevel = worn.ItemLevel;
+    assert(CompareCompanionArmor(&upgrade, &worn) == 0);
+    assert(!UsesCompanionArmorPriority(nullptr));
     PlayerbotAI ai;
     assert(PrefersCompanionShield(&ai));
     assert(!PrefersCompanionShield(nullptr));

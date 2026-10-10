@@ -359,6 +359,14 @@ ItemUsage ItemUsageValue::QueryItemUsageForEquip(ItemTemplate const* itemProto, 
         if (prefersShield && IsCompanionShieldReplacement(itemProto->InventoryType, oldItemProto->InventoryType))
             return itemIsBroken ? ITEM_USAGE_BROKEN_EQUIP : ITEM_USAGE_EQUIP;
 
+        if (prefersShield && UsesCompanionArmorPriority(itemProto) && !oldItemIsBroken)
+        {
+            int const comparison = CompareCompanionArmor(itemProto, oldItemProto);
+            if (comparison != 0)
+                return comparison < 0 ? ITEM_USAGE_NONE :
+                    itemIsBroken ? ITEM_USAGE_BROKEN_EQUIP : ITEM_USAGE_EQUIP;
+        }
+
         if (itemProto->ItemId != oldItemProto->ItemId && (shouldEquipInSlot || !existingShouldEquip) && isBetter)
         {
             switch (itemProto->Class)

@@ -94,7 +94,7 @@ void EquipAction::EquipItem(Item* item)
         if (IsCompanionShieldRejected(invType))
             return;
 
-        if (IsCompanionShieldMainHand(invType) || invType == INVTYPE_SHIELD)
+        if (IsCompanionShieldMainHand(invType) || UsesCompanionArmorPriority(itemProto))
         {
             // Equip the one-hander first; never remove the only weapon just to put on a shield.
             Item* mainHand = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_MAINHAND);
@@ -102,7 +102,10 @@ void EquipAction::EquipItem(Item* item)
                 mainHand->GetTemplate()->InventoryType == INVTYPE_2HWEAPON)
                 return;
 
-            uint8 const target = invType == INVTYPE_SHIELD ? EQUIPMENT_SLOT_OFFHAND : EQUIPMENT_SLOT_MAINHAND;
+            uint8 const target = IsCompanionShieldMainHand(invType) ? EQUIPMENT_SLOT_MAINHAND :
+                botAI->FindEquipSlot(itemProto, NULL_SLOT, true);
+            if (target == NULL_SLOT)
+                return;
             Item* current = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, target);
             if (current == item || (item->GetUInt32Value(ITEM_FIELD_MAXDURABILITY) &&
                 !item->GetUInt32Value(ITEM_FIELD_DURABILITY)))
@@ -115,9 +118,12 @@ void EquipAction::EquipItem(Item* item)
                 calculator.SetOverflowPenalty(false);
                 bool const broken = current->GetUInt32Value(ITEM_FIELD_MAXDURABILITY) &&
                     !current->GetUInt32Value(ITEM_FIELD_DURABILITY);
-                if (!broken && calculator.CalculateItem(itemId, item->GetItemRandomPropertyId()) <=
+                int const armor = UsesCompanionArmorPriority(itemProto) ?
+                    CompareCompanionArmor(itemProto, current->GetTemplate()) : 0;
+                if (!broken && (armor < 0 || (armor == 0 &&
+                    calculator.CalculateItem(itemId, item->GetItemRandomPropertyId()) <=
                     calculator.CalculateItem(current->GetEntry(), current->GetItemRandomPropertyId()) *
-                        sPlayerbotAIConfig.equipUpgradeThreshold)
+                        sPlayerbotAIConfig.equipUpgradeThreshold)))
                     return;
             }
 
@@ -408,7 +414,7 @@ ItemIds EquipAction::SelectInventoryItemsToEquip()
             continue;
 
         // Managed companions exchange bags through their errands, preserving profession bags and contents.
-        if (IsCompanionInventoryManaged(botAI) && IsManagedCompanion(botAI) &&
+        if (IsCompanionInventoryManaged(botAI) &&
             itemTemplate->Class == ITEM_CLASS_CONTAINER)
             continue;
 
@@ -434,7 +440,8 @@ ItemIds EquipAction::SelectInventoryItemsToEquip()
 
 bool EquipUpgradesPacketAction::Execute(Event event)
 {
-    if (!sPlayerbotAIConfig.autoEquipUpgradeLoot && !sRandomPlayerbotMgr.IsRandomBot(bot))
+    if (!sPlayerbotAIConfig.autoEquipUpgradeLoot && !sRandomPlayerbotMgr.IsRandomBot(bot) &&
+        !IsCompanionInventoryManaged(botAI))
         return false;
     std::string const source = event.GetSource();
     if (source == "trade status")

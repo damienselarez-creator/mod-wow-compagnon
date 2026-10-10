@@ -41,4 +41,38 @@ inline bool IsCompanionShieldReplacement(uint32 candidate, uint32 current)
         (candidate == INVTYPE_SHIELD && current != INVTYPE_SHIELD);
 }
 
+inline bool UsesCompanionArmorPriority(ItemTemplate const* item)
+{
+    if (!item || item->Class != ITEM_CLASS_ARMOR || !item->Armor)
+        return false;
+    switch (item->InventoryType)
+    {
+        case INVTYPE_HEAD:
+        case INVTYPE_SHOULDERS:
+        case INVTYPE_CHEST:
+        case INVTYPE_ROBE:
+        case INVTYPE_WAIST:
+        case INVTYPE_LEGS:
+        case INVTYPE_FEET:
+        case INVTYPE_WRISTS:
+        case INVTYPE_HANDS:
+        case INVTYPE_CLOAK:
+        case INVTYPE_SHIELD:
+            return true;
+        default:
+            return false;
+    }
+}
+
+inline int CompareCompanionArmor(ItemTemplate const* candidate, ItemTemplate const* current)
+{
+    if (candidate->Armor != current->Armor)
+        return candidate->Armor > current->Armor ? 1 : -1;
+    if (candidate->Quality != current->Quality)
+        return candidate->Quality > current->Quality ? 1 : -1;
+    if (candidate->ItemLevel != current->ItemLevel)
+        return candidate->ItemLevel > current->ItemLevel ? 1 : -1;
+    return 0;
+}
+
 #endif
