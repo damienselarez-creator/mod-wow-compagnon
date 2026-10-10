@@ -665,23 +665,7 @@ namespace
                 state.rejectedTrainers.insert(state.spawn);
                 RecordTraining(ai->GetBot(), "interrupted_or_unreachable", 0, state.pendingLesson, state.learned);
             }
-            if (state.kind == Errand::GuildBank)
-    {
-        GameObject* bank = botAI->GetGameObject(state.target);
-        if (!bank || !bank->isSpawned() || master->GetDistance(bank) > 30.0f)
-        {
-            StopTrip(botAI, false);
-            return false;
-        }
-        if (bot->GetGameObjectIfCanInteractWith(state.target, GAMEOBJECT_TYPE_GUILD_BANK))
-        {
-            bot->StopMoving();
-            QueueCompanionGuildBank(botAI, state.target);
-            Returning(botAI);
-            return true;
-        }
-    }
-    if (state.kind == Errand::Bags)
+            if (state.kind == Errand::Bags)
                 state.rejectedBagVendors.insert(state.spawn);
             if (state.kind == Errand::ProfessionVendor)
                 state.rejectedSupplyVendors.insert(state.spawn);
@@ -1164,6 +1148,22 @@ bool CompanionErrandAction::Execute(Event)
                 if (!state.gathering)
                     StopTrip(botAI, true);
             }
+            return true;
+        }
+    }
+    if (state.kind == Errand::GuildBank)
+    {
+        GameObject* bank = botAI->GetGameObject(state.target);
+        if (!bank || !bank->isSpawned() || master->GetDistance(bank) > 30.0f)
+        {
+            StopTrip(botAI, false);
+            return false;
+        }
+        if (bot->GetGameObjectIfCanInteractWith(state.target, GAMEOBJECT_TYPE_GUILD_BANK))
+        {
+            bot->StopMoving();
+            QueueCompanionGuildBank(botAI, state.target);
+            Returning(botAI);
             return true;
         }
     }

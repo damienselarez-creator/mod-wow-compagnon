@@ -43,13 +43,96 @@ namespace
         uint8 slot = 0;
         uint32 entry = 0;
         uint32 count = 0;
+        int32 withdrawals = 0;
     };
 
-    Item* BankItemAt(Guild* guild, Player* player, uint8 tab, uint8 slot)
+    // Observe only this synchronous native query, including socket-less bot sessions.
+    // The scope holds no item pointers and never captures unrelated players' packets.
+    thread_local WorldSession* queriedSession = nullptr;
+    thread_local std::vector<BankItem>* queriedItems = nullptr;
+
+    class BankPacketScript : public ServerScript
     {
-        // Public native accessor; no core changes, private-member access or DB snapshot.
-        Guild::BankMoveItemData move(guild, player, tab, slot);
-        return move.InitItem() ? move.GetItem() : nullptr;
+    public:
+        BankPacketScript() : ServerScript("wow_companion_bank_snapshot") { }
+
+        void OnPacketSent(WorldSession* session, WorldPacket const& packet) override
+        {
+            if (session != queriedSession || !queriedItems || packet.GetOpcode() != SMSG_GUILD_BANK_LIST)
+                return;
+            try
+            {
+                WorldPacket data(packet);
+                data.rpos(0);
+                uint64 money;
+                uint8 tab, full, slots;
+                int32 withdrawals;
+                data >> money >> tab >> withdrawals >> full;
+                if (!full || tab >= GUILD_BANK_MAX_TABS)
+                    return;
+                if (!tab)
+                {
+                    uint8 tabs;
+                    data >> tabs;
+                    for (uint8 index = 0; index < tabs; ++index)
+                    {
+                        std::string name, icon;
+                        data >> name >> icon;
+                    }
+                }
+                data >> slots;
+                std::vector<BankItem> items;
+                for (uint8 index = 0; index < slots; ++index)
+                {
+                    uint8 slot;
+                    uint32 entry;
+                    data >> slot >> entry;
+                    if (!entry)
+                        continue;
+                    int32 flags, property, seed, count, enchantment;
+                    uint8 charges, sockets;
+                    data >> flags >> property;
+                    if (property)
+                        data >> seed;
+                    data >> count >> enchantment >> charges >> sockets;
+                    for (uint8 socket = 0; socket < sockets; ++socket)
+                    {
+                        uint8 position;
+                        int32 gem;
+                        data >> position >> gem;
+                    }
+                    if (slot < GUILD_BANK_MAX_SLOTS && count > 0)
+                        items.push_back({tab, slot, entry, uint32(count), withdrawals});
+                }
+                queriedItems->insert(queriedItems->end(), items.begin(), items.end());
+            }
+            catch (...)
+            {
+                // Malformed or incompatible snapshots never authorize a withdrawal.
+            }
+        }
+    };
+
+    std::vector<BankItem> ReadTab(Guild* guild, Player* player, uint8 tab)
+    {
+        std::vector<BankItem> items;
+        if (!guild->MemberHasTabRights(player->GetGUID(), tab, GUILD_BANK_RIGHT_VIEW_TAB))
+            return items;
+        struct QueryScope
+        {
+            QueryScope(WorldSession* session, std::vector<BankItem>* output)
+            {
+                queriedSession = session;
+                queriedItems = output;
+            }
+            ~QueryScope()
+            {
+                queriedSession = nullptr;
+                queriedItems = nullptr;
+            }
+        } query(player->GetSession(), &items);
+        guild->SendBankTabData(player->GetSession(), tab, true);
+        return items;
     }
 
     std::vector<BankItem> ReadBank(Guild* guild, Player* player)
@@ -57,11 +140,8 @@ namespace
         std::vector<BankItem> result;
         for (uint8 tab = 0; tab < GUILD_BANK_MAX_TABS; ++tab)
         {
-            if (!guild->MemberHasTabRights(player->GetGUID(), tab, GUILD_BANK_RIGHT_VIEW_TAB))
-                continue;
-            for (uint8 slot = 0; slot < GUILD_BANK_MAX_SLOTS; ++slot)
-                if (Item* item = BankItemAt(guild, player, tab, slot))
-                    result.push_back({tab, slot, item->GetEntry(), item->GetCount()});
+            auto items = ReadTab(guild, player, tab);
+            result.insert(result.end(), items.begin(), items.end());
         }
         std::map<uint32, uint32> stock;
         for (auto const& item : result)
@@ -74,10 +154,8 @@ namespace
 
     bool CanWithdraw(Guild* guild, Player* player, BankItem const& item)
     {
-        Guild::BankMoveItemData source(guild, player, item.tab, item.slot);
-        Guild::PlayerMoveItemData destination(guild, player, NULL_BAG, NULL_SLOT);
-        return guild->MemberHasTabRights(player->GetGUID(), item.tab, GUILD_BANK_RIGHT_VIEW_TAB) &&
-            source.HasWithdrawRights(&destination);
+        return item.withdrawals != 0 &&
+            guild->MemberHasTabRights(player->GetGUID(), item.tab, GUILD_BANK_RIGHT_VIEW_TAB);
     }
 
     Kind ItemKind(ItemTemplate const* item)
@@ -251,9 +329,13 @@ namespace
 
     bool Withdraw(Guild* guild, Player* player, BankItem const& item, uint32 count)
     {
-        Item* actual = BankItemAt(guild, player, item.tab, item.slot);
-        if (!actual || actual->GetEntry() != item.entry || actual->GetCount() < count ||
-            !CanWithdraw(guild, player, item))
+        auto current = ReadTab(guild, player, item.tab);
+        auto found = std::find_if(current.begin(), current.end(), [&](BankItem const& live)
+        {
+            return live.slot == item.slot && live.entry == item.entry && live.count >= count &&
+                CanWithdraw(guild, player, live);
+        });
+        if (!count || found == current.end())
             return false;
         ItemPosCountVec destination;
         if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, destination, item.entry, count) != EQUIP_ERR_OK)
@@ -502,4 +584,5 @@ bool CompanionGuildBankHasProduct(uint32 guild, uint32 item)
 void AddCompanionGuildBankScripts()
 {
     new BankWorldScript();
+    new BankPacketScript();
 }
