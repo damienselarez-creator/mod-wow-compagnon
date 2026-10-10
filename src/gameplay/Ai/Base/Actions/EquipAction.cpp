@@ -5,6 +5,7 @@
  */
 
 #include "EquipAction.h"
+#include "CompanionEquipment.h"
 #include "CompanionErrands.h"
 #include "Event.h"
 #include "ItemCountValue.h"
@@ -25,6 +26,23 @@ bool EquipAction::Execute(Event event)
 
 void EquipAction::EquipItems(ItemIds ids)
 {
+    if (PrefersCompanionShield(botAI))
+    {
+        // Item IDs are not an equipment order: restore main hand before attempting the shield.
+        for (auto it = ids.begin(); it != ids.end();)
+        {
+            ItemTemplate const* proto = sObjectMgr->GetItemTemplate(*it);
+            if (proto && IsCompanionShieldMainHand(proto->InventoryType))
+            {
+                FindItemByIdVisitor visitor(*it);
+                EquipItem(&visitor);
+                it = ids.erase(it);
+            }
+            else
+                ++it;
+        }
+    }
+
     for (ItemIds::iterator i = ids.begin(); i != ids.end(); i++)
     {
         FindItemByIdVisitor visitor(*i);
@@ -70,6 +88,48 @@ void EquipAction::EquipItem(Item* item)
     ItemTemplate const* itemProto = item->GetTemplate();
     uint32 itemId = itemProto->ItemId;
     uint8 invType = itemProto->InventoryType;
+
+    if (PrefersCompanionShield(botAI))
+    {
+        if (IsCompanionShieldRejected(invType))
+            return;
+
+        if (IsCompanionShieldMainHand(invType) || invType == INVTYPE_SHIELD)
+        {
+            // Equip the one-hander first; never remove the only weapon just to put on a shield.
+            Item* mainHand = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_MAINHAND);
+            if (invType == INVTYPE_SHIELD && mainHand &&
+                mainHand->GetTemplate()->InventoryType == INVTYPE_2HWEAPON)
+                return;
+
+            uint8 const target = invType == INVTYPE_SHIELD ? EQUIPMENT_SLOT_OFFHAND : EQUIPMENT_SLOT_MAINHAND;
+            Item* current = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, target);
+            if (current == item || (item->GetUInt32Value(ITEM_FIELD_MAXDURABILITY) &&
+                !item->GetUInt32Value(ITEM_FIELD_DURABILITY)))
+                return;
+
+            if (current && !IsCompanionShieldReplacement(invType, current->GetTemplate()->InventoryType))
+            {
+                StatsWeightCalculator calculator(bot);
+                calculator.SetItemSetBonus(false);
+                calculator.SetOverflowPenalty(false);
+                bool const broken = current->GetUInt32Value(ITEM_FIELD_MAXDURABILITY) &&
+                    !current->GetUInt32Value(ITEM_FIELD_DURABILITY);
+                if (!broken && calculator.CalculateItem(itemId, item->GetItemRandomPropertyId()) <=
+                    calculator.CalculateItem(current->GetEntry(), current->GetItemRandomPropertyId()) *
+                        sPlayerbotAIConfig.equipUpgradeThreshold)
+                    return;
+            }
+
+            // Native equip checks retain skill, level, combat and bag-space restrictions.
+            WorldPacket packet(CMSG_AUTOEQUIP_ITEM_SLOT, 2);
+            packet << item->GetGUID() << target;
+            WorldPackets::Item::AutoEquipItemSlot nicePacket(std::move(packet));
+            nicePacket.Read();
+            bot->GetSession()->HandleAutoEquipItemSlotOpcode(nicePacket);
+            return;
+        }
+    }
 
     // Handle ammunition separately
     if (invType == INVTYPE_AMMO)

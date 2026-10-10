@@ -7,6 +7,7 @@
 #include "ItemUsageValue.h"
 #include "AiFactory.h"
 #include "ChatHelper.h"
+#include "CompanionEquipment.h"
 #include "GuildTaskMgr.h"
 #include "Item.h"
 #include "LootObjectStack.h"
@@ -162,6 +163,10 @@ ItemUsage ItemUsageValue::Calculate()
 
 ItemUsage ItemUsageValue::QueryItemUsageForEquip(ItemTemplate const* itemProto, int32 randomPropertyId)
 {
+    bool const prefersShield = PrefersCompanionShield(botAI);
+    if (prefersShield && IsCompanionShieldRejected(itemProto->InventoryType))
+        return ITEM_USAGE_NONE;
+
     if (bot->CanUseItem(itemProto) != EQUIP_ERR_OK)
         return ITEM_USAGE_NONE;
 
@@ -241,6 +246,12 @@ ItemUsage ItemUsageValue::QueryItemUsageForEquip(ItemTemplate const* itemProto, 
 
     uint8 possibleSlots = 1;
     uint8 dstSlot = botAI->FindEquipSlot(itemProto, NULL_SLOT, true);
+    // Protection weapons always compete for main hand, never for the shield slot.
+    if (prefersShield && IsCompanionShieldMainHand(itemProto->InventoryType))
+    {
+        dstSlot = EQUIPMENT_SLOT_MAINHAND;
+        dest = (INVENTORY_SLOT_BAG_0 << 8) | dstSlot;
+    }
     // Check if dest wasn't set correctly by CanEquipItem and use FindEquipSlot instead
     // This occurs with unique items that are already in the bots bags when CanEquipItem is called
     if (dest == 0 && dstSlot != NULL_SLOT)
@@ -277,7 +288,7 @@ ItemUsage ItemUsageValue::QueryItemUsageForEquip(ItemTemplate const* itemProto, 
         // OR
         // - The bot can Titan Grip and it is a valid TG weapon
         // Then we can consider the offhand slot as well.
-        if (bot->CanDualWield() &&
+        if (!prefersShield && bot->CanDualWield() &&
             ((itemProto->InventoryType != INVTYPE_2HWEAPON && !have2HWeapon) ||
              (bot->CanTitanGrip() && isValidTGWeapon)))
         {
@@ -343,6 +354,10 @@ ItemUsage ItemUsageValue::QueryItemUsageForEquip(ItemTemplate const* itemProto, 
             item && item->GetUInt32Value(ITEM_FIELD_DURABILITY) == 0 && item->GetUInt32Value(ITEM_FIELD_MAXDURABILITY) > 0;
         bool oldItemIsBroken =
             oldItem->GetUInt32Value(ITEM_FIELD_DURABILITY) == 0 && oldItem->GetUInt32Value(ITEM_FIELD_MAXDURABILITY) > 0;
+
+        // Restore the role's weapon layout even when the two-hander has a higher raw score.
+        if (prefersShield && IsCompanionShieldReplacement(itemProto->InventoryType, oldItemProto->InventoryType))
+            return itemIsBroken ? ITEM_USAGE_BROKEN_EQUIP : ITEM_USAGE_EQUIP;
 
         if (itemProto->ItemId != oldItemProto->ItemId && (shouldEquipInSlot || !existingShouldEquip) && isBetter)
         {
