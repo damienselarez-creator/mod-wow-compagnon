@@ -112,9 +112,9 @@ struct PoisonPurchase { uint32 item = 0, slot = 0, batches = 0; };
 
 int main()
 {
-    assert(CompanionErrands::HerbWithinLeash(79, 79, 20));
-    assert(!CompanionErrands::HerbWithinLeash(81, 60, 20));
-    assert(!CompanionErrands::HerbWithinLeash(60, 81, 20));
+    assert(CompanionErrands::HerbWithinLeash(99, 99, 20));
+    assert(!CompanionErrands::HerbWithinLeash(101, 60, 20));
+    assert(!CompanionErrands::HerbWithinLeash(60, 101, 20));
     assert(!CompanionErrands::HerbWithinLeash(60, 60, 41));
     spellMgr.spells[1].Effects[0] = {SPELL_EFFECT_SKILL, SKILL_RIDING};
     spellMgr.spells[2].Effects[0] = {SPELL_EFFECT_LEARN_SPELL, 0, 1};

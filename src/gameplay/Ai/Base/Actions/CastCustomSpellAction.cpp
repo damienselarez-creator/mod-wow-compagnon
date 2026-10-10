@@ -427,6 +427,29 @@ uint32 CraftRandomItemAction::GetSpellPriority(SpellInfo const* spellInfo)
             return 0;
         if (CompanionCraftUseful(bot, item))
             return 100;
+        // Prepare only the missing quantity for one known, useful downstream recipe.
+        // This also permits grey smelting recipes when their bars enable blacksmithing.
+        if (item->Class == ITEM_CLASS_TRADE_GOODS)
+            for (auto const& [id, known] : bot->GetSpellMap())
+            {
+                auto const* recipe = sSpellMgr->GetSpellInfo(id);
+                auto const* skill = PlayerbotSpellRepository::Instance().GetSkillLine(id);
+                if (!recipe || id == spellInfo->Id || known->State == PLAYERSPELL_REMOVED || !known->Active ||
+                    !skill || !IsProfessionSkill(skill->SkillLine) || !bot->HasSkill(skill->SkillLine) ||
+                    recipe->Effects[EFFECT_0].Effect != SPELL_EFFECT_CREATE_ITEM)
+                    continue;
+                auto const* product = sObjectMgr->GetItemTemplate(recipe->Effects[EFFECT_0].ItemType);
+                if (!product || bot->GetItemCount(product->ItemId, true) ||
+                    CompanionGuildBankHasProduct(bot->GetGuildId(), product->ItemId) ||
+                    (!CompanionCraftUseful(bot, product) &&
+                        !(product->Quality <= ITEM_QUALITY_UNCOMMON &&
+                            ItemUsageValue::SpellGivesSkillUp(id, bot))))
+                    continue;
+                for (uint32 index = 0; index < MAX_SPELL_REAGENTS; ++index)
+                    if (recipe->Reagent[index] > 0 && uint32(recipe->Reagent[index]) == item->ItemId &&
+                        bot->GetItemCount(item->ItemId, false) < std::min(20u, recipe->ReagentCount[index]))
+                        return 60;
+            }
         // Keep one pending batch for the group; do not recreate goods awaiting delivery.
         bool tradable = item->Bonding == NO_BIND || item->Bonding == BIND_WHEN_EQUIPPED ||
             item->Bonding == BIND_WHEN_USE;

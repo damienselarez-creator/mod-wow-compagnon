@@ -1503,8 +1503,9 @@ bool CompanionErrandAction::Execute(Event)
                 IsCompanionInventoryManaged(botAI) &&
                 ((bot->HasSkill(SKILL_HERBALISM) && bot->HasSpell(2366)) ||
                     (bot->HasSkill(SKILL_MINING) && bot->HasSpell(2575))) && HasBagRoom(bot) &&
-                bot->GetDistance(master) <= 40.0f && !(master->IsMounted() && master->isMoving()))
+                bot->GetDistance(master) <= 40.0f)
             {
+                state.target.Clear();
                 float best = CompanionErrands::GatherRadius;
                 std::list<GameObject*> nodes;
                 AnyGameObjectInObjectRangeCheck check(bot, best);

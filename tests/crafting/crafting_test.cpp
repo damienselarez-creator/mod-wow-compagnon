@@ -20,7 +20,7 @@ constexpr uint8 NULL_SLOT = 255, INVENTORY_SLOT_BAG_START = 19, INVENTORY_SLOT_B
 constexpr uint32 ITEM_CLASS_CONSUMABLE = 0, ITEM_CLASS_CONTAINER = 1, ITEM_CLASS_WEAPON = 2, ITEM_CLASS_ARMOR = 4;
 constexpr uint32 MAX_SPELL_REAGENTS = 8, NO_BIND = 0, BIND_WHEN_EQUIPPED = 2, BIND_WHEN_USE = 3;
 constexpr uint32 POWER_MANA = 0, BIND_WHEN_PICKED_UP = 1, PLAYERSPELL_REMOVED = 1;
-constexpr uint32 ITEM_QUALITY_UNCOMMON = 2;
+constexpr uint32 ITEM_QUALITY_UNCOMMON = 2, ITEM_CLASS_TRADE_GOODS = 7;
 enum ItemUsage { ITEM_USAGE_NONE, ITEM_USAGE_EQUIP, ITEM_USAGE_REPLACE, ITEM_USAGE_AMMO,
     ITEM_USAGE_QUEST, ITEM_USAGE_SKILL, ITEM_USAGE_USE };
 struct ItemTemplate
@@ -45,6 +45,16 @@ struct SpellInfo
     int32 Reagent[MAX_SPELL_REAGENTS] = {1000};
     uint32 Totem[2]{}, TotemCategory[2]{};
 };
+struct SpellMgr
+{
+    std::map<uint32, SpellInfo> spells;
+    SpellInfo const* GetSpellInfo(uint32 id) const
+    {
+        auto found = spells.find(id);
+        return found == spells.end() ? nullptr : &found->second;
+    }
+} spellMgr;
+auto* sSpellMgr = &spellMgr;
 struct KnownSpell { uint32 State = 0; bool Active = true; };
 struct PlayerbotAI;
 struct Group;
@@ -246,6 +256,30 @@ int main()
     objectMgr.items[4].Quality = 1;
     skillUp = false;
     assert(action.GetSpellPriority(&recipe) == 0); // Grey recipes give no practice benefit.
+    objectMgr.items[5] = ItemTemplate{5, ITEM_CLASS_TRADE_GOODS};
+    SpellInfo smelt;
+    smelt.Id = 500;
+    smelt.Effects[0].ItemType = 5;
+    SpellInfo downstream;
+    downstream.Id = 501;
+    downstream.Effects[0].ItemType = 4;
+    downstream.Reagent[0] = 5;
+    downstream.ReagentCount[0] = 3;
+    spellMgr.spells[501] = downstream;
+    self.spells[501] = &known;
+    ai.context.usages[4] = ITEM_USAGE_EQUIP;
+    assert(action.GetSpellPriority(&smelt) == 60); // Grey smelting enables a useful recipe.
+    self.counts[5] = 2;
+    assert(action.GetSpellPriority(&smelt) == 60);
+    self.counts[5] = 3;
+    assert(action.GetSpellPriority(&smelt) == 0); // Do not convert the entire ore stock.
+    self.counts[5] = 0;
+    self.counts[4] = 1;
+    assert(action.GetSpellPriority(&smelt) == 0);
+    self.counts[4] = 0;
+    known.Active = false;
+    assert(action.GetSpellPriority(&smelt) == 0);
+    known.Active = true;
     std::vector<std::pair<uint32, std::pair<uint32, Player*>>> candidates{
         {9999, {50, &other}}, {1, {100, &self}}, {10000, {0, &human}}};
     SortSpells(candidates, true);
