@@ -20,12 +20,14 @@ constexpr uint8 NULL_SLOT = 255, INVENTORY_SLOT_BAG_START = 19, INVENTORY_SLOT_B
 constexpr uint32 ITEM_CLASS_CONSUMABLE = 0, ITEM_CLASS_CONTAINER = 1, ITEM_CLASS_WEAPON = 2, ITEM_CLASS_ARMOR = 4;
 constexpr uint32 MAX_SPELL_REAGENTS = 8, NO_BIND = 0, BIND_WHEN_EQUIPPED = 2, BIND_WHEN_USE = 3;
 constexpr uint32 POWER_MANA = 0, BIND_WHEN_PICKED_UP = 1, PLAYERSPELL_REMOVED = 1;
+constexpr uint32 ITEM_QUALITY_UNCOMMON = 2;
 enum ItemUsage { ITEM_USAGE_NONE, ITEM_USAGE_EQUIP, ITEM_USAGE_REPLACE, ITEM_USAGE_AMMO,
     ITEM_USAGE_QUEST, ITEM_USAGE_SKILL, ITEM_USAGE_USE };
 struct ItemTemplate
 {
     uint32 ItemId = 0, Class = 0, BagFamily = 0, ContainerSlots = 0, Bonding = 0;
     float score = 0;
+    uint32 Quality = 1;
 };
 struct Item
 {
@@ -55,6 +57,10 @@ struct Player
     std::map<uint8, Bag*> bags;
     Item* equipped = nullptr;
     bool usable = true, alive = true, world = true, profession = true;
+    bool combat = false, moving = false, casting = false;
+    bool IsInCombat() const { return combat; }
+    bool isMoving() const { return moving; }
+    bool IsNonMeleeSpellCast(bool) const { return casting; }
     float distance = 0;
     uint32 GetGuildId() const { return 1; }
     uint32 GetItemCount(uint32 id, bool) const { auto f = counts.find(id); return f == counts.end() ? 0 : f->second; }
@@ -100,6 +106,8 @@ struct PlayerbotAI
 #define AI_VALUE2(type, name, id) (botAI->context.GetValue<type>(name, std::to_string(id))->Get())
 bool IsCompanionInventoryManaged(PlayerbotAI* ai) { return ai->managed; }
 bool IsManagedCompanion(PlayerbotAI* ai) { return ai->managed; }
+bool craftPlan = true;
+bool HasCompanionCraftPlan(PlayerbotAI*) { return craftPlan; }
 bool bankStock = false;
 bool CompanionGuildBankHasProduct(uint32, uint32) { return bankStock; }
 struct ObjectMgr
@@ -116,10 +124,11 @@ struct StatsWeightCalculator
     void SetOverflowPenalty(bool) {}
     float CalculateItem(uint32 id, int32 = 0) { return objectMgr.items.at(id).score; }
 };
+bool skillUp = false;
 struct ItemUsageValue
 {
     static std::string GetConsumableType(ItemTemplate const*, uint32) { return "healing potion"; }
-    static bool SpellGivesSkillUp(uint32, Player*) { return true; }
+    static bool SpellGivesSkillUp(uint32, Player*) { return skillUp; }
 };
 struct SkillRecord { uint32 SkillLine = 164; };
 struct PlayerbotSpellRepository
@@ -134,6 +143,7 @@ struct CraftRandomItemAction
     PlayerbotAI* botAI;
     Player* bot;
     bool UseStrictPriority() const;
+    bool isUseful();
     bool AcceptSpell(SpellInfo const*);
     uint32 GetSpellPriority(SpellInfo const*);
 };
@@ -156,6 +166,12 @@ int main()
     GroupReference humanRef{&human}, otherRef{&other, &humanRef};
     Group group{&otherRef}; self.group = &group;
     CraftRandomItemAction action{&ai, &self};
+    assert(action.isUseful()); // Regression: inherited isUseful() formerly always returned false.
+    craftPlan = false; assert(!action.isUseful()); craftPlan = true;
+    self.combat = true; assert(!action.isUseful()); self.combat = false;
+    self.moving = true; assert(!action.isUseful()); self.moving = false;
+    self.casting = true; assert(!action.isUseful()); self.casting = false;
+    self.alive = false; assert(!action.isUseful()); self.alive = true;
     KnownSpell known; self.spells[100] = &known;
     self.counts[1000] = 1;
     SpellInfo recipe; recipe.Id = 100; recipe.Effects[0].ItemType = 1;
@@ -218,6 +234,18 @@ int main()
     human.equipped = new Item{&objectMgr.items[4]};
     assert(action.GetSpellPriority(&recipe) == 0);
     delete human.equipped;
+    human.equipped = nullptr;
+    human.distance = 100;
+    skillUp = true;
+    assert(action.GetSpellPriority(&recipe) == 10); // Bounded practice using owned materials.
+    self.counts[4] = 1;
+    assert(action.GetSpellPriority(&recipe) == 0); // One pending batch prevents manufacturing junk repeatedly.
+    self.counts[4] = 0;
+    objectMgr.items[4].Quality = 4;
+    assert(action.GetSpellPriority(&recipe) == 0); // No expensive practice product.
+    objectMgr.items[4].Quality = 1;
+    skillUp = false;
+    assert(action.GetSpellPriority(&recipe) == 0); // Grey recipes give no practice benefit.
     std::vector<std::pair<uint32, std::pair<uint32, Player*>>> candidates{
         {9999, {50, &other}}, {1, {100, &self}}, {10000, {0, &human}}};
     SortSpells(candidates, true);

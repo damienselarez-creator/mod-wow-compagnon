@@ -327,6 +327,15 @@ int main()
     for (uint8 slot = 19; slot < 23; ++slot)
         bagBot.positions[uint16(255 << 8) | slot] = &specialty;
     assert(!ChooseBag(&bagBot, &bags, 20).item);
+    Player cramped;
+    for (uint8 slot = 19; slot < 23; ++slot)
+        cramped.positions[uint16(255 << 8) | slot] = &small;
+    for (uint8 slot = 23; slot < 39; ++slot)
+        cramped.positions[uint16(255 << 8) | slot] = &filler;
+    cramped.positions[uint16(19 << 8) | 0] = &large;
+    EquipOwnedBagUpgrade(&cramped);
+    assert(cramped.GetBagByPos(19) == &large); // Full backpack, but free space in another bag: still succeeds.
+    assert(cramped.GetItemByPos(19, 1) == &filler);
     std::cout << "PASS: real profession supply discovery and vendor choice, tools, vials, "
         "parchment, reserves, affordable bag upgrades\n";
 }

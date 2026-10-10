@@ -64,6 +64,7 @@ class CraftRandomItemAction : public CastRandomSpellAction
 public:
     CraftRandomItemAction(PlayerbotAI* botAI) : CastRandomSpellAction(botAI, "craft random item") { MultiCast = true; }
 
+    bool isUseful() override;
     bool AcceptSpell(SpellInfo const* spellInfo) override;
     uint32 GetSpellPriority(SpellInfo const* spellInfo) override;
     bool UseStrictPriority() const override;

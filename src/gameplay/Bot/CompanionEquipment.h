@@ -35,6 +35,13 @@ inline bool IsCompanionShieldRejected(uint32 type)
     return type == INVTYPE_2HWEAPON || type == INVTYPE_WEAPONOFFHAND || type == INVTYPE_HOLDABLE;
 }
 
+inline bool IsCompanionLayoutCandidate(ItemTemplate const* item)
+{
+    return (item->Class == ITEM_CLASS_ARMOR && item->InventoryType == INVTYPE_SHIELD) ||
+        (item->Class == ITEM_CLASS_WEAPON && item->SubClass != ITEM_SUBCLASS_WEAPON_MISC &&
+            item->SubClass != ITEM_SUBCLASS_WEAPON_FISHING_POLE && IsCompanionShieldMainHand(item->InventoryType));
+}
+
 inline bool IsCompanionShieldReplacement(uint32 candidate, uint32 current)
 {
     return (IsCompanionShieldMainHand(candidate) && !IsCompanionShieldMainHand(current)) ||

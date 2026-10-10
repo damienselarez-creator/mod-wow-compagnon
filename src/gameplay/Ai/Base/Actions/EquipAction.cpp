@@ -133,6 +133,8 @@ void EquipAction::EquipItem(Item* item)
             WorldPackets::Item::AutoEquipItemSlot nicePacket(std::move(packet));
             nicePacket.Read();
             bot->GetSession()->HandleAutoEquipItemSlotOpcode(nicePacket);
+            LOG_INFO("playerbots.companion", "[Equipment] {} item={} slot={} equipped={}",
+                bot->GetName(), itemId, target, bot->GetItemByPos(INVENTORY_SLOT_BAG_0, target) == item);
             return;
         }
     }
@@ -422,6 +424,14 @@ ItemIds EquipAction::SelectInventoryItemsToEquip()
         //Pre-filter non-equipable items
         if (itemTemplate->InventoryType == INVTYPE_NON_EQUIP)
             continue;
+
+        // Restoring Protection's layout must not depend on a cached generic score or the current two-hander.
+        if (PrefersCompanionShield(botAI) && IsCompanionLayoutCandidate(itemTemplate) &&
+            !item->IsInTrade() && bot->CanUseItem(item) == EQUIP_ERR_OK)
+        {
+            items.insert(itemTemplate->ItemId);
+            continue;
+        }
 
         int32 randomProperty = item->GetItemRandomPropertyId();
         uint32 itemId = item->GetTemplate()->ItemId;

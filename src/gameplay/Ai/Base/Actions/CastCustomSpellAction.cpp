@@ -375,9 +375,16 @@ namespace
     }
 }
 
+bool CraftRandomItemAction::isUseful()
+{
+    return IsCompanionInventoryManaged(botAI) && HasCompanionCraftPlan(botAI) &&
+        bot->IsAlive() && !bot->IsInCombat() &&
+        !bot->isMoving() && !bot->IsNonMeleeSpellCast(false);
+}
+
 bool CraftRandomItemAction::UseStrictPriority() const
 {
-    return IsCompanionInventoryManaged(botAI) && IsManagedCompanion(botAI);
+    return IsCompanionInventoryManaged(botAI);
 }
 
 bool CraftRandomItemAction::AcceptSpell(SpellInfo const* spellInfo)
@@ -433,6 +440,9 @@ uint32 CraftRandomItemAction::GetSpellPriority(SpellInfo const* spellInfo)
                         member->GetMap() == bot->GetMap() && bot->GetDistance(member) <= 40.0f &&
                         CompanionCraftUseful(member, item))
                         return 50;
+        // One outstanding practice batch, using owned reagents; no grey-recipe grinding.
+        if (item->Quality <= ITEM_QUALITY_UNCOMMON && ItemUsageValue::SpellGivesSkillUp(spellInfo->Id, bot))
+            return 10;
         return 0;
     }
     if (spellInfo->Effects[EFFECT_0].Effect != SPELL_EFFECT_CREATE_ITEM)

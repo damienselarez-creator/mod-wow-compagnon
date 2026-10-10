@@ -3,6 +3,7 @@
 #include "CompanionEquipment.h"
 #include "StatsWeightCalculator.h"
 #include "CompanionVocation.h"
+#include "CastCustomSpellAction.h"
 
 #include "Bag.h"
 #include "CellImpl.h"
@@ -47,8 +48,15 @@ namespace
             {status, trainer, spell, learned, bot->GetMoney(), 0}};
     }
 
-    enum Timer : uint32 { Decision = 1, TownScan, HerbScan, Deadline, Progress, Resume, ClearRejected, VerifyLesson, MountRetry };
-    enum class Errand { None, Trainer, Herb, Return, PoisonVendor, Bags, ProfessionVendor, GuildBank, MountVendor };
+    enum Timer : uint32
+    {
+        Decision = 1, TownScan, HerbScan, Deadline, Progress, Resume, ClearRejected, VerifyLesson,
+        MountRetry, InventoryScan, CraftCooldown, CraftReset
+    };
+    enum class Errand
+    {
+        None, Trainer, Herb, Return, PoisonVendor, Bags, ProfessionVendor, GuildBank, MountVendor, EquipmentVendor, Craft
+    };
     constexpr float TownRadius = 1500.0f;
 
     bool Eligible(PlayerbotAI* ai)
@@ -364,6 +372,61 @@ namespace
         return {};
     }
 
+    PoisonPurchase ChooseEquipment(PlayerbotAI* ai, VendorItemData const* goods, uint32 reserve,
+        Creature* vendor = nullptr)
+    {
+        if (!goods || goods->Empty())
+            return {};
+        Player* bot = ai->GetBot();
+        PoisonPurchase best;
+        float bestGain = 0;
+        uint32 bestPrice = std::numeric_limits<uint32>::max();
+        StatsWeightCalculator calculator(bot);
+        calculator.SetItemSetBonus(false);
+        calculator.SetOverflowPenalty(false);
+        for (uint32 slot = 0; slot < goods->GetItemCount(); ++slot)
+        {
+            auto const* offer = goods->GetItem(slot);
+            auto const* item = offer ? sObjectMgr->GetItemTemplate(offer->item) : nullptr;
+            if (!item || offer->ExtendedCost || item->BuyCount != 1 || item->BuyPrice <= 0 ||
+                item->Quality > ITEM_QUALITY_RARE || bot->GetItemCount(item->ItemId, true) ||
+                bot->CanUseItem(item) != EQUIP_ERR_OK ||
+                (!UsesCompanionArmorPriority(item) && item->Class != ITEM_CLASS_WEAPON) ||
+                (item->Class == ITEM_CLASS_WEAPON && (item->SubClass == ITEM_SUBCLASS_WEAPON_MISC ||
+                    item->SubClass == ITEM_SUBCLASS_WEAPON_FISHING_POLE)))
+                continue;
+            ItemUsage usage = ai->GetAiObjectContext()->GetValue<ItemUsage>("item upgrade", item->ItemId)->Get();
+            if (usage != ITEM_USAGE_EQUIP && usage != ITEM_USAGE_REPLACE && usage != ITEM_USAGE_BAD_EQUIP)
+                continue;
+            uint8 target = ai->FindEquipSlot(item, NULL_SLOT, true);
+            if (PrefersCompanionShield(ai) && IsCompanionShieldMainHand(item->InventoryType))
+                target = EQUIPMENT_SLOT_MAINHAND;
+            if (target == NULL_SLOT)
+                continue;
+            Item* current = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, target);
+            bool armor = PrefersCompanionShield(ai) && UsesCompanionArmorPriority(item);
+            float oldScore = current ? (armor ? float(current->GetTemplate()->Armor) :
+                calculator.CalculateItem(current->GetEntry(), current->GetItemRandomPropertyId())) : 0;
+            float newScore = armor ? float(item->Armor) : calculator.CalculateItem(item->ItemId);
+            bool layout = PrefersCompanionShield(ai) && current &&
+                IsCompanionShieldReplacement(item->InventoryType, current->GetTemplate()->InventoryType);
+            float gain = !current || layout ? 2.0f : newScore / std::max(1.0f, oldScore) - 1.0f;
+            uint32 price = uint32(std::ceil(item->BuyPrice *
+                (vendor ? bot->GetReputationPriceDiscount(vendor) : 1.0f)));
+            ItemPosCountVec destination;
+            if (gain < 0.15f || price > bot->GetMoney() / 10 ||
+                !CompanionErrands::CanSpend(bot->GetMoney(), price, reserve) ||
+                (vendor && offer->maxcount && !vendor->GetVendorItemCurrentCount(offer)) ||
+                bot->CanStoreNewItem(NULL_BAG, NULL_SLOT, destination, item->ItemId, 1) != EQUIP_ERR_OK ||
+                gain < bestGain || (gain == bestGain && price >= bestPrice))
+                continue;
+            best = {item->ItemId, slot, 1};
+            bestGain = gain;
+            bestPrice = price;
+        }
+        return best;
+    }
+
     PoisonPurchase ChooseMount(PlayerbotAI* ai, VendorItemData const* goods, uint32 reserve,
         Creature* vendor = nullptr)
     {
@@ -609,6 +672,32 @@ namespace
 
     void EquipOwnedBagUpgrade(Player* bot)
     {
+        // Buying or exchanging a bag needs a backpack slot, not merely free space in another bag.
+        bool backpackRoom = false;
+        for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
+            backpackRoom = backpackRoom || !bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
+        if (!backpackRoom)
+        {
+            uint8 sourceSlot = NULL_SLOT;
+            for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
+                if (Item* item = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
+                    item && !item->IsBag() && !item->IsInTrade())
+                {
+                    sourceSlot = slot;
+                    break;
+                }
+            bool moved = false;
+            for (uint8 bagSlot = INVENTORY_SLOT_BAG_START;
+                bagSlot < INVENTORY_SLOT_BAG_END && !moved && sourceSlot != NULL_SLOT; ++bagSlot)
+                if (Bag* bag = bot->GetBagByPos(bagSlot); bag && !bag->GetTemplate()->BagFamily)
+                    for (uint32 inside = 0; inside < bag->GetBagSize() && !moved; ++inside)
+                        if (!bot->GetItemByPos(bagSlot, uint8(inside)))
+                        {
+                            bot->SwapItem(uint16(INVENTORY_SLOT_BAG_0 << 8) | sourceSlot,
+                                uint16(bagSlot << 8) | uint8(inside));
+                            moved = !bot->GetItemByPos(INVENTORY_SLOT_BAG_0, sourceSlot);
+                        }
+        }
         uint8 target = SmallestGeneralBagSlot(bot);
         if (target == NULL_SLOT)
             return;
@@ -708,6 +797,14 @@ struct CompanionErrandState
     bool paused = false;
     bool gathering = false;
     bool mountDue = true;
+    bool inventoryDue = true;
+    bool craftDue = true;
+    uint32 crafts = 0;
+    uint32 craftSpell = 0;
+    uint32 craftOutput = 0;
+    uint32 craftBefore = 0;
+    bool awaitingCraft = false;
+    std::set<uint32> rejectedCrafts;
     uint32 pendingMount = 0;
     uint32 spawn = 0;
     uint32 map = 0;
@@ -820,16 +917,21 @@ namespace
             }
             if (state.kind == Errand::Bags)
                 state.rejectedBagVendors.insert(state.spawn);
-            if (state.kind == Errand::ProfessionVendor || state.kind == Errand::MountVendor)
+            if (state.kind == Errand::ProfessionVendor || state.kind == Errand::MountVendor ||
+                state.kind == Errand::EquipmentVendor)
                 state.rejectedSupplyVendors.insert(state.spawn);
             if (state.kind == Errand::PoisonVendor)
                 state.rejectedVendors.insert(state.spawn);
             if (state.kind == Errand::Herb)
                 state.rejectedHerbs.insert(state.target);
+            if (state.kind == Errand::Craft)
+                state.rejectedCrafts.insert(state.craftSpell);
         }
         if (state.kind != Errand::None)
         {
             Player* bot = ai->GetBot();
+            if (state.kind == Errand::Craft && state.awaitingCraft)
+                bot->InterruptNonMeleeSpells(false);
             if (state.kind == Errand::Herb)
             {
                 if (state.gathering)
@@ -843,6 +945,7 @@ namespace
             bot->GetMotionMaster()->Clear();
         }
         state.kind = Errand::None;
+        state.awaitingCraft = false;
         state.pendingLesson = 0;
         state.verificationDue = false;
         state.events.CancelEvent(VerifyLesson);
@@ -1039,6 +1142,9 @@ void UpdateCompanionErrands(PlayerbotAI* ai, uint32 elapsed)
         switch (event)
         {
             case Decision: state.ready = true; break;
+            case InventoryScan: state.inventoryDue = true; break;
+            case CraftCooldown: state.craftDue = true; break;
+            case CraftReset: state.crafts = 0; break;
             case TownScan: state.townDue = true; break;
             case HerbScan: state.herbDue = true; break;
             case Resume: state.paused = false; break;
@@ -1052,6 +1158,7 @@ void UpdateCompanionErrands(PlayerbotAI* ai, uint32 elapsed)
                 state.rejectedVendors.clear();
                 state.rejectedSupplyVendors.clear();
                 state.rejectedHerbs.clear();
+                state.rejectedCrafts.clear();
                 state.events.ScheduleEvent(ClearRejected, Milliseconds(300000));
                 break;
             case MountRetry:
@@ -1072,13 +1179,26 @@ void UpdateCompanionErrands(PlayerbotAI* ai, uint32 elapsed)
     if (GetCompanionNarrativeFocus(bot->GetGUID()) == "follow" ||
         !Eligible(ai) || master->GetGUID() != state.owner || bot->GetMapId() != state.map ||
         ((state.kind == Errand::Trainer || state.kind == Errand::PoisonVendor || state.kind == Errand::Bags ||
-            state.kind == Errand::ProfessionVendor || state.kind == Errand::MountVendor) &&
+            state.kind == Errand::ProfessionVendor || state.kind == Errand::MountVendor ||
+            state.kind == Errand::EquipmentVendor || state.kind == Errand::Craft) &&
             (!InTown(master) || master->GetZoneId() != state.zone ||
             (state.settlement ? Settlement(master) != state.settlement :
                 master->GetDistance(state.x, state.y, state.z) > TownRadius))) ||
         (state.kind == Errand::Herb && (bot->GetDistance(master) > 120.0f ||
             master->GetDistance(state.x, state.y, state.z) > 120.0f)))
         CancelCompanionErrands(ai);
+}
+
+bool IsCompanionErrandActive(PlayerbotAI* ai)
+{
+    return ai && ai->companionErrands && !ai->companionErrands->paused &&
+        ai->companionErrands->kind != Errand::None && Eligible(ai);
+}
+
+bool HasCompanionCraftPlan(PlayerbotAI* ai)
+{
+    return ai && ai->companionErrands && ai->companionErrands->kind == Errand::Craft &&
+        !ai->companionErrands->awaitingCraft && ai->companionErrands->crafts < 5;
 }
 
 bool IsCompanionGathering(PlayerbotAI* ai)
@@ -1104,7 +1224,7 @@ void FinishCompanionGather(PlayerbotAI* ai, ObjectGuid guid)
 
 bool CompanionErrandAction::isUseful()
 {
-    if (!Eligible(botAI) || GetCompanionNarrativeFocus(bot->GetGUID()) == "follow")
+    if (!Eligible(botAI))
         return false;
     if (!botAI->companionErrands)
     {
@@ -1113,7 +1233,10 @@ bool CompanionErrandAction::isUseful()
         botAI->companionErrands->events.ScheduleEvent(ClearRejected, Milliseconds(300000));
     }
     auto const& state = *botAI->companionErrands;
-    return !state.paused && (state.kind != Errand::None || (state.ready && (state.townDue || state.herbDue)));
+    if (GetCompanionNarrativeFocus(bot->GetGUID()) == "follow")
+        return state.inventoryDue;
+    return !state.paused && (state.kind != Errand::None ||
+        (state.ready && (state.inventoryDue || state.townDue || state.herbDue)));
 }
 
 bool CompanionErrandAction::Execute(Event)
@@ -1122,6 +1245,17 @@ bool CompanionErrandAction::Execute(Event)
         return false;
     auto& state = *botAI->companionErrands;
     Player* master = botAI->GetMaster();
+    if (state.inventoryDue && !bot->IsNonMeleeSpellCast(false) && bot->GetLootGUID().IsEmpty())
+    {
+        state.inventoryDue = false;
+        state.events.RescheduleEvent(InventoryScan, Milliseconds(15000));
+        botAI->DoSpecificAction("equip upgrade", Event(), true);
+        EquipOwnedBagUpgrade(bot);
+        LOG_INFO("playerbots.companion", "[Inventory] {} protection={} money={} scan_complete=true",
+            bot->GetName(), PrefersCompanionShield(botAI), bot->GetMoney());
+    }
+    if (GetCompanionNarrativeFocus(bot->GetGUID()) == "follow")
+        return false;
     if (!state.ready || bot->IsNonMeleeSpellCast(false) || !bot->GetLootGUID().IsEmpty())
         return state.kind != Errand::None;
     state.ready = false;
@@ -1243,6 +1377,12 @@ bool CompanionErrandAction::Execute(Event)
                         candidate = Errand::PoisonVendor;
                         priority = 20000.0;
                     }
+                    if (candidate == Errand::None && !state.rejectedSupplyVendors.count(uint32(spawn)) &&
+                        ChooseEquipment(botAI, sObjectMgr->GetNpcVendorItemList(data.id), state.reserve).item)
+                    {
+                        candidate = Errand::EquipmentVendor;
+                        priority = 17000.0;
+                    }
                     if (candidate == Errand::None)
                     {
                         budgetBlocked = budgetBlocked || ChooseLesson(botAI, trainer, 1.0f, false);
@@ -1287,12 +1427,55 @@ bool CompanionErrandAction::Execute(Event)
                     }
                 }
                 if (best == std::numeric_limits<double>::max() && state.kind == Errand::None &&
-                    IsManagedCompanion(botAI) &&
+                    state.craftDue && state.crafts < 5 &&
                     !master->isMoving() && !bot->isMoving() && !bot->IsMounted() &&
                     !bot->IsNonMeleeSpellCast(false) && bot->GetDistance(master) < 30.0f && HasBagRoom(bot))
                 {
-                    if (botAI->DoSpecificAction("craft random item", Event(), true))
-                        return true;
+                    state.craftDue = false;
+                    state.events.RescheduleEvent(CraftCooldown, Milliseconds(30000));
+                    CraftRandomItemAction crafting(botAI);
+                    uint32 priority = 0;
+                    for (auto const& [id, known] : bot->GetSpellMap())
+                    {
+                        auto const* spell = sSpellMgr->GetSpellInfo(id);
+                        if (!spell || known->State == PLAYERSPELL_REMOVED || !known->Active ||
+                            state.rejectedCrafts.count(id) || !crafting.AcceptSpell(spell))
+                            continue;
+                        uint32 rank = crafting.GetSpellPriority(spell);
+                        if (!rank || rank <= priority)
+                            continue;
+                        GameObject* focus = nullptr;
+                        if (!botAI->CanCastSpell(id, bot))
+                        {
+                            if (!spell->RequiresSpellFocus)
+                                continue;
+                            std::list<GameObject*> stations;
+                            AnyGameObjectInObjectRangeCheck check(bot, 150.0f);
+                            Acore::GameObjectListSearcher<AnyGameObjectInObjectRangeCheck> search(bot, stations, check);
+                            Cell::VisitObjects(bot, search, 150.0f);
+                            float closest = 150.0f;
+                            for (GameObject* station : stations)
+                                if (station->isSpawned() && station->GetGoType() == GAMEOBJECT_TYPE_SPELL_FOCUS &&
+                                    station->GetGOInfo()->spellFocus.focusId == spell->RequiresSpellFocus &&
+                                    bot->GetDistance(station) < closest && bot->CanSeeOrDetect(station) &&
+                                    SafeHerb(bot, station))
+                                {
+                                    focus = station;
+                                    closest = bot->GetDistance(station);
+                                }
+                            if (!focus)
+                                continue;
+                        }
+                        priority = rank;
+                        state.craftSpell = id;
+                        state.craftOutput = spell->Effects[EFFECT_0].ItemType;
+                        state.target = focus ? focus->GetGUID() : ObjectGuid::Empty;
+                        state.x = focus ? focus->GetPositionX() : bot->GetPositionX();
+                        state.y = focus ? focus->GetPositionY() : bot->GetPositionY();
+                        state.z = focus ? focus->GetPositionZ() : bot->GetPositionZ();
+                    }
+                    if (priority)
+                        state.kind = Errand::Craft;
                 }
                 if (best != std::numeric_limits<double>::max())
                 {
@@ -1302,7 +1485,8 @@ bool CompanionErrandAction::Execute(Event)
                         RecordTraining(bot, "travelling", 0, 0, 0);
                     state.sold = 0;
                     state.repairs = 0;
-                    if (selected != Errand::ProfessionVendor && selected != Errand::MountVendor)
+                    if (selected != Errand::ProfessionVendor && selected != Errand::MountVendor &&
+                        selected != Errand::EquipmentVendor)
                         botAI->TellMaster(selected == Errand::Bags ?
                         "Je vais vendre mon equipement obsolete et mes objets inutiles, puis faire les reparations." :
                         selected == Errand::Trainer ?
@@ -1366,11 +1550,54 @@ bool CompanionErrandAction::Execute(Event)
         }
         if (state.kind == Errand::None)
             return false;
+        LOG_INFO("playerbots.companion", "[Errand] {} started kind={} spawn={} craft={} distance={}",
+            bot->GetName(), uint32(state.kind), state.spawn, state.craftSpell,
+            bot->GetDistance(state.x, state.y, state.z));
         state.closest = std::numeric_limits<float>::max();
         state.events.RescheduleEvent(Deadline, Milliseconds(state.kind == Errand::Herb ? 60000 : 180000));
         state.events.RescheduleEvent(Progress, Milliseconds(30000));
     }
 
+    if (state.kind == Errand::Craft)
+    {
+        if (state.awaitingCraft)
+        {
+            bool completed = bot->GetItemCount(state.craftOutput, false) > state.craftBefore;
+            if (!completed)
+                state.rejectedCrafts.insert(state.craftSpell);
+            else
+            {
+                ++state.crafts;
+                if (state.crafts == 1)
+                    state.events.RescheduleEvent(CraftReset, Milliseconds(300000));
+                state.inventoryDue = true;
+                LOG_INFO("playerbots.companion", "[Craft] {} spell={} item={} completed={}",
+                    bot->GetName(), state.craftSpell, state.craftOutput, state.crafts);
+            }
+            Returning(botAI);
+            return true;
+        }
+        if (GameObject* station = botAI->GetGameObject(state.target))
+            if (bot->GetDistance(station) > INTERACTION_DISTANCE - 1.0f)
+            {
+                MoveTo(state.map, state.x, state.y, state.z, false, false, true, true);
+                return true;
+            }
+        bot->StopMoving();
+        CraftRandomItemAction crafting(botAI);
+        auto const* spell = sSpellMgr->GetSpellInfo(state.craftSpell);
+        if (!spell || !crafting.isUseful() || !crafting.AcceptSpell(spell) ||
+            !botAI->CanCastSpell(state.craftSpell, bot))
+        {
+            StopTrip(botAI, true);
+            return false;
+        }
+        state.craftBefore = bot->GetItemCount(state.craftOutput, false);
+        state.awaitingCraft = botAI->CastSpell(state.craftSpell, bot);
+        if (!state.awaitingCraft)
+            StopTrip(botAI, true);
+        return true;
+    }
     if (state.kind == Errand::Return)
     {
         state.x = master->GetPositionX();
@@ -1464,7 +1691,7 @@ bool CompanionErrandAction::Execute(Event)
                     else
                     {
                         state.sold += before - after;
-                        LOG_INFO("playerbots", "[CompanionBags] {} sold {} x {} at {}",
+                        LOG_INFO("playerbots.companion", "[CompanionBags] {} sold {} x {} at {}",
                             bot->GetName(), before - after, entry, npc->GetEntry());
                     }
                     return true;
@@ -1472,7 +1699,7 @@ bool CompanionErrandAction::Execute(Event)
             state.repairs = RepairEquipment(bot, npc, state.reserve);
             state.rejectedBagVendors.insert(state.spawn);
             botAI->TellMaster("Entretien termine : " + std::to_string(state.sold) +
-                " objets gris vendus, " + std::to_string(state.repairs) +
+                " objets devenus inutiles vendus, " + std::to_string(state.repairs) +
                 " pieces de cuivre en reparations. Je vous rejoins.");
             if (NeedsBagSpace(bot) && !state.warnedBags)
             {
@@ -1491,14 +1718,15 @@ bool CompanionErrandAction::Execute(Event)
         }
     }
     if (state.kind == Errand::PoisonVendor || state.kind == Errand::ProfessionVendor ||
-        state.kind == Errand::MountVendor)
+        state.kind == Errand::MountVendor || state.kind == Errand::EquipmentVendor)
     {
         bool supplies = state.kind == Errand::ProfessionVendor;
         bool mount = state.kind == Errand::MountVendor;
         Creature* npc = ObjectAccessor::GetSpawnedCreatureByDBGUID(bot->GetMapId(), state.spawn);
         if (npc && bot->GetNPCIfCanInteractWith(npc->GetGUID(), UNIT_NPC_FLAG_VENDOR))
         {
-            auto purchase = mount ? ChooseMount(botAI, npc->GetVendorItems(), state.reserve, npc) : supplies ?
+            auto purchase = state.kind == Errand::EquipmentVendor ?
+                ChooseEquipment(botAI, npc->GetVendorItems(), state.reserve, npc) : mount ? ChooseMount(botAI, npc->GetVendorItems(), state.reserve, npc) : supplies ?
                 ChooseProfessionSupply(bot, npc->GetVendorItems(), state.reserve, NeededProfessionSupplies(bot), npc) :
                 ChoosePoison(bot, npc->GetVendorItems(), state.reserve, PoisonStock(bot), npc);
             BagPurchase bag;
@@ -1523,14 +1751,15 @@ bool CompanionErrandAction::Execute(Event)
                     if (bag.item && bag.storageSlot != bag.equipSlot)
                         bot->SwapItem(uint16(INVENTORY_SLOT_BAG_0 << 8) | bag.storageSlot,
                             uint16(INVENTORY_SLOT_BAG_0 << 8) | bag.equipSlot);
+                    state.inventoryDue = true;
                     botAI->TellMaster("J'ai achete " +
                         ChatHelper::FormatItem(sObjectMgr->GetItemTemplate(purchase.item)));
-                    LOG_INFO("playerbots", "[CompanionErrands] {} bought {} x {} at {}",
+                    LOG_INFO("playerbots.companion", "[CompanionErrands] {} bought {} x {} at {}",
                         bot->GetName(), after - before, purchase.item, npc->GetEntry());
                     return true;
                 }
             }
-            if (supplies || mount)
+            if (supplies || mount || state.kind == Errand::EquipmentVendor)
                 state.rejectedSupplyVendors.insert(state.spawn);
             else
                 state.rejectedVendors.insert(state.spawn);
