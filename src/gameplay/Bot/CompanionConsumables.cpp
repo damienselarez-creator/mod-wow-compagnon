@@ -24,7 +24,7 @@ namespace
     {
         Player* bot = ai->GetBot();
         auto const vocation = CompanionVocation::Get(bot);
-        auto const tabs = AiFactory::GetPlayerSpecTabs(bot);
+        auto tabs = AiFactory::GetPlayerSpecTabs(bot);
         int const tab = tabs[0] + tabs[1] + tabs[2] == 0 && vocation.managed && vocation.tab >= 0 ?
             vocation.tab : AiFactory::GetPlayerSpecTab(bot);
         using Role = CompanionConsumables::Role;
@@ -35,13 +35,20 @@ namespace
             case CLASS_WARLOCK:
                 return Role::Caster;
             case CLASS_DRUID:
-                return tab == DRUID_TAB_FERAL ? Role::Hybrid : Role::Caster;
+                return tab == DRUID_TAB_FERAL ? (ai->IsTank(bot) ? Role::Tank : Role::Agile) : Role::Caster;
             case CLASS_SHAMAN:
-                return tab == SHAMAN_TAB_ENHANCEMENT ? Role::Hybrid : Role::Caster;
+                return tab == SHAMAN_TAB_ENHANCEMENT ? Role::Agile : Role::Caster;
             case CLASS_PALADIN:
-                return tab == PALADIN_TAB_HOLY ? Role::Caster : Role::Hybrid;
+                return tab == PALADIN_TAB_HOLY ? Role::Caster :
+                    (tab == PALADIN_TAB_PROTECTION ? Role::Tank : Role::Physical);
             case CLASS_HUNTER:
                 return Role::Ranged;
+            case CLASS_ROGUE:
+                return Role::Agile;
+            case CLASS_WARRIOR:
+                return tab == WARRIOR_TAB_PROTECTION ? Role::Tank : Role::Physical;
+            case CLASS_DEATH_KNIGHT:
+                return tab == DEATH_KNIGHT_TAB_BLOOD ? Role::Tank : Role::Physical;
             default:
                 return Role::Physical;
         }
@@ -65,11 +72,34 @@ namespace
         }
     }
 
-    bool ScrollAlreadyCovered(Player* bot, CompanionConsumable const& profile)
+    int ScrollPriority(PlayerbotAI* ai, CompanionConsumable const& profile)
     {
+        return CompanionConsumables::ScrollPriority(profile.stat, ConsumableRole(ai),
+            ai->GetBot()->GetMaxPower(POWER_MANA) > 0);
+    }
+
+    bool ScrollAlreadyCovered(PlayerbotAI* ai, CompanionConsumable const& profile)
+    {
+        Player* bot = ai->GetBot();
         auto const* spell = sSpellMgr->GetSpellInfo(profile.spell);
         if (!spell)
             return true;
+        // Native SPELL_SPECIFIC_SCROLL makes different stat scrolls mutually exclusive.
+        // Keep the preferred active family rather than cycling through every useful stat.
+        if (spell->GetSpellSpecific() == SPELL_SPECIFIC_SCROLL)
+            for (AuraType type : {SPELL_AURA_MOD_STAT, SPELL_AURA_MOD_RESISTANCE})
+                for (auto const* aura : bot->GetAuraEffectsByType(type))
+                {
+                    auto const* active = aura->GetSpellInfo();
+                    if (active->GetSpellSpecific() != SPELL_SPECIFIC_SCROLL)
+                        continue;
+                    CompanionConsumable current{ConsumableKind::Scroll,
+                        ScrollStat(active->Effects[aura->GetEffIndex()]), active->Id, float(aura->GetAmount())};
+                    int const priority = ScrollPriority(ai, profile);
+                    int const activePriority = ScrollPriority(ai, current);
+                    if (activePriority > priority || (activePriority == priority && current.amount >= profile.amount))
+                        return true;
+                }
         for (auto const& effect : spell->GetEffects())
         {
             if (!effect.IsAura())
@@ -115,7 +145,7 @@ namespace
             !bot->IsMounted() && !bot->IsInFlight() && !bot->IsFalling() &&
             !bot->GetTransport() && !bot->GetVehicle() && !bot->GetTradeData() &&
             !bot->IsNonMeleeSpellCast(false) && !HasPendingCompanionFlight(ai) &&
-            !IsCompanionOnErrand(ai) && !ai->HasStrategy("passive", BOT_STATE_NON_COMBAT);
+            !IsCompanionErrandActive(ai) && !ai->HasStrategy("passive", BOT_STATE_NON_COMBAT);
     }
 
     bool SafeRest(PlayerbotAI* ai)
@@ -154,7 +184,7 @@ namespace
                 !CompanionConsumables::NeededNow(profile.kind, bot->IsInCombat(), bot->GetHealthPct(),
                     mana, manaUser, safeRest, ai->IsHeal(bot)) ||
                 (profile.kind == ConsumableKind::Scroll &&
-                    (!IsUsefulCompanionScroll(ai, profile) || ScrollAlreadyCovered(bot, profile))) ||
+                    (!IsUsefulCompanionScroll(ai, profile) || ScrollAlreadyCovered(ai, profile))) ||
                 !CanUseConsumable(ai, item, profile))
                 continue;
             // Healing comes before mana in danger; bandaging comes before preparations at rest.
@@ -163,7 +193,9 @@ namespace
             float const missing = profile.kind == ConsumableKind::Mana ?
                 bot->GetMaxPower(POWER_MANA) - bot->GetPower(POWER_MANA) : bot->GetMaxHealth() - bot->GetHealth();
             bool const better = !best || profile.kind < selected.kind ||
-                (profile.kind == ConsumableKind::Scroll ? profile.amount > selected.amount :
+                (profile.kind == ConsumableKind::Scroll ?
+                    (ScrollPriority(ai, profile) > ScrollPriority(ai, selected) ||
+                        (ScrollPriority(ai, profile) == ScrollPriority(ai, selected) && profile.amount > selected.amount)) :
                     CompanionConsumables::BetterRestoration(profile.amount, selected.amount, missing));
             if (better)
             {

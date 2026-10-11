@@ -15,6 +15,7 @@ enum
     CLASS_WARRIOR = 1, CLASS_PALADIN, CLASS_HUNTER, CLASS_ROGUE, CLASS_PRIEST,
     CLASS_DEATH_KNIGHT, CLASS_SHAMAN, CLASS_MAGE, CLASS_WARLOCK, CLASS_DRUID,
     DRUID_TAB_FERAL = 1, SHAMAN_TAB_ENHANCEMENT = 1, PALADIN_TAB_HOLY = 0,
+    PALADIN_TAB_PROTECTION = 1, WARRIOR_TAB_PROTECTION = 2, DEATH_KNIGHT_TAB_BLOOD = 0,
     EQUIP_ERR_OK = 0, POWER_MANA = 0, ITEM_CLASS_CONSUMABLE = 0,
     ITEM_SUBCLASS_POTION = 1, ITEM_SUBCLASS_SCROLL = 4, ITEM_SUBCLASS_BANDAGE = 7,
     ITEM_SPELLTRIGGER_ON_USE = 0, SPELL_AURA_MOD_STAT = 29, SPELL_AURA_MOD_RESISTANCE = 22,
@@ -24,8 +25,10 @@ enum
     SPELL_SCHOOL_MASK_NORMAL = 1, SPELL_EFFECT_HEAL = 10, SPELL_EFFECT_ENERGIZE = 30,
     SPELL_GROUP_STACK_RULE_DEFAULT = 0, UNIT_STATE_LOST_CONTROL = 1,
     BOT_STATE_NON_COMBAT = 0, TRIGGERED_NONE = 0, SPELL_CAST_OK = 0,
-    CURRENT_CHANNELED_SPELL = 1, CURRENT_GENERIC_SPELL = 2, CMSG_USE_ITEM = 1, TARGET_FLAG_UNIT = 2
+    CURRENT_CHANNELED_SPELL = 1, CURRENT_GENERIC_SPELL = 2, CMSG_USE_ITEM = 1, TARGET_FLAG_UNIT = 2,
+    SPELL_SPECIFIC_SCROLL = 99
 };
+using AuraType = int;
 struct ObjectGuid
 {
     uint32 value = 0;
@@ -45,10 +48,11 @@ struct SpellInfo
     uint32 Id = 0, family = 0;
     int duration = 8000;
     bool channel = false;
-    std::array<SpellEffectInfo, 3> effects;
-    auto const& GetEffects() const { return effects; }
+    std::array<SpellEffectInfo, 3> Effects;
+    auto const& GetEffects() const { return Effects; }
     bool IsRankOf(SpellInfo const* other) const { return family && family == other->family; }
-    bool IsAuraExclusiveBySpecificWith(SpellInfo const* other) const { return IsRankOf(other); }
+    int GetSpellSpecific() const { return family ? SPELL_SPECIFIC_SCROLL : 0; }
+    bool IsAuraExclusiveBySpecificWith(SpellInfo const* other) const { return family && other->family; }
     bool IsChanneled() const { return channel; }
     int GetDuration() const { return duration; }
     uint32 CalcCastTime(Player*) const { return 0; }
@@ -60,6 +64,7 @@ struct AuraEffect
     SpellInfo const* GetSpellInfo() const { return info; }
     int GetMiscValue() const { return misc; }
     int GetAmount() const { return amount; }
+    int GetEffIndex() const { return 0; }
 };
 struct SpellMgr
 {
@@ -200,12 +205,13 @@ struct PlayerbotAI
     Player* GetMaster() { return &master; }
     bool HasStrategy(char const*, int) { return passive; }
     bool IsHeal(Player*) { return healer; }
+    bool IsTank(Player*) { return false; }
     auto GetInventoryItems() { return bot.items; }
     void SetNextCheckDelay(uint32 value) { delay = value; }
 };
 namespace AiFactory
 {
-    std::array<int, 3> talents = {0, 0, 1};
+    std::map<uint8, uint32> talents = {{0, 0}, {1, 0}, {2, 1}};
     auto GetPlayerSpecTabs(Player*) { return talents; }
     int GetPlayerSpecTab(Player* bot) { return bot->tab; }
 }
@@ -216,7 +222,7 @@ namespace CompanionVocation
 }
 bool IsCompanionInventoryManaged(PlayerbotAI* ai) { return ai && ai->managed; }
 bool HasPendingCompanionFlight(PlayerbotAI* ai) { return ai->pendingFlight; }
-bool IsCompanionOnErrand(PlayerbotAI* ai) { return ai->errand; }
+bool IsCompanionErrandActive(PlayerbotAI* ai) { return ai->errand; }
 struct Event { };
 struct Action
 {
@@ -245,7 +251,7 @@ Item MakeItem(uint32 id, int subclass, SpellEffectInfo effect, uint32 family = 0
     SpellInfo spell;
     spell.Id = id;
     spell.family = family;
-    spell.effects[0] = effect;
+    spell.Effects[0] = effect;
     manager.spells[id] = spell;
     Item item;
     item.proto.ItemId = id;
@@ -338,18 +344,26 @@ int main()
         }
     ai.bot.cls = CLASS_PALADIN;
     ai.bot.tab = 0;
-    AiFactory::talents = {0, 0, 0};
+    AiFactory::talents = {{0, 0}, {1, 0}, {2, 0}};
     CompanionVocation::choice = {true, 1};
     assert(IsUsefulCompanionScroll(&ai, DescribeCompanionConsumable(&ai, &strength.proto)));
-    AiFactory::talents = {1, 0, 0};
+    AiFactory::talents = {{0, 1}, {1, 0}, {2, 0}};
     assert(!IsUsefulCompanionScroll(&ai, DescribeCompanionConsumable(&ai, &strength.proto)));
 
     ai.bot.cls = CLASS_WARRIOR;
     ai.bot.maxMana = 0;
+    ai.bot.tab = WARRIOR_TAB_PROTECTION;
     ai.bot.health = 1000;
     ai.bot.items = {&strength, &intellect, &unknown};
     ai.bot.cooldown.clear();
     assert(SelectConsumable(&ai) == &strength);
+    ai.bot.items.push_back(&armor);
+    assert(SelectConsumable(&ai) == &armor); // Protection selects defense before strength.
+    AuraEffect armorCovered{manager.GetSpellInfo(18), SPELL_SCHOOL_MASK_NORMAL, 100};
+    ai.bot.auras = {&armorCovered};
+    assert(!SelectConsumable(&ai)); // No weaker-family scroll can replace the preferred active scroll.
+    ai.bot.auras.clear();
+    ai.bot.items.pop_back();
     auto stronger = MakeItem(21, ITEM_SUBCLASS_SCROLL, {6, SPELL_AURA_MOD_STAT, STAT_STRENGTH, 0, 12}, 1);
     ai.bot.items.push_back(&stronger);
     assert(SelectConsumable(&ai) == &stronger);
@@ -358,6 +372,9 @@ int main()
     assert(!SelectConsumable(&ai));
     covered.amount = 4;
     assert(SelectConsumable(&ai) == &stronger);
+    ai.bot.items.push_back(&armor);
+    assert(SelectConsumable(&ai) == &armor); // A better role family may replace a weaker family once.
+    ai.bot.items.pop_back();
     ai.bot.auras.clear();
     ai.pendingFlight = true;
     assert(!SelectConsumable(&ai));

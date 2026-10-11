@@ -7,7 +7,7 @@
 
 namespace CompanionConsumables
 {
-    enum class Role { Physical, Caster, Hybrid, Ranged };
+    enum class Role { Physical, Caster, Agile, Ranged, Tank };
     enum class Stat { Unknown, Strength, Agility, Stamina, Intellect, Spirit, Armor };
     enum class Kind { Unknown, Healing, Mana, Bandage, Scroll };
 
@@ -28,6 +28,22 @@ namespace CompanionConsumables
                 return role == Role::Caster;
             default:
                 return false;
+        }
+    }
+
+    inline int ScrollPriority(Stat stat, Role role, bool hasMana)
+    {
+        if (!UsefulScroll(stat, role, hasMana))
+            return 0;
+        switch (stat)
+        {
+            case Stat::Stamina: return role == Role::Tank ? 5 : 2;
+            case Stat::Armor: return role == Role::Tank ? 4 : 1;
+            case Stat::Intellect: return role == Role::Caster ? 5 : 1;
+            case Stat::Spirit: return 4;
+            case Stat::Strength: return role == Role::Physical ? 5 : 3;
+            case Stat::Agility: return role == Role::Agile || role == Role::Ranged ? 5 : 3;
+            default: return 0;
         }
     }
 
