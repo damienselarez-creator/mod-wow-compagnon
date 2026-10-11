@@ -20,6 +20,7 @@ struct CompanionConsumable
     CompanionConsumables::Stat stat = CompanionConsumables::Stat::Unknown;
     uint32 spell = 0;
     float amount = 0;
+    float manaAmount = 0;
 };
 
 CompanionConsumable DescribeCompanionConsumable(PlayerbotAI* ai, ItemTemplate const* item);

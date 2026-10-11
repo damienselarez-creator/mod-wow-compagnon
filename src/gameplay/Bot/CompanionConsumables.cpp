@@ -179,7 +179,15 @@ namespace
         CompanionConsumable selected;
         for (Item* item : ai->GetInventoryItems())
         {
-            auto const profile = DescribeCompanionConsumable(ai, item->GetTemplate());
+            auto profile = DescribeCompanionConsumable(ai, item->GetTemplate());
+            if (profile.kind == ConsumableKind::Healing && profile.manaAmount > 0 &&
+                (requested == ConsumableKind::Mana || (requested == ConsumableKind::Unknown &&
+                    !CompanionConsumables::NeededNow(ConsumableKind::Healing, bot->IsInCombat(),
+                        bot->GetHealthPct(), mana, manaUser, safeRest, ai->IsHeal(bot)))))
+            {
+                profile.kind = ConsumableKind::Mana;
+                profile.amount = profile.manaAmount;
+            }
             if ((requested != ConsumableKind::Unknown && profile.kind != requested) ||
                 !CompanionConsumables::NeededNow(profile.kind, bot->IsInCombat(), bot->GetHealthPct(),
                     mana, manaUser, safeRest, ai->IsHeal(bot)) ||
@@ -302,11 +310,14 @@ CompanionConsumable DescribeCompanionConsumable(PlayerbotAI* ai, ItemTemplate co
                     result.kind = ConsumableKind::Healing;
                     result.amount += amount;
                 }
-                else if (effect.IsEffect(SPELL_EFFECT_ENERGIZE) && effect.MiscValue == POWER_MANA && amount > 0 &&
-                    result.kind != ConsumableKind::Healing)
+                else if (effect.IsEffect(SPELL_EFFECT_ENERGIZE) && effect.MiscValue == POWER_MANA && amount > 0)
                 {
-                    result.kind = ConsumableKind::Mana;
-                    result.amount += amount;
+                    result.manaAmount += amount;
+                    if (result.kind != ConsumableKind::Healing)
+                    {
+                        result.kind = ConsumableKind::Mana;
+                        result.amount += amount;
+                    }
                 }
                 else if (!effect.IsEffect(SPELL_EFFECT_ENERGIZE) || effect.MiscValue != POWER_MANA)
                     unsupported = true;
@@ -328,7 +339,11 @@ bool IsUsefulCompanionScroll(PlayerbotAI* ai, CompanionConsumable const& scroll)
 
 bool UseCompanionPotion(PlayerbotAI* ai, bool healing)
 {
-    return UseConsumable(ai, SelectConsumable(ai, healing ? ConsumableKind::Healing : ConsumableKind::Mana));
+    Item* selected = SelectConsumable(ai, healing ? ConsumableKind::Healing : ConsumableKind::Mana);
+    if (!healing)
+        if (Item* emergency = SelectConsumable(ai, ConsumableKind::Healing))
+            selected = emergency; // Surviving takes priority over spending the shared potion cooldown on mana.
+    return UseConsumable(ai, selected);
 }
 
 NamedObjectContext<Action>* CreateCompanionConsumableActionContext()

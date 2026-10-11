@@ -239,6 +239,7 @@ struct CompanionConsumable
     CompanionConsumables::Stat stat = CompanionConsumables::Stat::Unknown;
     uint32 spell = 0;
     float amount = 0;
+    float manaAmount = 0;
 };
 CompanionConsumable DescribeCompanionConsumable(PlayerbotAI*, ItemTemplate const*);
 bool IsUsefulCompanionScroll(PlayerbotAI*, CompanionConsumable const&);
@@ -290,6 +291,17 @@ int main()
     assert(SelectConsumable(&ai) == &mp); // Empty mana is still a mana user.
     ai.bot.mana = 600;
     assert(!SelectConsumable(&ai));
+    ai.bot.mana = 0;
+    adequate.usable = true;
+    ai.bot.items = {&mp, &adequate};
+    assert(UseCompanionPotion(&ai, false) && ai.bot.session.lastItem == adequate.GetEntry());
+    auto mixed = MakeItem(22, ITEM_SUBCLASS_POTION, {SPELL_EFFECT_HEAL, 0, 0, 0, 400});
+    manager.spells[22].Effects[1] = {SPELL_EFFECT_ENERGIZE, 0, POWER_MANA, 0, 300};
+    ai.bot.health = 1000;
+    ai.bot.items = {&mixed};
+    assert(SelectConsumable(&ai, Kind::Mana) == &mixed);
+    assert(UseCompanionPotion(&ai, false)); // Hybrid potion is usable for mana even at full health.
+    ai.bot.health = 300;
 
     ai.bot.combat = false;
     ai.master.combat = false;
