@@ -5,6 +5,7 @@
  */
 
 #include "RangeTriggers.h"
+#include "CompanionCombat.h"
 #include "MoveSplineInit.h"
 #include "PlayerbotAIConfig.h"
 #include "Playerbots.h"
@@ -155,6 +156,9 @@ bool EnemyWithinMeleeTrigger::IsActive()
 bool OutOfRangeTrigger::IsActive()
 {
     Unit* target = AI_VALUE(Unit*, GetTargetName());
+    if (RefinedCompanionCombat(botAI) && target && target->IsInWorld() && target->GetMap() == bot->GetMap() &&
+        (target->GetPhaseMask() & bot->GetPhaseMask()) && !bot->IsWithinLOSInMap(target))
+        return true;
     // increase contact distance to prevent calculation error
     float dis = distance + CONTACT_DISTANCE;
     return target &&

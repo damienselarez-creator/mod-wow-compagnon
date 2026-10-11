@@ -217,6 +217,10 @@ void UpdateCompanionCombat(PlayerbotAI* ai)
     Player* bot = ai->GetBot();
     if (Unit* victim = bot->GetVictim(); victim && victim->HasBreakableByDamageCrowdControlAura())
         bot->AttackStop();
+    if (Spell* shot = bot->GetCurrentSpell(CURRENT_AUTOREPEAT_SPELL))
+        if (Unit* target = ai->GetUnit(shot->m_targets.GetUnitTargetGUID());
+            target && target->HasBreakableByDamageCrowdControlAura())
+            bot->InterruptSpell(CURRENT_AUTOREPEAT_SPELL);
     if (Pet* pet = bot->GetPet())
         if (Unit* victim = pet->GetVictim(); victim && victim->HasBreakableByDamageCrowdControlAura())
             pet->AttackStop();

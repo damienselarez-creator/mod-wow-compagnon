@@ -5,12 +5,24 @@
  */
 
 #include "ReachTargetActions.h"
+#include "CompanionCombat.h"
 #include "Event.h"
 #include "PlayerbotAIConfig.h"
 #include "Playerbots.h"
 #include "ServerFacade.h"
 
-bool ReachTargetAction::Execute(Event /*event*/) { return ReachCombatTo(AI_VALUE(Unit*, GetTargetName()), distance); }
+bool ReachTargetAction::Execute(Event /*event*/)
+{
+    Unit* target = AI_VALUE(Unit*, GetTargetName());
+    if (RefinedCompanionCombat(botAI))
+    {
+        if (!isUseful())
+            return false;
+        if (!bot->IsWithinLOSInMap(target))
+            return MoveToLOS(target, distance > sPlayerbotAIConfig.meleeDistance);
+    }
+    return ReachCombatTo(target, distance);
+}
 
 bool ReachTargetAction::isUseful()
 {
@@ -26,6 +38,14 @@ bool ReachTargetAction::isUseful()
         return false;
     }
     Unit* target = GetTarget();
+    if (RefinedCompanionCombat(botAI))
+    {
+        if (!target || !target->IsInWorld() || target->GetMap() != bot->GetMap() ||
+            !(target->GetPhaseMask() & bot->GetPhaseMask()) || bot->IsNonMeleeSpellCast(false) ||
+            (!bot->IsFriendlyTo(target) && target->HasBreakableByDamageCrowdControlAura()))
+            return false;
+        return !bot->IsWithinCombatRange(target, distance) || !bot->IsWithinLOSInMap(target);
+    }
     // float dis = distance + CONTACT_DISTANCE;
     return target &&
            !bot->IsWithinCombatRange(target, distance);  // ServerFacade::instance().IsDistanceGreaterThan(AI_VALUE2(float,

@@ -140,8 +140,12 @@ bool PartyMemberToHeal::Check(Unit* player)
     // return player && player != bot && player->GetMapId() == bot->GetMapId() && player->IsInWorld() &&
     //     ServerFacade::instance().GetDistance2d(bot, player) < (player->IsPlayer() && botAI->IsTank((Player*)player) ? 50.0f
     //     : 40.0f);
+    if (RefinedCompanionCombat(botAI))
+        return player && player->IsInWorld() && player->IsAlive() && player->GetMap() == bot->GetMap() &&
+            (player->GetPhaseMask() & bot->GetPhaseMask()) && !player->IsCharmed() &&
+            bot->GetDistance2d(player) < sPlayerbotAIConfig.healDistance * 2;
     return player->GetMapId() == bot->GetMapId() && !player->IsCharmed() &&
-           bot->GetDistance2d(player) < sPlayerbotAIConfig.healDistance * 2 && bot->IsWithinLOSInMap(player);
+        bot->GetDistance2d(player) < sPlayerbotAIConfig.healDistance * 2 && bot->IsWithinLOSInMap(player);
 }
 
 Unit* HealerLowMana::Calculate()

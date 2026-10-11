@@ -25,7 +25,7 @@ enum Aura
     SPELL_AURA_NONE, SPELL_AURA_MOD_SILENCE, SPELL_AURA_PERIODIC_DAMAGE, SPELL_AURA_PERIODIC_DAMAGE_PERCENT,
     SPELL_AURA_PERIODIC_LEECH, SPELL_AURA_MOD_TAUNT
 };
-enum CastType { CURRENT_GENERIC_SPELL, CURRENT_CHANNELED_SPELL };
+enum CastType { CURRENT_GENERIC_SPELL, CURRENT_CHANNELED_SPELL, CURRENT_AUTOREPEAT_SPELL };
 enum { EFFECT_0, EFFECT_1, EFFECT_2 };
 enum { SPELL_STATE_FINISHED, SPELL_STATE_CASTING, SPELL_STATE_PREPARING };
 enum { POWER_MANA, POWER_RAGE };
@@ -97,7 +97,10 @@ struct Unit
     float health = 100, maxHealth = 1000, x = 0;
     int map = 1, phase = 1;
     Unit* victim = nullptr;
-    std::array<Spell*, 2> casts{};
+    std::array<Spell*, 3> casts{};
+    bool withinRange = true, casting = false;
+    bool IsWithinCombatRange(Unit*, float) { return withinRange; }
+    bool IsNonMeleeSpellCast(bool) { return casting; }
     int stops = 0;
     virtual Player* ToPlayer() { return nullptr; }
     bool IsAlive() { return alive; }
@@ -118,6 +121,7 @@ struct Unit
     float healingTaken = 1;
     uint32 SpellHealingBonusTaken(Player*, SpellInfo const*, uint32 amount, int) { return uint32(amount * healingTaken); }
     Spell* GetCurrentSpell(CastType type) { return casts[type]; }
+    void InterruptSpell(CastType type) { casts[type] = nullptr; }
     void AttackStop() { ++stops; victim = nullptr; }
 };
 struct GroupReference
@@ -151,7 +155,7 @@ struct Player : Unit
     bool IsInCombat() { return combat; }
     uint32 SpellHealingBonusDone(Unit*, SpellInfo const*, uint32 amount, int, uint8) { return amount; }
 };
-struct Config { bool companionCombatRefinement = true; float lowHealth = 35, healDistance = 40; };
+struct Config { bool companionCombatRefinement = true; float lowHealth = 35, healDistance = 40, meleeDistance = 5; };
 Config sPlayerbotAIConfig;
 struct Value { GuidVector units; GuidVector Get() { return units; } };
 struct Context
@@ -163,6 +167,7 @@ struct PlayerbotAI
 {
     Player* bot;
     bool managed = true;
+    bool stay = false;
     Context context;
     std::map<ObjectGuid, Unit*> units;
     Player* GetBot() { return bot; }
@@ -170,9 +175,39 @@ struct PlayerbotAI
     bool IsHeal(Player* player) { return player->healer; }
     Context* GetAiObjectContext() { return &context; }
     Unit* GetUnit(ObjectGuid guid) { return units[guid]; }
+    bool HasStrategy(std::string const&, int) { return stay; }
+    int GetState() { return 1; }
 };
 bool IsCompanionInventoryManaged(PlayerbotAI* ai) { return ai->managed; }
 #include "combat.inc"
+struct Event { };
+#define AI_VALUE(type, name) target
+struct ReachTargetAction
+{
+    PlayerbotAI* botAI;
+    Player* bot;
+    Unit* target;
+    float distance = 30;
+    int losMoves = 0, rangeMoves = 0;
+    bool Execute(Event);
+    bool isUseful();
+    Unit* GetTarget() { return target; }
+    std::string GetTargetName() { return "current target"; }
+    bool MoveToLOS(Unit*, bool) { ++losMoves; return true; }
+    bool ReachCombatTo(Unit*, float) { ++rangeMoves; return true; }
+};
+constexpr float CONTACT_DISTANCE = 0.5f;
+struct OutOfRangeTrigger
+{
+    PlayerbotAI* botAI;
+    Player* bot;
+    Unit* target;
+    float distance = 30;
+    std::string GetTargetName() { return "current target"; }
+    bool IsActive();
+};
+#include "reach.inc"
+#include "range.inc"
 
 int main()
 {
@@ -204,9 +239,12 @@ int main()
     assert(CompanionCombatSpellAllowed(&ai, &bot, &area));
     enemy.phase = 1;
     bot.victim = &enemy;
+    Spell automaticShot{&damage, {enemy.guid}};
+    bot.casts[CURRENT_AUTOREPEAT_SPELL] = &automaticShot;
     Pet pet; pet.victim = &enemy; bot.pet = &pet;
     UpdateCompanionCombat(&ai);
     assert(bot.stops == 1 && pet.stops == 1 && !bot.victim && !pet.victim);
+    assert(!bot.casts[CURRENT_AUTOREPEAT_SPELL]);
     enemy.cc = false;
 
     SpellInfo heal; heal.Effects[0].Effect = SPELL_EFFECT_HEAL;
@@ -274,6 +312,36 @@ int main()
     assert(CompanionCombatSpellAllowed(&ai, &enemy, &damage));
 
     using Domain = CompanionGoals::Domain;
+    ReachTargetAction reach{&ai, &bot, &enemy};
+    OutOfRangeTrigger range{&ai, &bot, &enemy};
+    bot.healer = false;
+    bot.los = true;
+    assert(!reach.isUseful() && !range.IsActive());
+    bot.los = false;
+    assert(reach.isUseful() && range.IsActive());
+    assert(reach.Execute({}) && reach.losMoves == 1 && reach.rangeMoves == 0);
+    bot.casting = true;
+    assert(!reach.isUseful() && !reach.Execute({}));
+    bot.casting = false;
+    ai.stay = true;
+    assert(!reach.isUseful());
+    ai.stay = false;
+    enemy.cc = true;
+    assert(!reach.isUseful());
+    enemy.cc = false;
+    bot.los = true;
+    bot.withinRange = false;
+    assert(reach.isUseful() && range.IsActive());
+    assert(reach.Execute({}) && reach.rangeMoves == 1);
+    enemy.phase = 2;
+    assert(!reach.isUseful());
+    enemy.phase = 1;
+    ai.managed = false;
+    bot.withinRange = true;
+    bot.los = false;
+    assert(!reach.isUseful() && !range.IsActive());
+    ai.managed = true;
+
     using CompanionActivity::Score;
     auto training = Score(Domain::ClassTraining, 0, 0, 20, false, false, false);
     assert(Score(Domain::Maintenance, -10000, 0, 500, true, false, false) < training);
