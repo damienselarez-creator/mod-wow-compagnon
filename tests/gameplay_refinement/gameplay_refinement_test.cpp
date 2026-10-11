@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstdint>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 #include "CompanionCombatPolicy.h"
@@ -36,6 +37,18 @@ enum { HEAL };
 struct Unit;
 struct Player;
 struct Pet;
+struct Item
+{
+    uint32 entry, count;
+    uint32 GetEntry() { return entry; }
+    uint32 GetCount() { return count; }
+};
+enum
+{
+    SKILL_BLACKSMITHING, SKILL_LEATHERWORKING, SKILL_ALCHEMY, SKILL_HERBALISM, SKILL_MINING,
+    SKILL_TAILORING, SKILL_ENGINEERING, SKILL_ENCHANTING, SKILL_SKINNING, SKILL_JEWELCRAFTING,
+    SKILL_INSCRIPTION, SKILL_FIRST_AID, SKILL_COOKING, SKILL_FISHING
+};
 struct Spell;
 struct Group;
 struct PlayerbotAI;
@@ -146,6 +159,11 @@ struct Player : Unit
     bool tank = false, healer = false, combat = false;
     float mana = 100;
     int power = POWER_MANA;
+    uint32 level = 10;
+    std::map<uint32, uint32> skills, spells;
+    uint32 GetLevel() { return level; }
+    uint32 GetSkillValue(uint32 skill) { return skills[skill]; }
+    auto const& GetSpellMap() { return spells; }
     Player* ToPlayer() override { return this; }
     Group* GetGroup() { return group; }
     bool IsInSameGroupWith(Player* player) { return group && group == player->group; }
@@ -170,6 +188,8 @@ struct PlayerbotAI
     bool stay = false;
     Context context;
     std::map<ObjectGuid, Unit*> units;
+    std::vector<Item*> items;
+    auto const& GetInventoryItems() { return items; }
     Player* GetBot() { return bot; }
     bool IsTank(Player* player) { return player->tank; }
     bool IsHeal(Player* player) { return player->healer; }
@@ -208,6 +228,18 @@ struct OutOfRangeTrigger
 };
 #include "reach.inc"
 #include "range.inc"
+struct OpportunityState
+{
+    uint64 inventorySignature = 0, progressionSignature = 0;
+    uint32 observedLevel = 0;
+    bool mountDue = false, townDue = false, craftDue = false, herbDue = false;
+    std::set<uint32> rejectedTrainers, rejectedLessons, rejectedCrafts, rejectedSupplyVendors;
+};
+void RefreshOpportunities(PlayerbotAI* botAI, OpportunityState& state)
+{
+    Player* bot = botAI->GetBot();
+    #include "opportunities.inc"
+}
 
 int main()
 {
@@ -341,6 +373,30 @@ int main()
     bot.los = false;
     assert(!reach.isUseful() && !range.IsActive());
     ai.managed = true;
+
+    OpportunityState opportunities;
+    opportunities.rejectedSupplyVendors.insert(7);
+    RefreshOpportunities(&ai, opportunities);
+    assert(opportunities.mountDue && opportunities.townDue && opportunities.craftDue);
+    opportunities.mountDue = opportunities.townDue = opportunities.craftDue = opportunities.herbDue = false;
+    opportunities.rejectedTrainers.insert(8);
+    opportunities.rejectedCrafts.insert(9);
+    RefreshOpportunities(&ai, opportunities);
+    assert(!opportunities.townDue && !opportunities.craftDue && opportunities.rejectedCrafts.count(9));
+    Item ore{100, 5};
+    ai.items = {&ore};
+    RefreshOpportunities(&ai, opportunities);
+    assert(opportunities.craftDue && opportunities.townDue && !opportunities.rejectedCrafts.count(9));
+    assert(opportunities.rejectedTrainers.count(8) && opportunities.rejectedSupplyVendors.count(7));
+    opportunities.townDue = opportunities.craftDue = false;
+    bot.skills[SKILL_BLACKSMITHING] = 75;
+    RefreshOpportunities(&ai, opportunities);
+    assert(opportunities.townDue && opportunities.craftDue && !opportunities.rejectedTrainers.count(8));
+    opportunities.rejectedLessons.insert(8);
+    bot.level = 20;
+    RefreshOpportunities(&ai, opportunities);
+    assert(opportunities.mountDue && !opportunities.rejectedLessons.count(8));
+    assert(opportunities.rejectedSupplyVendors.count(7));
 
     using CompanionActivity::Score;
     auto training = Score(Domain::ClassTraining, 0, 0, 20, false, false, false);
