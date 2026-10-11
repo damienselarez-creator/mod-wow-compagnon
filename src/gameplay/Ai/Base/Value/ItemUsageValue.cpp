@@ -8,6 +8,7 @@
 #include "AiFactory.h"
 #include "ChatHelper.h"
 #include "CompanionEquipment.h"
+#include "CompanionConsumables.h"
 #include "GuildTaskMgr.h"
 #include "Item.h"
 #include "LootObjectStack.h"
@@ -74,10 +75,21 @@ ItemUsage ItemUsageValue::Calculate()
 
     const uint32_t maxCount = proto->MaxCount;
 
+    if (IsCompanionInventoryManaged(botAI) && proto->Class == ITEM_CLASS_CONSUMABLE)
+    {
+        auto const profile = DescribeCompanionConsumable(botAI, proto);
+        if (profile.kind == CompanionConsumables::Kind::Scroll && !IsItemUsefulForQuest(bot, proto) &&
+            !(botAI->GetMaster() && IsItemUsefulForQuest(botAI->GetMaster(), proto)))
+            return IsUsefulCompanionScroll(botAI, profile) ?
+                (bot->GetItemCount(itemId, false) < 10 ? ITEM_USAGE_USE : ITEM_USAGE_KEEP) : ITEM_USAGE_VENDOR;
+    }
+
     if (proto->Class == ITEM_CLASS_CONSUMABLE &&
         (maxCount == 0 || bot->GetItemCount(itemId, false) < maxCount))
     {
-        std::string const foodType = GetConsumableType(proto, bot->GetPower(POWER_MANA));
+        bool const hasMana = IsCompanionInventoryManaged(botAI) ?
+            bot->GetMaxPower(POWER_MANA) > 0 : bot->GetPower(POWER_MANA) > 0;
+        std::string const foodType = GetConsumableType(proto, hasMana);
 
         if (!foodType.empty() && bot->CanUseItem(proto) == EQUIP_ERR_OK)
         {

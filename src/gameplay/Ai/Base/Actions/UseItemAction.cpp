@@ -5,6 +5,8 @@
  */
 
 #include "UseItemAction.h"
+#include "CompanionConsumables.h"
+#include "CompanionErrands.h"
 #include "ChatHelper.h"
 #include "Event.h"
 #include "ItemPackets.h"
@@ -17,6 +19,12 @@ bool UseItemAction::Execute(Event event)
     std::string name = event.getParam();
     if (name.empty())
         name = getName();
+
+    if (event.getParam().empty() && IsCompanionInventoryManaged(botAI))
+    {
+        if (name == "healing potion" || name == "mana potion")
+            return UseCompanionPotion(botAI, name == "healing potion");
+    }
 
     std::vector<Item*> items = AI_VALUE2(std::vector<Item*>, "inventory items", name);
     GuidVector gos = chat->parseGameobjects(name);

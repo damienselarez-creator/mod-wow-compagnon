@@ -5,6 +5,8 @@
  */
 
 #include "ImbueAction.h"
+#include "CompanionConsumables.h"
+#include "CompanionErrands.h"
 #include "Event.h"
 #include "Playerbots.h"
 
@@ -203,6 +205,8 @@ TryEmergencyAction::TryEmergencyAction(PlayerbotAI* botAI) : Action(botAI, "try 
 
 bool TryEmergencyAction::Execute(Event /*event*/)
 {
+    if (IsCompanionInventoryManaged(botAI))
+        return UseCompanionPotion(botAI, true);
     // Do not use consumable if bot can heal self
     if ((botAI->IsHeal(bot)) && (bot->GetPowerPct(POWER_MANA) > 20))
         return false;

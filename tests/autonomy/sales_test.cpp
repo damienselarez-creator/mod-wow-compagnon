@@ -1,9 +1,11 @@
 #include <cassert>
 #include <map>
 #include <string>
+#include "CompanionConsumablePolicy.h"
 
 using uint8 = unsigned char;
 constexpr int ITEM_QUALITY_POOR = 0, ITEM_QUALITY_RARE = 3, ITEM_CLASS_WEAPON = 2;
+constexpr int ITEM_CLASS_CONSUMABLE = 0;
 constexpr int ITEM_SUBCLASS_WEAPON_MISC = 14, EQUIP_ERR_OK = 0, NULL_SLOT = 255;
 constexpr int EQUIPMENT_SLOT_MAINHAND = 15, INVENTORY_SLOT_BAG_0 = 255;
 constexpr int ITEM_FIELD_MAXDURABILITY = 0, ITEM_FIELD_DURABILITY = 1;
@@ -44,6 +46,11 @@ struct PlayerbotAI
 };
 bool IsCompanionInventoryManaged(PlayerbotAI* ai) { return ai && ai->managed; }
 bool Protected(PlayerbotAI*, Item* item) { return item->protectedItem; }
+struct CompanionConsumable { CompanionConsumables::Kind kind = CompanionConsumables::Kind::Unknown; };
+CompanionConsumable scrollProfile;
+bool usefulScroll = false;
+CompanionConsumable DescribeCompanionConsumable(PlayerbotAI*, ItemTemplate const*) { return scrollProfile; }
+bool IsUsefulCompanionScroll(PlayerbotAI*, CompanionConsumable const&) { return usefulScroll; }
 bool PrefersCompanionShield(PlayerbotAI* ai) { return ai->shield; }
 bool UsesCompanionArmorPriority(ItemTemplate const* proto) { return proto->Class == 4 && proto->armor; }
 bool IsCompanionShieldMainHand(int type) { return type == 13 || type == 21; }
@@ -102,4 +109,14 @@ int main()
     ai.managed = false;
     assert(!CanSellCompanionItem(&ai, &old));
     assert(!CanSellCompanionItem(nullptr, &old));
+    ai.managed = true;
+    old.proto.Class = ITEM_CLASS_CONSUMABLE;
+    assert(!CanSellCompanionItem(&ai, &old)); // Unknown consumables remain protected.
+    scrollProfile.kind = CompanionConsumables::Kind::Scroll;
+    assert(CanSellCompanionItem(&ai, &old)); // A recognized scroll with irrelevant stats can be sold.
+    usefulScroll = true;
+    assert(!CanSellCompanionItem(&ai, &old));
+    usefulScroll = false;
+    old.protectedItem = true;
+    assert(!CanSellCompanionItem(&ai, &old)); // Quest/reagent/trade protection wins over stat utility.
 }

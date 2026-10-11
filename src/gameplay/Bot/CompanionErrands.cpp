@@ -4,6 +4,7 @@
 #include "PlayerbotFactory.h"
 #include "CompanionGuildBank.h"
 #include "CompanionEquipment.h"
+#include "CompanionConsumables.h"
 #include "StatsWeightCalculator.h"
 #include "CompanionVocation.h"
 #include "CastCustomSpellAction.h"
@@ -229,7 +230,8 @@ namespace
         auto const* proto = item->GetTemplate();
         if (!Player::IsInventoryPos(item->GetBagSlot(), item->GetSlot()) || item->IsBag() ||
             !proto->SellPrice || proto->StartQuest || proto->Class == ITEM_CLASS_QUEST ||
-            proto->Class == ITEM_CLASS_CONSUMABLE || proto->Class == ITEM_CLASS_PROJECTILE ||
+            (proto->Class == ITEM_CLASS_CONSUMABLE && proto->SubClass != ITEM_SUBCLASS_SCROLL) ||
+            proto->Class == ITEM_CLASS_PROJECTILE ||
             proto->Class == ITEM_CLASS_KEY || proto->TotemCategory || item->IsInTrade() ||
             item->IsWrapped())
             return true;
@@ -873,6 +875,11 @@ bool CanSellCompanionItem(PlayerbotAI* ai, Item* item)
     if (!IsCompanionInventoryManaged(ai) || !item || Protected(ai, item))
         return false;
     auto const* proto = item->GetTemplate();
+    if (proto->Class == ITEM_CLASS_CONSUMABLE)
+    {
+        auto const profile = DescribeCompanionConsumable(ai, proto);
+        return profile.kind == CompanionConsumables::Kind::Scroll && !IsUsefulCompanionScroll(ai, profile);
+    }
     ItemUsage usage = ai->GetAiObjectContext()->GetValue<ItemUsage>("item usage", item->GetEntry())->Get();
     bool const unused = usage == ITEM_USAGE_VENDOR || usage == ITEM_USAGE_AH || usage == ITEM_USAGE_NONE;
     if (proto->Quality == ITEM_QUALITY_POOR)
