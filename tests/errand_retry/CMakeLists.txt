@@ -13,5 +13,5 @@ extract("    void FinishVendorVisit(" "    Trainer::Spell const* ChooseLesson(" 
 extract("void RequestCompanionTraining(" "bool IsCompanionErrandActive(" "update.inc")
 add_executable(errand_retry_test errand_retry_test.cpp)
 target_compile_features(errand_retry_test PRIVATE cxx_std_20)
-target_include_directories(errand_retry_test PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+target_include_directories(errand_retry_test PRIVATE "${CMAKE_CURRENT_BINARY_DIR}" ../../src/gameplay/Bot)
 add_test(NAME companion_errand_retry COMMAND errand_retry_test)

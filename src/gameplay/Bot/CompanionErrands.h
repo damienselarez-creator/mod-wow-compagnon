@@ -27,7 +27,7 @@ bool CanSellCompanionItem(PlayerbotAI* ai, Item* item);
 
 bool IsManagedCompanion(PlayerbotAI* ai);
 void UpdateCompanionErrands(PlayerbotAI* ai, uint32 elapsed);
-void CancelCompanionErrands(PlayerbotAI* ai);
+void CancelCompanionErrands(PlayerbotAI* ai, bool automatic = false);
 void RequestCompanionTraining(PlayerbotAI* ai);
 void SetCompanionNarrativeFocus(ObjectGuid guid, std::string const& focus);
 std::string GetCompanionNarrativeFocus(ObjectGuid guid);

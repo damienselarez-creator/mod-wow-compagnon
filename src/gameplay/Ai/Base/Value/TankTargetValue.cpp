@@ -5,6 +5,7 @@
  */
 
 #include "TankTargetValue.h"
+#include "CompanionCombat.h"
 #include "AiObjectContext.h"
 #include "AttackersValue.h"
 #include "Group.h"
@@ -62,7 +63,8 @@ public:
                 return;
         }
 
-        if (!attacker->IsAlive())
+        if (!attacker->IsAlive() || (RefinedCompanionCombat(botAI) &&
+            attacker->HasBreakableByDamageCrowdControlAura()))
             return;
 
         if (!result || IsBetter(attacker, result))
@@ -71,6 +73,13 @@ public:
     bool IsBetter(Unit* new_unit, Unit* old_unit)
     {
         Player* bot = botAI->GetBot();
+        if (RefinedCompanionCombat(botAI))
+        {
+            float rescue = CompanionRescueUrgency(botAI, new_unit);
+            float previous = CompanionRescueUrgency(botAI, old_unit);
+            if (rescue != previous)
+                return rescue > previous;
+        }
         // if group has multiple tanks, explicit main tank just focus on the current target
         Unit* currentTarget = botAI->GetAiObjectContext()->GetValue<Unit*>("current target")->Get();
         if (currentTarget && botAI->IsExplicitMainTank(bot) && botAI->GetGroupTankNum(bot) > 1)
@@ -111,7 +120,8 @@ Unit* TankTargetValue::Calculate()
 {
     std::string const rti = botAI->GetAiObjectContext()->GetValue<std::string>("rti")->Get();
     Unit* rtiTarget = RtiTargetValue::Calculate();
-    if (rtiTarget)
+    if (rtiTarget && !(RefinedCompanionCombat(botAI) &&
+        rtiTarget->HasBreakableByDamageCrowdControlAura()))
     {
         Unit* victim = rtiTarget->GetVictim();
 

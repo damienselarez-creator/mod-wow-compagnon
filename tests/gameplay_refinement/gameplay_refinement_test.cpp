@@ -1,0 +1,288 @@
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstdint>
+#include <map>
+#include <string>
+#include <vector>
+#include "CompanionCombatPolicy.h"
+#include "CompanionActivityPolicy.h"
+
+using uint8 = uint8_t;
+using uint32 = uint32_t;
+using uint64 = uint64_t;
+using int32 = int32_t;
+using ObjectGuid = uint32;
+using GuidVector = std::vector<ObjectGuid>;
+enum Effect
+{
+    SPELL_EFFECT_NONE, SPELL_EFFECT_INTERRUPT_CAST, SPELL_EFFECT_APPLY_AURA, SPELL_EFFECT_SCHOOL_DAMAGE,
+    SPELL_EFFECT_WEAPON_DAMAGE, SPELL_EFFECT_WEAPON_DAMAGE_NOSCHOOL, SPELL_EFFECT_NORMALIZED_WEAPON_DMG,
+    SPELL_EFFECT_WEAPON_PERCENT_DAMAGE, SPELL_EFFECT_HEALTH_LEECH, SPELL_EFFECT_HEAL, SPELL_EFFECT_ATTACK_ME
+};
+enum Aura
+{
+    SPELL_AURA_NONE, SPELL_AURA_MOD_SILENCE, SPELL_AURA_PERIODIC_DAMAGE, SPELL_AURA_PERIODIC_DAMAGE_PERCENT,
+    SPELL_AURA_PERIODIC_LEECH, SPELL_AURA_MOD_TAUNT
+};
+enum CastType { CURRENT_GENERIC_SPELL, CURRENT_CHANNELED_SPELL };
+enum { EFFECT_0, EFFECT_1, EFFECT_2 };
+enum { SPELL_STATE_FINISHED, SPELL_STATE_CASTING, SPELL_STATE_PREPARING };
+enum { POWER_MANA, POWER_RAGE };
+enum { SPELL_PREVENTION_TYPE_NONE, SPELL_PREVENTION_TYPE_SILENCE };
+enum { SPELL_INTERRUPT_FLAG_INTERRUPT = 1, CHANNEL_INTERRUPT_FLAG_INTERRUPT = 1 };
+enum { TARGET_UNIT_TARGET_ENEMY, TARGET_UNIT_SRC_AREA_ENEMY };
+enum { HEAL };
+struct Unit;
+struct Player;
+struct Pet;
+struct Spell;
+struct Group;
+struct PlayerbotAI;
+struct Targets
+{
+    ObjectGuid unit = 0;
+    ObjectGuid GetUnitTargetGUID() { return unit; }
+};
+struct TargetInfo
+{
+    bool area = false;
+    int type = TARGET_UNIT_TARGET_ENEMY;
+    bool IsArea() const { return area; }
+    int GetTarget() const { return type; }
+};
+struct SpellEffectInfo
+{
+    int Effect = SPELL_EFFECT_NONE;
+    int ApplyAuraName = SPELL_AURA_NONE;
+    TargetInfo TargetA, TargetB;
+    float radius = 0;
+    float CalcRadius(Player*) const { return radius; }
+};
+struct SpellInfo
+{
+    std::array<SpellEffectInfo, 3> Effects{};
+    int PreventionType = SPELL_PREVENTION_TYPE_SILENCE;
+    int InterruptFlags = 1, ChannelInterruptFlags = 1;
+    auto const& GetEffects() const { return Effects; }
+    bool HasEffect(int effect) const
+    {
+        for (auto const& data : Effects)
+            if (data.Effect == effect)
+                return true;
+        return false;
+    }
+    bool HasAura(int aura) const
+    {
+        for (auto const& data : Effects)
+            if (data.ApplyAuraName == aura)
+                return true;
+        return false;
+    }
+};
+struct Spell
+{
+    SpellInfo const* m_spellInfo;
+    Targets m_targets;
+    int state = SPELL_STATE_PREPARING, duration = 1500, remaining = 500, amount = 1000;
+    int getState() { return state; }
+    int GetCastTime() { return duration; }
+    int GetCastTimeRemaining() { return remaining; }
+    int CalculateSpellDamage(uint8, Unit*) { return amount; }
+};
+struct Unit
+{
+    ObjectGuid guid = 0;
+    bool alive = true, world = true, los = true, friendly = false, cc = false, immune = false;
+    float health = 100, maxHealth = 1000, x = 0;
+    int map = 1, phase = 1;
+    Unit* victim = nullptr;
+    std::array<Spell*, 2> casts{};
+    int stops = 0;
+    virtual Player* ToPlayer() { return nullptr; }
+    bool IsAlive() { return alive; }
+    bool IsInWorld() { return world; }
+    int GetMap() { return map; }
+    int GetPhaseMask() { return phase; }
+    bool IsWithinLOSInMap(Unit*) { return los; }
+    bool IsFriendlyTo(Unit* unit) { return unit->friendly; }
+    ObjectGuid GetGUID() { return guid; }
+    float GetHealthPct() { return health; }
+    uint32 GetMaxHealth() { return uint32(maxHealth); }
+    float GetDistance(Unit* unit) { return std::abs(x - unit->x); }
+    float GetDistance2d(Unit* unit) { return GetDistance(unit); }
+    float GetCombatReach() { return 1; }
+    Unit* GetVictim() { return victim; }
+    bool HasBreakableByDamageCrowdControlAura() { return cc; }
+    bool IsImmunedToSpellEffect(SpellInfo const*, uint8) { return immune; }
+    float healingTaken = 1;
+    uint32 SpellHealingBonusTaken(Player*, SpellInfo const*, uint32 amount, int) { return uint32(amount * healingTaken); }
+    Spell* GetCurrentSpell(CastType type) { return casts[type]; }
+    void AttackStop() { ++stops; victim = nullptr; }
+};
+struct GroupReference
+{
+    Player* player = nullptr;
+    GroupReference* following = nullptr;
+    Player* GetSource() { return player; }
+    GroupReference* next() { return following; }
+};
+struct Group
+{
+    GroupReference* first = nullptr;
+    bool raid = false;
+    GroupReference* GetFirstMember() { return first; }
+    bool isRaidGroup() { return raid; }
+};
+struct Pet : Unit { };
+struct Player : Unit
+{
+    Group* group = nullptr;
+    Pet* pet = nullptr;
+    bool tank = false, healer = false, combat = false;
+    float mana = 100;
+    int power = POWER_MANA;
+    Player* ToPlayer() override { return this; }
+    Group* GetGroup() { return group; }
+    bool IsInSameGroupWith(Player* player) { return group && group == player->group; }
+    Pet* GetPet() { return pet; }
+    int getPowerType() { return power; }
+    float GetPowerPct(int) { return mana; }
+    bool IsInCombat() { return combat; }
+    uint32 SpellHealingBonusDone(Unit*, SpellInfo const*, uint32 amount, int, uint8) { return amount; }
+};
+struct Config { bool companionCombatRefinement = true; float lowHealth = 35, healDistance = 40; };
+Config sPlayerbotAIConfig;
+struct Value { GuidVector units; GuidVector Get() { return units; } };
+struct Context
+{
+    Value value;
+    template<class T> Value* GetValue(std::string const&) { return &value; }
+};
+struct PlayerbotAI
+{
+    Player* bot;
+    bool managed = true;
+    Context context;
+    std::map<ObjectGuid, Unit*> units;
+    Player* GetBot() { return bot; }
+    bool IsTank(Player* player) { return player->tank; }
+    bool IsHeal(Player* player) { return player->healer; }
+    Context* GetAiObjectContext() { return &context; }
+    Unit* GetUnit(ObjectGuid guid) { return units[guid]; }
+};
+bool IsCompanionInventoryManaged(PlayerbotAI* ai) { return ai->managed; }
+#include "combat.inc"
+
+int main()
+{
+    Player bot, human, healer;
+    bot.guid = 1; human.guid = 2; healer.guid = 3;
+    bot.friendly = human.friendly = healer.friendly = true;
+    GroupReference last{&healer}, middle{&human, &last}, first{&bot, &middle};
+    Group group{&first};
+    bot.group = human.group = healer.group = &group;
+    PlayerbotAI ai{&bot};
+    Unit enemy; enemy.guid = 4; enemy.cc = true;
+    ai.units[4] = &enemy;
+    SpellInfo damage; damage.Effects[0].Effect = SPELL_EFFECT_SCHOOL_DAMAGE;
+    assert(!CompanionCombatSpellAllowed(&ai, &enemy, &damage));
+    ai.managed = false;
+    assert(CompanionCombatSpellAllowed(&ai, &enemy, &damage));
+    ai.managed = true;
+    sPlayerbotAIConfig.companionCombatRefinement = false;
+    assert(CompanionCombatSpellAllowed(&ai, &enemy, &damage));
+    sPlayerbotAIConfig.companionCombatRefinement = true;
+    SpellInfo area = damage;
+    area.Effects[0].TargetA = {true, TARGET_UNIT_SRC_AREA_ENEMY};
+    area.Effects[0].radius = 10;
+    ai.context.value.units = {4}; enemy.x = 8;
+    assert(!CompanionCombatSpellAllowed(&ai, &bot, &area));
+    enemy.x = 20;
+    assert(CompanionCombatSpellAllowed(&ai, &bot, &area));
+    enemy.x = 0; enemy.phase = 2;
+    assert(CompanionCombatSpellAllowed(&ai, &bot, &area));
+    enemy.phase = 1;
+    bot.victim = &enemy;
+    Pet pet; pet.victim = &enemy; bot.pet = &pet;
+    UpdateCompanionCombat(&ai);
+    assert(bot.stops == 1 && pet.stops == 1 && !bot.victim && !pet.victim);
+    enemy.cc = false;
+
+    SpellInfo heal; heal.Effects[0].Effect = SPELL_EFFECT_HEAL;
+    Spell arriving{&heal, {human.guid}};
+    healer.casts[CURRENT_GENERIC_SPELL] = &arriving;
+    human.health = 60;
+    assert(CompanionIncomingHealing(&ai, &human) == 800);
+    assert(!CompanionCombatSpellAllowed(&ai, &human, &heal));
+    human.healingTaken = 0.25f;
+    assert(CompanionIncomingHealing(&ai, &human) == 200);
+    assert(CompanionCombatSpellAllowed(&ai, &human, &heal));
+    human.healingTaken = 1;
+    human.health = 20;
+    assert(CompanionCombatSpellAllowed(&ai, &human, &heal));
+    assert(CompanionHealingScore(&ai, &human) < 35);
+    arriving.state = SPELL_STATE_FINISHED;
+    human.health = 60;
+    assert(CompanionIncomingHealing(&ai, &human) == 0);
+    assert(CompanionCombatSpellAllowed(&ai, &human, &heal));
+    arriving.state = SPELL_STATE_PREPARING; arriving.remaining = 3000;
+    assert(CompanionIncomingHealing(&ai, &human) == 0);
+    arriving.remaining = 500; healer.phase = 2;
+    assert(CompanionIncomingHealing(&ai, &human) == 0);
+    healer.phase = 1;
+    healer.casts[0] = nullptr;
+    human.health = 100;
+    assert(CompanionHealingScore(&ai, &human) >= 100);
+
+    SpellInfo interrupt; interrupt.Effects[0].Effect = SPELL_EFFECT_INTERRUPT_CAST;
+    Spell hostileCast{&damage}, plannedInterrupt{&interrupt, {enemy.guid}};
+    enemy.casts[0] = &hostileCast;
+    assert(CompanionCombatSpellAllowed(&ai, &enemy, &interrupt));
+    healer.casts[0] = &plannedInterrupt;
+    assert(!CompanionCombatSpellAllowed(&ai, &enemy, &interrupt));
+    hostileCast.remaining = 200;
+    assert(CompanionCombatSpellAllowed(&ai, &enemy, &interrupt));
+    hostileCast.remaining = 500;
+    plannedInterrupt.state = SPELL_STATE_FINISHED;
+    assert(CompanionCombatSpellAllowed(&ai, &enemy, &interrupt));
+    hostileCast.state = SPELL_STATE_FINISHED;
+    assert(!CompanionCombatSpellAllowed(&ai, &enemy, &interrupt));
+    hostileCast.state = SPELL_STATE_PREPARING;
+    damage.InterruptFlags = 0;
+    assert(!CompanionCombatSpellAllowed(&ai, &enemy, &interrupt));
+    damage.InterruptFlags = 1;
+    enemy.immune = true;
+    assert(!CompanionCombatSpellAllowed(&ai, &enemy, &interrupt));
+    enemy.immune = false;
+
+    SpellInfo taunt; taunt.Effects[0].Effect = SPELL_EFFECT_ATTACK_ME;
+    enemy.victim = &human; human.tank = true;
+    assert(!CompanionCombatSpellAllowed(&ai, &enemy, &taunt));
+    assert(CompanionRescueUrgency(&ai, &enemy) == 0);
+    human.tank = false; human.health = 20;
+    float dpsUrgency = CompanionRescueUrgency(&ai, &enemy);
+    human.healer = true;
+    assert(CompanionRescueUrgency(&ai, &enemy) > dpsUrgency);
+    assert(CompanionCombatSpellAllowed(&ai, &enemy, &taunt));
+    human.group = nullptr;
+    assert(CompanionRescueUrgency(&ai, &enemy) == 0);
+    human.group = &group;
+    bot.healer = true;
+    assert(!CompanionCombatSpellAllowed(&ai, &enemy, &damage));
+    bot.mana = 0;
+    assert(CompanionCombatSpellAllowed(&ai, &enemy, &damage));
+
+    using Domain = CompanionGoals::Domain;
+    using CompanionActivity::Score;
+    auto training = Score(Domain::ClassTraining, 0, 0, 20, false, false, false);
+    assert(Score(Domain::Maintenance, -10000, 0, 500, true, false, false) < training);
+    assert(Score(Domain::Bags, 14000, 0, 100, false, true, false) < training);
+    assert(Score(Domain::Crafting, 18000, 40000, 0, false, false, false) < training);
+    assert(Score(Domain::Mount, 12000, 0, 50, false, false, true) < training);
+    assert(!CompanionActivity::ReturnToAdventure(false, 200, false, false));
+    assert(CompanionActivity::ReturnToAdventure(true, 70, false, false));
+    assert(!CompanionActivity::ReturnToAdventure(true, 70, true, false));
+    assert(CompanionActivity::ReturnToAdventure(true, 130, true, false));
+    assert(CompanionActivity::ReturnToAdventure(true, 0, true, true));
+}

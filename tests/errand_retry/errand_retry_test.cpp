@@ -4,6 +4,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include "CompanionActivityPolicy.h"
 
 using uint32 = uint32_t;
 using uint64 = uint64_t;
@@ -11,14 +12,14 @@ using Milliseconds = uint32;
 enum Timer : uint32
 {
     Decision = 1, TownScan, HerbScan, Deadline, Progress, Resume, ClearRejected, VerifyLesson,
-    MountRetry, InventoryScan, CraftCooldown, CraftReset
+    MountRetry, InventoryScan, CraftCooldown, CraftReset, TownRest
 };
 enum class Errand
 {
     None, Trainer, Herb, Return, PoisonVendor, Bags, ProfessionVendor, GuildBank, MountVendor,
     EquipmentVendor, Craft, BagVendor
 };
-enum class GoalDomain { Bags, Supplies, Count };
+using GoalDomain = CompanionGoals::Domain;
 enum class GoalState { Opportunity, Failed };
 struct EventMap
 {
@@ -48,18 +49,22 @@ struct CompanionErrandState
     float x = 0, y = 0, z = 0;
     bool townDue = false, herbDue = false, inventoryDue = false, ready = false;
     bool paused = false, craftDue = false, warnedBags = false, mountDue = false, verificationDue = false;
+    bool townRest = false, restWaiting = false;
     std::set<uint32> rejectedTrainers, rejectedSupplyVendors, rejectedBagVendors, rejectedVendors;
     std::set<uint32> failedSales, rejectedLessons, rejectedHerbs, rejectedCrafts;
 };
 struct Player
 {
     uint32 money = 100;
+    bool moving = false;
+    float distance = 0;
+    bool isMoving() { return moving; }
     uint32 GetMoney() const { return money; }
     uint32 GetGUID() const { return 1; }
     uint32 GetMapId() const { return 1; }
     uint32 GetZoneId() const { return 1; }
     float GetDistance(float, float, float) const { return 0; }
-    float GetDistance(Player*) const { return 0; }
+    float GetDistance(Player*) const { return distance; }
 };
 struct PlayerbotAI
 {
@@ -68,6 +73,7 @@ struct PlayerbotAI
     uint64 revision = 0;
     bool reconsider = false;
     bool eligible = true;
+    bool requested = false, automaticCancellation = false;
     std::vector<std::string> notices;
     Player* GetBot() { return &bot; }
     Player* GetMaster() { return &master; }
@@ -81,13 +87,15 @@ bool ReconsiderCompanionGoals(PlayerbotAI* ai) { return ai->reconsider; }
 uint64 CompanionGoalRevision(PlayerbotAI* ai) { return ai->revision; }
 bool IsCompanionInventoryManaged(PlayerbotAI*) { return true; }
 bool CompanionGoalAllowed(PlayerbotAI*, GoalDomain) { return true; }
+bool CompanionGoalRequested(PlayerbotAI* ai, GoalDomain) { return ai->requested; }
 bool Eligible(PlayerbotAI* ai) { return ai->eligible; }
 bool InTown(Player*) { return true; }
 uint32 Settlement(Player*) { return 1; }
 std::string GetCompanionNarrativeFocus(uint32) { return "normal"; }
 void RecordTraining(Player*, std::string const&, uint32, uint32, uint32) { }
 void StopTrip(PlayerbotAI* ai, bool) { ai->companionErrands->kind = Errand::None; }
-void CancelCompanionErrands(PlayerbotAI* ai) { StopTrip(ai, false); }
+void CancelCompanionErrands(PlayerbotAI* ai, bool automatic = false)
+{ ai->automaticCancellation = automatic; StopTrip(ai, false); }
 void ObserveCompanionGoal(PlayerbotAI* ai, GoalDomain, GoalState state, std::string const& reason)
 {
     ++observations;
@@ -147,6 +155,31 @@ int main()
     ai.companionErrands->events.due.push_back(ClearRejected);
     UpdateCompanionErrands(&ai, 300000);
     AssertRejected(ai, false);
+
+    PlayerbotAI recovering;
+    recovering.companionErrands->paused = true;
+    recovering.companionErrands->events.due.push_back(Resume);
+    UpdateCompanionErrands(&recovering, 10000);
+    assert(!recovering.companionErrands->paused && recovering.companionErrands->ready);
+    assert(recovering.companionErrands->townDue && recovering.companionErrands->inventoryDue);
+    recovering.companionErrands->events.due.push_back(TownRest);
+    UpdateCompanionErrands(&recovering, 6000);
+    assert(recovering.companionErrands->townRest);
+    recovering.master.moving = true;
+    recovering.companionErrands->kind = Errand::Trainer;
+    recovering.bot.distance = 70;
+    UpdateCompanionErrands(&recovering, 1000);
+    assert(!recovering.companionErrands->townRest && recovering.automaticCancellation);
+    assert(recovering.companionErrands->kind == Errand::None);
+    recovering.automaticCancellation = false;
+    recovering.companionErrands->kind = Errand::Trainer;
+    recovering.companionErrands->goal = GoalDomain::ClassTraining;
+    recovering.requested = true;
+    UpdateCompanionErrands(&recovering, 1000);
+    assert(!recovering.automaticCancellation && recovering.companionErrands->kind == Errand::Trainer);
+    recovering.bot.distance = 130;
+    UpdateCompanionErrands(&recovering, 1000);
+    assert(recovering.automaticCancellation);
 
     for (auto kind : {Errand::BagVendor, Errand::ProfessionVendor, Errand::EquipmentVendor,
         Errand::MountVendor, Errand::PoisonVendor})

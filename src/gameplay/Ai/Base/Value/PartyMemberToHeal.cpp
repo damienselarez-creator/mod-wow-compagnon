@@ -6,6 +6,7 @@
 
 #include "PartyMemberToHeal.h"
 #include "CompanionErrands.h"
+#include "CompanionCombat.h"
 #include "Playerbots.h"
 #include "ServerFacade.h"
 
@@ -53,7 +54,7 @@ Unit* PartyMemberToHeal::Calculate()
                 continue;
 
             float health = player->GetHealthPct();
-            if (isRaid || health < sPlayerbotAIConfig.mediumHealth ||
+            if (refined || isRaid || health < sPlayerbotAIConfig.mediumHealth ||
                 !IsTargetOfSpellCast(player, predicate))
             {
                 float probeValue = 100.0f;
@@ -62,6 +63,8 @@ Unit* PartyMemberToHeal::Calculate()
                 else
                     probeValue = health + player->GetDistance2d(bot) / 10.0f;
 
+                if (refined)
+                    probeValue = CompanionHealingScore(botAI, player);
                 if (probeValue < calc.minValue && Check(player))
                     calc.probe(probeValue, player);
             }
@@ -78,7 +81,7 @@ Unit* PartyMemberToHeal::Calculate()
         if (player && player->IsAlive())
         {
             float health = player->GetHealthPct();
-            if (isRaid || health < sPlayerbotAIConfig.mediumHealth || !IsTargetOfSpellCast(player, predicate))
+            if (refined || isRaid || health < sPlayerbotAIConfig.mediumHealth || !IsTargetOfSpellCast(player, predicate))
             {
                 float probeValue = 100.0f;
                 if (player->GetDistance2d(bot) > sPlayerbotAIConfig.healDistance)
@@ -91,11 +94,7 @@ Unit* PartyMemberToHeal::Calculate()
                 }
                 if (refined)
                 {
-                    // Favor endangered tanks and avoid redundant noncritical heals.
-                    if (botAI->IsTank(player) && player->IsInCombat() && health < 80.0f)
-                        probeValue -= 8.0f;
-                    if (health >= sPlayerbotAIConfig.lowHealth && IsTargetOfSpellCast(player, predicate))
-                        probeValue += 20.0f;
+                    probeValue = CompanionHealingScore(botAI, player);
                 }
                 // delay Check player to here for better performance
                 if (probeValue < calc.minValue && Check(player))

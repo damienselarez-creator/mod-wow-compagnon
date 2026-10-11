@@ -1,5 +1,6 @@
 #include "SelfbotInventory.h"
 #include "CompanionErrands.h"
+#include "CompanionCombat.h"
 /*
  * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
  * information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License,
@@ -275,6 +276,7 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     if (!bot->Unit::IsFalling())
         bot->SetFallInformation(0, bot->GetPositionZ());
 
+    UpdateCompanionCombat(this);
     UpdateCompanionErrands(this, elapsed);
 
     if (UpdateSelfbotInventory(this, elapsed))
@@ -3400,6 +3402,9 @@ bool PlayerbotAI::CanCastSpell(uint32 spellid, Unit* target, bool checkHasSpell,
         return false;
     }
 
+    if (!itemTarget && !castItem && !CompanionCombatSpellAllowed(this, target, spellInfo))
+        return false;
+
     if ((bot->GetShapeshiftForm() == FORM_FLIGHT || bot->GetShapeshiftForm() == FORM_FLIGHT_EPIC) && !bot->IsInCombat())
     {
         if (!sPlayerbotAIConfig.logInGroupOnly || (bot->GetGroup() && HasGameClientMaster()))
@@ -3625,6 +3630,9 @@ bool PlayerbotAI::CastSpell(uint32 spellId, Unit* target, Item* itemTarget)
 
     SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
     if (!spellInfo)
+        return false;
+
+    if (!itemTarget && !CompanionCombatSpellAllowed(this, target, spellInfo))
         return false;
 
     Pet* pet = bot->GetPet();
