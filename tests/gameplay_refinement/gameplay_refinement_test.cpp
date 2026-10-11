@@ -403,6 +403,9 @@ int main()
     assert(Score(Domain::Maintenance, -10000, 0, 500, true, false, false) < training);
     assert(Score(Domain::Bags, 14000, 0, 100, false, true, false) < training);
     assert(Score(Domain::Crafting, 18000, 40000, 0, false, false, false) < training);
+    assert(Score(Domain::Guild, 16000, 40000, 10, false, false, false) < training);
+    assert(Score(Domain::Crafting, 18000, 40000, 0, false, false, false) <
+        Score(Domain::Guild, 16000, 0, 10, false, false, false));
     assert(Score(Domain::Mount, 12000, 0, 50, false, false, true) < training);
     assert(!CompanionActivity::ReturnToAdventure(false, 200, false, false));
     assert(CompanionActivity::ReturnToAdventure(true, 70, false, false));

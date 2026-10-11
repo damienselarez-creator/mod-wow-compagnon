@@ -45,6 +45,8 @@ namespace
             (member->GetPhaseMask() & bot->GetPhaseMask()) && member->IsInSameGroupWith(bot);
     }
 
+    bool InterruptibleNow(Unit* target, SpellInfo const* interrupt);
+
     bool PendingInterrupt(PlayerbotAI* ai, Unit* target)
     {
         Player* bot = ai->GetBot();
@@ -61,13 +63,15 @@ namespace
                 continue;
             Spell* cast = member->GetCurrentSpell(CURRENT_GENERIC_SPELL);
             if (ActiveCast(cast) && cast->GetCastTimeRemaining() <= remaining &&
-                cast->m_targets.GetUnitTargetGUID() == target->GetGUID() && InterruptEffect(cast->m_spellInfo))
+                cast->m_targets.GetUnitTargetGUID() == target->GetGUID() && InterruptEffect(cast->m_spellInfo) &&
+                InterruptibleNow(target, cast->m_spellInfo))
                 return true;
             if (Pet* pet = member->GetPet())
             {
                 cast = pet->GetCurrentSpell(CURRENT_GENERIC_SPELL);
                 if (ActiveCast(cast) && cast->GetCastTimeRemaining() <= remaining &&
-                    cast->m_targets.GetUnitTargetGUID() == target->GetGUID() && InterruptEffect(cast->m_spellInfo))
+                    cast->m_targets.GetUnitTargetGUID() == target->GetGUID() && InterruptEffect(cast->m_spellInfo) &&
+                    InterruptibleNow(target, cast->m_spellInfo))
                     return true;
             }
         }

@@ -1634,7 +1634,9 @@ bool CompanionErrandAction::Execute(Event)
             if (InTown(master) && (state.townRest || GetCompanionNarrativeFocus(bot->GetGUID()) != "normal" ||
                 CompanionGoalRequested(botAI, GoalDomain::Bags) || CompanionGoalRequested(botAI, GoalDomain::Maintenance) ||
                 CompanionGoalRequested(botAI, GoalDomain::Supplies) || CompanionGoalRequested(botAI, GoalDomain::Mount) ||
-                CompanionGoalRequested(botAI, GoalDomain::Equipment) || CompanionGoalRequested(botAI, GoalDomain::Crafting)) &&
+                CompanionGoalRequested(botAI, GoalDomain::Equipment) || CompanionGoalRequested(botAI, GoalDomain::Crafting) ||
+                CompanionGoalRequested(botAI, GoalDomain::ClassTraining) ||
+                CompanionGoalRequested(botAI, GoalDomain::ProfessionTraining) || CompanionGoalRequested(botAI, GoalDomain::Guild)) &&
                 (IsManagedCompanion(botAI) || CanVisitTrainer(botAI) ||
                 (!master->isMoving() && bot->GetDistance(master) < 30.0f)))
             {
@@ -1748,7 +1750,7 @@ bool CompanionErrandAction::Execute(Event)
                         previous.status == "no_eligible_lesson" || previous.status == "budget_insufficient")
                         RecordTraining(bot, budgetBlocked ? "budget_insufficient" : "no_eligible_lesson", 0, 0, 0);
                 }
-                if (best == std::numeric_limits<double>::max() && CompanionGoalAllowed(botAI, GoalDomain::Guild) &&
+                if (CompanionGoalAllowed(botAI, GoalDomain::Guild) &&
                     IsCompanionInventoryManaged(botAI) &&
                     CompanionGuildBankVisitDue(bot->GetGUID()) && !master->isMoving() &&
                     bot->GetGuildId() && bot->GetGuildId() == master->GetGuildId())
@@ -1761,9 +1763,15 @@ bool CompanionErrandAction::Execute(Event)
                             !bot->CanSeeOrDetect(bank) || !bot->IsWithinLOSInMap(bank) ||
                             master->GetDistance(bank) > 30.0f || bot->GetDistance(bank) >= distance)
                             continue;
+                        double score = CompanionActivity::Score(GoalDomain::Guild, 16000.0,
+                            CompanionGoalPriority(botAI, GoalDomain::Guild), bot->GetDistance(bank),
+                            false, false, false);
+                        if (score >= best)
+                            continue;
                         distance = bot->GetDistance(bank);
-                        state.kind = Errand::GuildBank;
-                        state.goal = GoalDomain::Guild;
+                        best = score;
+                        selected = Errand::GuildBank;
+                        selectedGoal = GoalDomain::Guild;
                         state.target = guid;
                         state.x = bank->GetPositionX();
                         state.y = bank->GetPositionY();
@@ -1838,6 +1846,8 @@ bool CompanionErrandAction::Execute(Event)
                         RecordTraining(bot, "travelling", 0, 0, 0);
                     state.sold = 0;
                     state.repairs = 0;
+                    if (selected == Errand::GuildBank)
+                        state.spawn = 0;
                     if (CompanionGoalRequested(botAI, selectedGoal) &&
                         selected != Errand::ProfessionVendor && selected != Errand::MountVendor &&
                         selected != Errand::EquipmentVendor && selected != Errand::BagVendor)
@@ -1845,6 +1855,8 @@ bool CompanionErrandAction::Execute(Event)
                         "Je vais vendre mon equipement obsolete et mes objets inutiles, puis faire les reparations." :
                         selected == Errand::Trainer ?
                         "Je vais voir un maitre pour mes apprentissages, puis je vous rejoins." :
+                        selected == Errand::GuildBank ?
+                        "Je passe au coffre de guilde pour partager les ressources utiles." :
                         "Je vais acheter mes poisons, puis je vous rejoins.");
                 }
             }
