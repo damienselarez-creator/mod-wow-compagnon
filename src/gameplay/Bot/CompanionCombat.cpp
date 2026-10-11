@@ -27,6 +27,20 @@ namespace
         return false;
     }
 
+    bool SingleTargetHeal(SpellInfo const* info)
+    {
+        uint32 heals = 0;
+        for (auto const& effect : info->GetEffects())
+            if (effect.Effect == SPELL_EFFECT_HEAL)
+            {
+                if (effect.TargetA.IsArea() || effect.TargetB.IsArea() || effect.ChainTarget > 1 ||
+                    effect.TargetA.GetTarget() == TARGET_UNIT_CASTER || effect.TargetB.GetTarget() == TARGET_UNIT_CASTER)
+                    return false;
+                ++heals;
+            }
+        return heals == 1;
+    }
+
     bool DamageEffect(SpellEffectInfo const& effect)
     {
         return effect.Effect == SPELL_EFFECT_SCHOOL_DAMAGE || effect.Effect == SPELL_EFFECT_WEAPON_DAMAGE ||
@@ -167,7 +181,7 @@ bool CompanionCombatSpellAllowed(PlayerbotAI* ai, Unit* target, SpellInfo const*
     bool friendly = bot->IsFriendlyTo(target);
     if (!friendly && InterruptEffect(info) && (!InterruptibleNow(target, info) || PendingInterrupt(ai, target)))
         return false;
-    if (friendly && target->IsAlive() && info->HasEffect(SPELL_EFFECT_HEAL) && target->GetMaxHealth())
+    if (friendly && target->IsAlive() && SingleTargetHeal(info) && target->GetMaxHealth())
         if (CompanionCombat::RedundantHeal(target->GetHealthPct(),
             100.0f * CompanionIncomingHealing(ai, target) / target->GetMaxHealth(), sPlayerbotAIConfig.lowHealth))
             return false;
@@ -205,7 +219,8 @@ bool CompanionCombatSpellAllowed(PlayerbotAI* ai, Unit* target, SpellInfo const*
                 return false;
     }
     // Healers keep their spell action available for a nearby emergency instead of starting an offensive cast.
-    if (ai->IsHeal(bot) && bot->getPowerType() == POWER_MANA && bot->GetPowerPct(POWER_MANA) > 10.0f && bot->GetGroup())
+    if (!(friendly && info->HasEffect(SPELL_EFFECT_HEAL)) && ai->IsHeal(bot) &&
+        bot->getPowerType() == POWER_MANA && bot->GetPowerPct(POWER_MANA) > 10.0f && bot->GetGroup())
         for (GroupReference* ref = bot->GetGroup()->GetFirstMember(); ref; ref = ref->next())
             if (Player* member = ref->GetSource(); SameGroup(bot, member) &&
                 member->GetHealthPct() < sPlayerbotAIConfig.lowHealth &&

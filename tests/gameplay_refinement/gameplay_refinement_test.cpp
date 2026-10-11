@@ -32,7 +32,7 @@ enum { SPELL_STATE_FINISHED, SPELL_STATE_CASTING, SPELL_STATE_PREPARING };
 enum { POWER_MANA, POWER_RAGE };
 enum { SPELL_PREVENTION_TYPE_NONE, SPELL_PREVENTION_TYPE_SILENCE };
 enum { SPELL_INTERRUPT_FLAG_INTERRUPT = 1, CHANNEL_INTERRUPT_FLAG_INTERRUPT = 1 };
-enum { TARGET_UNIT_TARGET_ENEMY, TARGET_UNIT_SRC_AREA_ENEMY };
+enum { TARGET_UNIT_TARGET_ENEMY, TARGET_UNIT_SRC_AREA_ENEMY, TARGET_UNIT_CASTER };
 enum { HEAL };
 struct Unit;
 struct Player;
@@ -69,6 +69,7 @@ struct SpellEffectInfo
     int Effect = SPELL_EFFECT_NONE;
     int ApplyAuraName = SPELL_AURA_NONE;
     TargetInfo TargetA, TargetB;
+    uint32 ChainTarget = 0;
     float radius = 0;
     float CalcRadius(Player*) const { return radius; }
 };
@@ -285,6 +286,16 @@ int main()
     human.health = 60;
     assert(CompanionIncomingHealing(&ai, &human) == 800);
     assert(!CompanionCombatSpellAllowed(&ai, &human, &heal));
+    SpellInfo groupHeal = heal;
+    groupHeal.Effects[0].TargetA.area = true;
+    assert(CompanionCombatSpellAllowed(&ai, &human, &groupHeal));
+    SpellInfo chainHeal = heal;
+    chainHeal.Effects[0].ChainTarget = 3;
+    assert(CompanionCombatSpellAllowed(&ai, &human, &chainHeal));
+    SpellInfo dualHeal = heal;
+    dualHeal.Effects[1].Effect = SPELL_EFFECT_HEAL;
+    dualHeal.Effects[1].TargetA.type = TARGET_UNIT_CASTER;
+    assert(CompanionCombatSpellAllowed(&ai, &human, &dualHeal));
     human.healingTaken = 0.25f;
     assert(CompanionIncomingHealing(&ai, &human) == 200);
     assert(CompanionCombatSpellAllowed(&ai, &human, &heal));
@@ -340,6 +351,9 @@ int main()
     human.group = &group;
     bot.healer = true;
     assert(!CompanionCombatSpellAllowed(&ai, &enemy, &damage));
+    SpellInfo healingNova = area;
+    healingNova.Effects[1] = groupHeal.Effects[0];
+    assert(CompanionCombatSpellAllowed(&ai, &bot, &healingNova));
     bot.mana = 0;
     assert(CompanionCombatSpellAllowed(&ai, &enemy, &damage));
 
