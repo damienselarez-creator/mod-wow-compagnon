@@ -1,6 +1,7 @@
 #include "pbc_group_helpers.h"
 #include "pbc_vocation.h"
 #include "CompanionGoals.h"
+#include "CompanionFlight.h"
 #include "pbc_personality.h"
 #include "pbc_character.h"
 #include "pbc_lore.h"
@@ -840,7 +841,7 @@ PBC_CharacterSnapshot PBC_SnapshotCharacter(Player* bot, Player* listener)
     snap.personalityGender = bot->getGender();
     snap.personalityContext = PBC_PersonalityContext(snap.personalitySheet, snap.personalityGender, snap.clientLocale);
     snap.context       = PBC_GetCharacterContext(bot) + PBC_VocationContext(bot) + CompanionGoalsContext(bot) +
-        PBC_BuildLocationContext(bot);
+        PBC_BuildLocationContext(bot) + CompanionFlightContext(bot);
 
     // Capture raw template variables
     snap.charGender   = PBC_GenderStr(bot->getGender());

@@ -6,6 +6,8 @@
 
 #include "TaxiAction.h"
 #include "Config.h"
+#include "CompanionErrands.h"
+#include "CompanionFlight.h"
 #include "Event.h"
 #include "LastMovementValue.h"
 #include "PlayerbotAIConfig.h"
@@ -29,6 +31,11 @@ bool TaxiAction::Execute(Event event)
             "taxi_ready_next_flight", "I am ready for the next flight", {}));
         return true;
     }
+
+    if (HasPendingCompanionFlight(botAI))
+        return true;
+    if (param.empty() && !movement.taxiNodes.empty() && IsCompanionInventoryManaged(botAI))
+        return RequestCompanionFlight(botAI);
 
     GuidVector units = *context->GetValue<GuidVector>("nearest npcs");
     for (ObjectGuid const guid : units)

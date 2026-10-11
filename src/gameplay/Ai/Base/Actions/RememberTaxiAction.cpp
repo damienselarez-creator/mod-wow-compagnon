@@ -8,6 +8,7 @@
 #include "AiObjectContext.h"
 #include "Event.h"
 #include "LastMovementValue.h"
+#include "CompanionFlight.h"
 
 bool RememberTaxiAction::Execute(Event event)
 {
@@ -23,6 +24,7 @@ bool RememberTaxiAction::Execute(Event event)
             movement.taxiNodes.resize(2);
 
             p >> movement.taxiMaster >> movement.taxiNodes[0] >> movement.taxiNodes[1];
+            RequestCompanionFlight(botAI);
             return true;
         }
         case CMSG_ACTIVATETAXIEXPRESS:
@@ -30,15 +32,19 @@ bool RememberTaxiAction::Execute(Event event)
             ObjectGuid guid;
             uint32 node_count;
             p >> guid >> node_count;
+            if (node_count < 2 || node_count > 32 || p.size() - p.rpos() < node_count * sizeof(uint32))
+                return false;
 
             LastMovement& movement = context->GetValue<LastMovement&>("last taxi")->Get();
             movement.taxiNodes.clear();
+            movement.taxiMaster = guid;
             for (uint32 i = 0; i < node_count; ++i)
             {
                 uint32 node;
                 p >> node;
                 movement.taxiNodes.push_back(node);
             }
+            RequestCompanionFlight(botAI);
 
             return true;
         }

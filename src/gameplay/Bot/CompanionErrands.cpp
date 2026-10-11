@@ -1,5 +1,6 @@
 #include "CompanionErrands.h"
 #include "CompanionGoals.h"
+#include "CompanionFlight.h"
 #include "PlayerbotFactory.h"
 #include "CompanionGuildBank.h"
 #include "CompanionEquipment.h"
@@ -65,6 +66,8 @@ namespace
 
     bool Eligible(PlayerbotAI* ai)
     {
+        if (HasPendingCompanionFlight(ai))
+            return false;
         Player* bot = ai->GetBot();
         Player* master = ai->GetMaster();
         if (!IsCompanionInventoryManaged(ai) || !master || !master->IsInWorld() || !master->GetSession() ||
