@@ -3,6 +3,7 @@
 #include "pbc_utils.h"
 #include "pbc_wmo_areas.h"
 #include "pbc_locales.h"
+#include "pbc_json.h"
 #include "Log.h"
 #include "Player.h"
 #include "ObjectAccessor.h"
@@ -89,11 +90,15 @@ std::string PBC_BuildPlaceName(Player* player)
     // Collect the full area hierarchy by walking up the parent chain via zone field.
     // e.g. "Goldshire" -> "Elwynn Forest"
     std::vector<std::string> names;
+    std::vector<uint32_t> visited;
     uint32_t currentId = areaId;
     int maxDepth = 10; // safety guard against unexpected cycles
 
     while (currentId != 0 && maxDepth-- > 0)
     {
+        if (std::find(visited.begin(), visited.end(), currentId) != visited.end())
+            break;
+        visited.push_back(currentId);
         AreaTableEntry const* entry = sAreaTableStore.LookupEntry(currentId);
         if (!entry)
             break;
@@ -103,6 +108,14 @@ std::string PBC_BuildPlaceName(Player* player)
             names.push_back(name);
 
         currentId = entry->zone;
+    }
+
+    // The live zone remains available even when the specific area is missing from the DBC.
+    if (auto const* zone = sAreaTableStore.LookupEntry(player->GetZoneId()))
+    {
+        std::string name(PBC_DbcString(zone->area_name));
+        if (!name.empty() && std::find(names.begin(), names.end(), name) == names.end())
+            names.push_back(name);
     }
 
     // Try to get a more specific WMO area name when indoors.
@@ -127,7 +140,7 @@ std::string PBC_BuildPlaceName(Player* player)
     // If we got a WMO name that differs from the first area name, prepend it.
     // e.g. names = ["Goldshire", "Elwynn Forest"], wmoName = "Lion's Pride Inn"
     //      -> "Lion's Pride Inn (Goldshire, Elwynn Forest)"
-    if (!wmoName.empty() && (names.empty() || wmoName != names[0]))
+    if (!wmoName.empty() && std::find(names.begin(), names.end(), wmoName) == names.end())
     {
         names.insert(names.begin(), wmoName);
     }
@@ -153,6 +166,12 @@ std::string PBC_BuildPlaceName(Player* player)
 
 std::string PBC_BuildZoneName(Player* player)
 {
+    if (auto const* zone = sAreaTableStore.LookupEntry(player->GetZoneId()))
+    {
+        std::string name(PBC_DbcString(zone->area_name));
+        if (!name.empty())
+            return name;
+    }
     // Walk up the area hierarchy and return the root zone name
     // (the topmost entry whose zone field is 0, or the last name found).
     uint32_t currentId = player->GetAreaId();
@@ -173,6 +192,16 @@ std::string PBC_BuildZoneName(Player* player)
     }
 
     return rootName.empty() ? PBC_Localize("Unknown") : rootName;
+}
+
+std::string PBC_BuildLocationContext(Player* player)
+{
+    pbc_json location = {{"map_id", player->GetMapId()}, {"area_id", player->GetAreaId()},
+        {"zone_id", player->GetZoneId()}, {"zone_name", PBC_BuildZoneName(player)},
+        {"local_place", PBC_BuildPlaceName(player)}, {"moving", player->isMoving()},
+        {"taxi_flight", player->IsInFlight()}, {"teleporting", player->IsBeingTeleported()}};
+    return "\n[CURRENT LOCATION - observed at this event, not a destination or memory]\n" +
+        location.dump() + "\n";
 }
 
 std::string PBC_BuildFlightDestination(Player* bot)

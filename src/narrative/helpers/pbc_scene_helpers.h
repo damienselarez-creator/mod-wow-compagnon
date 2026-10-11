@@ -21,6 +21,9 @@ std::string PBC_BuildPlaceName(Player* player);
 // e.g. "Elwynn Forest" or "Mulgore".
 std::string PBC_BuildZoneName(Player* player);
 
+// Explicit current zone, local place and movement facts for the copied event snapshot.
+std::string PBC_BuildLocationContext(Player* player);
+
 // Returns the taxi destination name for a flying player, or empty string.
 std::string PBC_BuildFlightDestination(Player* bot);
 
