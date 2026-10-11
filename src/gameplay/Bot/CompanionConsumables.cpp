@@ -10,6 +10,7 @@
 #include "CompanionVocation.h"
 #include "NamedObjectContext.h"
 #include "Playerbots.h"
+#include "QuestDef.h"
 #include "Spell.h"
 #include "SpellAuraEffects.h"
 
@@ -126,6 +127,15 @@ namespace
         if (!spell || item->IsInTrade() || item->IsWrapped() || item->GetTemplate()->StartQuest ||
             bot->CanUseItem(item) != EQUIP_ERR_OK || bot->IsNonMeleeSpellCast(false))
             return false;
+        for (uint8 slot = 0; slot < MAX_QUEST_LOG_SIZE; ++slot)
+            if (auto const* quest = sObjectMgr->GetQuestTemplate(bot->GetQuestSlotQuestId(slot)))
+            {
+                if (quest->GetSrcItemId() == item->GetEntry())
+                    return false;
+                for (uint32 entry : quest->RequiredItemId)
+                    if (entry == item->GetEntry())
+                        return false;
+            }
         Spell check(bot, spell, TRIGGERED_NONE);
         check.m_CastItem = item;
         check.m_targets.SetUnitTarget(bot);

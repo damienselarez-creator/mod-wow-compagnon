@@ -28,6 +28,7 @@ enum
     CURRENT_CHANNELED_SPELL = 1, CURRENT_GENERIC_SPELL = 2, CMSG_USE_ITEM = 1, TARGET_FLAG_UNIT = 2,
     SPELL_SPECIFIC_SCROLL = 99
 };
+constexpr int MAX_QUEST_LOG_SIZE = 25;
 using AuraType = int;
 struct ObjectGuid
 {
@@ -80,6 +81,18 @@ struct ItemTemplate
     struct Use { int SpellId = 0, SpellTrigger = ITEM_SPELLTRIGGER_ON_USE; };
     std::array<Use, 5> Spells;
 };
+struct Quest
+{
+    uint32 source = 0;
+    std::array<uint32, 6> RequiredItemId = {};
+    uint32 GetSrcItemId() const { return source; }
+};
+struct ObjectMgr
+{
+    std::map<uint32, Quest> quests;
+    Quest const* GetQuestTemplate(uint32 id) { return quests.count(id) ? &quests.at(id) : nullptr; }
+} objectMgr;
+ObjectMgr* sObjectMgr = &objectMgr;
 struct Item
 {
     ItemTemplate proto;
@@ -141,6 +154,7 @@ struct Player
     std::vector<AuraEffect*> auras;
     std::map<uint32, bool> cooldown;
     std::map<int, bool> harmful;
+    uint32 quest = 0;
     Spell* current = nullptr;
     int getClass() { return cls; }
     int getPowerType() { return powerType; }
@@ -180,6 +194,7 @@ struct Player
     }
     Spell* GetCurrentSpell(int) { return current; }
     ObjectGuid GetGUID() { return {1000}; }
+    uint32 GetQuestSlotQuestId(int slot) { return slot == 0 ? quest : 0; }
 };
 int Spell::CheckCast(bool) { return bot->cooldown[info->Id] ? 1 : SPELL_CAST_OK; }
 void Session::HandleUseItemOpcode(WorldPacket& packet)
@@ -271,6 +286,13 @@ int main()
     auto excessive = MakeItem(12, ITEM_SUBCLASS_POTION, {SPELL_EFFECT_HEAL, 0, 0, 0, 1500});
     ai.bot.items = {&small, &excessive, &adequate};
     assert(SelectConsumable(&ai) == &adequate); // Smallest dose covering missing health.
+    objectMgr.quests[1].RequiredItemId[0] = adequate.GetEntry();
+    ai.bot.quest = 1;
+    assert(SelectConsumable(&ai) == &excessive); // A quest delivery is preserved instead of drunk.
+    objectMgr.quests[1].RequiredItemId[0] = 0;
+    objectMgr.quests[1].source = adequate.GetEntry();
+    assert(SelectConsumable(&ai) == &excessive);
+    ai.bot.quest = 0;
     adequate.usable = false;
     assert(SelectConsumable(&ai) == &excessive);
     ai.bot.cooldown[12] = true;
