@@ -1,3 +1,4 @@
+#include "CompanionGoalPolicy.h"
 #include <array>
 #include <cassert>
 #include <cmath>
@@ -27,6 +28,9 @@ struct PlayerbotAI
     bool managed = true, allowed = true;
     Player* GetBot() { return &bot; }
 };
+using GoalDomain = CompanionGoals::Domain;
+std::set<GoalDomain> blockedGoals;
+bool CompanionGoalAllowed(PlayerbotAI*, GoalDomain domain) { return !blockedGoals.count(domain); }
 struct Vocation { std::array<uint32, 2> professions{164, 186}; } vocation;
 struct CompanionVocation { static Vocation Get(Player*) { return vocation; } };
 struct Config { std::map<std::string, std::array<uint32, 2>> companionProfessionPlans; } sPlayerbotAIConfig;
@@ -135,6 +139,12 @@ int main()
     trainer.type = Trainer::Type::Mount;
     trainer.spells = {{30, 10, SKILL_RIDING}};
     assert(ChooseLesson(&ai, &trainer, 1)->SpellId == 30);
+    blockedGoals.insert(GoalDomain::ProfessionTraining);
+    assert(ChooseLesson(&ai, &trainer, 1)->SpellId == 30); // Riding keeps its own consent.
+    blockedGoals.insert(GoalDomain::Mount);
+    assert(!ChooseLesson(&ai, &trainer, 1));
+    assert(ChooseLesson(&ai, &trainer, 1, false, GoalDomain::Mount)->SpellId == 30); // Quote cannot buy.
+    blockedGoals.clear();
     trainer.valid = false;
     assert(!ChooseLesson(&ai, &trainer, 1));
     assert(!ChooseLesson(&ai, nullptr, 1));

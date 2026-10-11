@@ -6,6 +6,7 @@
 
 #include "EquipAction.h"
 #include "CompanionEquipment.h"
+#include "CompanionGoals.h"
 #include "CompanionErrands.h"
 #include "Event.h"
 #include "ItemCountValue.h"
@@ -450,6 +451,8 @@ ItemIds EquipAction::SelectInventoryItemsToEquip()
 
 bool EquipUpgradesPacketAction::Execute(Event event)
 {
+    if (!CompanionGoalPermitted(botAI, CompanionGoals::Domain::Equipment))
+        return false;
     if (!sPlayerbotAIConfig.autoEquipUpgradeLoot && !sRandomPlayerbotMgr.IsRandomBot(bot) &&
         !IsCompanionInventoryManaged(botAI))
         return false;
@@ -493,6 +496,8 @@ bool EquipUpgradesPacketAction::Execute(Event event)
 
 bool EquipUpgradeAction::Execute(Event /*event*/)
 {
+    if (!CompanionGoalPermitted(botAI, CompanionGoals::Domain::Equipment))
+        return false;
     ItemIds items = SelectInventoryItemsToEquip();
     EquipItems(items);
     return true;

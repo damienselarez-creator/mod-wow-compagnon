@@ -1,4 +1,6 @@
 #include "CompanionErrands.h"
+#include "CompanionGoals.h"
+#include "PlayerbotFactory.h"
 #include "CompanionGuildBank.h"
 #include "CompanionEquipment.h"
 #include "StatsWeightCalculator.h"
@@ -55,8 +57,10 @@ namespace
     };
     enum class Errand
     {
-        None, Trainer, Herb, Return, PoisonVendor, Bags, ProfessionVendor, GuildBank, MountVendor, EquipmentVendor, Craft
+        None, Trainer, Herb, Return, PoisonVendor, Bags, ProfessionVendor, GuildBank, MountVendor, EquipmentVendor, Craft, BagVendor
     };
+    using GoalDomain = CompanionGoals::Domain;
+    using GoalState = CompanionGoals::State;
     constexpr float TownRadius = 1500.0f;
 
     bool Eligible(PlayerbotAI* ai)
@@ -70,6 +74,7 @@ namespace
             bot->IsInCombat() || master->IsInCombat() || bot->IsFlying() || master->IsFlying() ||
             bot->IsFalling() || master->IsFalling() || bot->IsInFlight() || master->IsInFlight() ||
             bot->GetTransport() || master->GetTransport() || bot->GetVehicle() || master->GetVehicle() ||
+            bot->GetTradeData() || master->GetTradeData() ||
             !ai->HasStrategy("follow", BOT_STATE_NON_COMBAT) ||
             ai->HasStrategy("stay", BOT_STATE_NON_COMBAT) || ai->HasStrategy("passive", BOT_STATE_NON_COMBAT))
             return false;
@@ -373,7 +378,7 @@ namespace
     }
 
     PoisonPurchase ChooseEquipment(PlayerbotAI* ai, VendorItemData const* goods, uint32 reserve,
-        Creature* vendor = nullptr)
+        Creature* vendor = nullptr, bool budget = true)
     {
         if (!goods || goods->Empty())
             return {};
@@ -414,8 +419,8 @@ namespace
             uint32 price = uint32(std::ceil(item->BuyPrice *
                 (vendor ? bot->GetReputationPriceDiscount(vendor) : 1.0f)));
             ItemPosCountVec destination;
-            if (gain < 0.15f || price > bot->GetMoney() / 10 ||
-                !CompanionErrands::CanSpend(bot->GetMoney(), price, reserve) ||
+            if (gain < 0.15f || (budget && (price > bot->GetMoney() / 10 ||
+                !CompanionErrands::CanSpend(bot->GetMoney(), price, reserve))) ||
                 (vendor && offer->maxcount && !vendor->GetVendorItemCurrentCount(offer)) ||
                 bot->CanStoreNewItem(NULL_BAG, NULL_SLOT, destination, item->ItemId, 1) != EQUIP_ERR_OK ||
                 gain < bestGain || (gain == bestGain && price >= bestPrice))
@@ -428,7 +433,7 @@ namespace
     }
 
     PoisonPurchase ChooseMount(PlayerbotAI* ai, VendorItemData const* goods, uint32 reserve,
-        Creature* vendor = nullptr)
+        Creature* vendor = nullptr, bool budget = true)
     {
         if (!goods || goods->Empty())
             return {};
@@ -448,7 +453,7 @@ namespace
                 (vendor ? bot->GetReputationPriceDiscount(vendor) : 1.0f)));
             ItemPosCountVec destination;
             if (speed < bestSpeed || (speed == bestSpeed && price >= bestPrice) ||
-                !CompanionErrands::CanSpend(bot->GetMoney(), price, reserve) ||
+                (budget && !CompanionErrands::CanSpend(bot->GetMoney(), price, reserve)) ||
                 (vendor && offer->maxcount && !vendor->GetVendorItemCurrentCount(offer)) ||
                 bot->CanStoreNewItem(NULL_BAG, NULL_SLOT, destination, item->ItemId, 1) != EQUIP_ERR_OK)
                 continue;
@@ -526,7 +531,7 @@ namespace
     }
 
     PoisonPurchase ChooseProfessionSupply(Player* bot, VendorItemData const* goods, uint32 reserve,
-        ProfessionSupplies const& needs, Creature* vendor = nullptr)
+        ProfessionSupplies const& needs, Creature* vendor = nullptr, bool budget = true)
     {
         if (!goods || goods->Empty())
             return {};
@@ -562,10 +567,10 @@ namespace
             uint32 available = offer->maxcount ? (vendor ? vendor->GetVendorItemCurrentCount(offer) :
                 offer->maxcount) : std::numeric_limits<uint32>::max();
             uint32 batches = CompanionErrands::SupplyBatches(held, desired, item->BuyCount, price,
-                bot->GetMoney(), reserve, available);
+                budget ? bot->GetMoney() : MAX_MONEY_AMOUNT, budget ? reserve : 0, available);
             uint64 rawPrice = uint64(item->BuyPrice) * batches;
-            if (rawPrice > MAX_MONEY_AMOUNT || !CompanionErrands::CanSpend(bot->GetMoney(),
-                uint32(std::floor(uint32(rawPrice) * discount)), reserve))
+            if (rawPrice > MAX_MONEY_AMOUNT || (budget && !CompanionErrands::CanSpend(bot->GetMoney(),
+                uint32(std::floor(uint32(rawPrice) * discount)), reserve)))
                 continue;
             ItemPosCountVec destination;
             if (!batches || bot->CanStoreNewItem(NULL_BAG, NULL_SLOT, destination, item->ItemId,
@@ -627,7 +632,8 @@ namespace
         return 0;
     }
 
-    BagPurchase ChooseBag(Player* bot, VendorItemData const* goods, uint32 reserve, Creature* vendor = nullptr)
+    BagPurchase ChooseBag(Player* bot, VendorItemData const* goods, uint32 reserve, Creature* vendor = nullptr,
+        bool budget = true)
     {
         uint8 target = SmallestGeneralBagSlot(bot);
         if (!goods || target == NULL_SLOT)
@@ -659,9 +665,9 @@ namespace
                 continue;
             float discount = vendor ? bot->GetReputationPriceDiscount(vendor) : 1.0f;
             uint32 price = uint32(std::floor(item->BuyPrice * discount));
-            if (!CompanionErrands::CanSpend(bot->GetMoney(), price, reserve) ||
-                item->ContainerSlots < bestCapacity ||
-                (item->ContainerSlots == bestCapacity && price >= bestPrice))
+            if ((budget && !CompanionErrands::CanSpend(bot->GetMoney(), price, reserve)) ||
+                (budget && item->ContainerSlots < bestCapacity) ||
+                ((!budget || item->ContainerSlots == bestCapacity) && price >= bestPrice))
                 continue;
             best = {item->ItemId, slot, target, storage};
             bestCapacity = item->ContainerSlots;
@@ -799,7 +805,11 @@ struct CompanionErrandState
     bool mountDue = true;
     bool inventoryDue = true;
     bool craftDue = true;
+    GoalDomain goal = GoalDomain::Count;
+    uint64 goalRevision = 0;
+    uint32 observedMoney = 0;
     uint32 crafts = 0;
+    bool craftIntermediate = false;
     uint32 craftSpell = 0;
     uint32 craftOutput = 0;
     uint32 craftBefore = 0;
@@ -915,7 +925,7 @@ namespace
                 state.rejectedTrainers.insert(state.spawn);
                 RecordTraining(ai->GetBot(), "interrupted_or_unreachable", 0, state.pendingLesson, state.learned);
             }
-            if (state.kind == Errand::Bags)
+            if (state.kind == Errand::Bags || state.kind == Errand::BagVendor)
                 state.rejectedBagVendors.insert(state.spawn);
             if (state.kind == Errand::ProfessionVendor || state.kind == Errand::MountVendor ||
                 state.kind == Errand::EquipmentVendor)
@@ -944,6 +954,10 @@ namespace
             bot->StopMoving();
             bot->GetMotionMaster()->Clear();
         }
+        if (state.goal != GoalDomain::Count)
+            ObserveCompanionGoal(ai, state.goal, reject ? GoalState::Failed : GoalState::Interrupted,
+                reject ? "unreachable_or_native_failure" : "activity_interrupted");
+        state.goal = GoalDomain::Count;
         state.kind = Errand::None;
         state.awaitingCraft = false;
         state.pendingLesson = 0;
@@ -997,12 +1011,14 @@ namespace
         state.events.RescheduleEvent(Progress, Milliseconds(30000));
     }
 
-    Trainer::Spell const* ChooseLesson(PlayerbotAI* ai, Trainer::Trainer* trainer, float discount, bool budget = true)
+    Trainer::Spell const* ChooseLesson(PlayerbotAI* ai, Trainer::Trainer* trainer, float discount, bool budget = true, GoalDomain requestedDomain = GoalDomain::Count)
     {
         Player* bot = ai->GetBot();
         if (!CanVisitTrainer(ai) || !trainer || !trainer->IsTrainerValidForPlayer(bot))
             return nullptr;
         bool const classTrainer = trainer->GetTrainerType() == Trainer::Type::Class;
+        if (budget && classTrainer && !CompanionGoalAllowed(ai, GoalDomain::ClassTraining))
+            return nullptr;
         auto const focus = GetCompanionNarrativeFocus(bot->GetGUID());
         if ((focus == "training_class" && !classTrainer) || (focus == "training_professions" && classTrainer))
             return nullptr;
@@ -1020,6 +1036,10 @@ namespace
             if (ai->companionErrands && ai->companionErrands->rejectedLessons.count(spell.SpellId))
                 continue;
             bool riding = spell.ReqSkillLine == SKILL_RIDING || TeachesRiding(spell.SpellId);
+            if ((requestedDomain == GoalDomain::Mount && !riding) ||
+                (requestedDomain == GoalDomain::ProfessionTraining && riding) ||
+                (budget && !classTrainer && !CompanionGoalAllowed(ai, riding ? GoalDomain::Mount : GoalDomain::ProfessionTraining)))
+                continue;
             if (riding && focus == "training_professions")
                 continue;
             if (!classTrainer && !riding)
@@ -1039,6 +1059,86 @@ namespace
                 best = trainer->GetSpell(spell.SpellId);
         }
         return best;
+    }
+}
+
+namespace
+{
+    void RefreshGoalQuote(PlayerbotAI* ai, GoalDomain domain)
+    {
+        if (!CompanionGoalRequested(ai, domain))
+            return;
+        Player* bot = ai->GetBot();
+        Player* master = ai->GetMaster();
+        if (!InTown(master))
+        {
+            ObserveCompanionGoal(ai, domain, GoalState::Opportunity, "awaiting_town");
+            return;
+        }
+        uint32 cheapest = std::numeric_limits<uint32>::max();
+        bool foundOffer = false;
+        for (auto const& [spawn, data] : sObjectMgr->GetAllCreatureData())
+        {
+            if (data.mapid != bot->GetMapId() || !(data.phaseMask & bot->GetPhaseMask()) ||
+                master->GetDistance(data.posX, data.posY, data.posZ) > TownRadius)
+                continue;
+            Creature* npc = ObjectAccessor::GetSpawnedCreatureByDBGUID(bot->GetMapId(), uint32(spawn));
+            if (!npc || !npc->IsAlive() || !npc->IsFriendlyTo(bot) || !bot->CanSeeOrDetect(npc) ||
+                Settlement(npc->GetAreaId(), npc->GetZoneId()) != Settlement(master))
+                continue;
+            uint64 price = 0;
+            bool eligible = false;
+            float discount = bot->GetReputationPriceDiscount(npc);
+            if (domain == GoalDomain::ClassTraining || domain == GoalDomain::ProfessionTraining ||
+                (domain == GoalDomain::Mount && sObjectMgr->GetTrainer(npc->GetEntry())))
+            {
+                auto* trainer = sObjectMgr->GetTrainer(npc->GetEntry());
+                bool classTrainer = trainer && trainer->GetTrainerType() == Trainer::Type::Class;
+                if (!trainer || classTrainer != (domain == GoalDomain::ClassTraining))
+                    continue;
+                if (auto const* lesson = ChooseLesson(ai, trainer, discount, false, domain))
+                {
+                    price = uint32(std::floor(lesson->MoneyCost * discount));
+                    eligible = true;
+                }
+            }
+            else if (domain == GoalDomain::Bags)
+            {
+                auto bag = ChooseBag(bot, npc->GetVendorItems(), 0, npc, false);
+                if (bag.item)
+                {
+                    price = uint32(std::floor(sObjectMgr->GetItemTemplate(bag.item)->BuyPrice * discount));
+                    eligible = true;
+                }
+            }
+            else
+            {
+                PoisonPurchase purchase;
+                if (domain == GoalDomain::Mount)
+                    purchase = ChooseMount(ai, npc->GetVendorItems(), 0, npc, false);
+                else if (domain == GoalDomain::Equipment)
+                    purchase = ChooseEquipment(ai, npc->GetVendorItems(), 0, npc, false);
+                else if (domain == GoalDomain::Supplies)
+                    purchase = ChooseProfessionSupply(bot, npc->GetVendorItems(), 0, NeededProfessionSupplies(bot), npc, false);
+                if (purchase.item)
+                {
+                    price = uint32(std::ceil(sObjectMgr->GetItemTemplate(purchase.item)->BuyPrice *
+                        purchase.batches * discount));
+                    eligible = true;
+                }
+            }
+            if (!eligible)
+                continue;
+            foundOffer = true;
+            uint64 required = domain == GoalDomain::Equipment ? price * 10 : (price * 5 + 3) / 4;
+            cheapest = std::min(cheapest, uint32(std::min<uint64>(required, MAX_MONEY_AMOUNT)));
+        }
+        if (foundOffer && cheapest > bot->GetMoney())
+            ObserveCompanionGoal(ai, domain, GoalState::Money, "verified_local_offer", cheapest);
+        else if (!foundOffer)
+            ObserveCompanionGoal(ai, domain, GoalState::Opportunity, "no_local_offer_or_prerequisite_missing");
+        else
+            ObserveCompanionGoal(ai, domain, GoalState::Pending, "local_offer_affordable");
     }
 }
 
@@ -1064,6 +1164,11 @@ bool RequestCompanionTrainerVisit(PlayerbotAI* ai, Creature* npc)
     RequestCompanionTraining(ai);
     auto& state = *ai->companionErrands;
     state.kind = Errand::Trainer;
+    auto* trainer = sObjectMgr->GetTrainer(npc->GetEntry());
+    auto const* lesson = ChooseLesson(ai, trainer, ai->GetBot()->GetReputationPriceDiscount(npc));
+    state.goal = trainer->GetTrainerType() == Trainer::Type::Class ? GoalDomain::ClassTraining :
+        lesson && (lesson->ReqSkillLine == SKILL_RIDING || TeachesRiding(lesson->SpellId)) ? GoalDomain::Mount :
+        GoalDomain::ProfessionTraining;
     state.spawn = uint32(npc->GetSpawnId());
     state.owner = ai->GetMaster()->GetGUID();
     state.map = ai->GetBot()->GetMapId();
@@ -1136,6 +1241,20 @@ void UpdateCompanionErrands(PlayerbotAI* ai, uint32 elapsed)
     if (!ai->companionErrands)
         return;
     auto& state = *ai->companionErrands;
+    bool changed = ReconsiderCompanionGoals(ai);
+    uint64 revision = CompanionGoalRevision(ai);
+    if (changed || state.observedMoney != ai->GetBot()->GetMoney() || state.goalRevision != revision)
+    {
+        state.observedMoney = ai->GetBot()->GetMoney();
+        state.goalRevision = revision;
+        state.townDue = true;
+        state.herbDue = true;
+        state.inventoryDue = true;
+        state.rejectedTrainers.clear();
+        state.rejectedSupplyVendors.clear();
+        state.rejectedBagVendors.clear();
+        state.rejectedVendors.clear();
+    }
     state.events.Update(elapsed);
     while (uint32 event = state.events.ExecuteEvent())
     {
@@ -1176,11 +1295,12 @@ void UpdateCompanionErrands(PlayerbotAI* ai, uint32 elapsed)
         return;
     Player* master = ai->GetMaster();
     Player* bot = ai->GetBot();
-    if (GetCompanionNarrativeFocus(bot->GetGUID()) == "follow" ||
+    if ((state.goal != GoalDomain::Count && !CompanionGoalAllowed(ai, state.goal)) ||
+        GetCompanionNarrativeFocus(bot->GetGUID()) == "follow" ||
         !Eligible(ai) || master->GetGUID() != state.owner || bot->GetMapId() != state.map ||
         ((state.kind == Errand::Trainer || state.kind == Errand::PoisonVendor || state.kind == Errand::Bags ||
             state.kind == Errand::ProfessionVendor || state.kind == Errand::MountVendor ||
-            state.kind == Errand::EquipmentVendor || state.kind == Errand::Craft) &&
+            state.kind == Errand::EquipmentVendor || state.kind == Errand::Craft || state.kind == Errand::BagVendor) &&
             (!InTown(master) || master->GetZoneId() != state.zone ||
             (state.settlement ? Settlement(master) != state.settlement :
                 master->GetDistance(state.x, state.y, state.z) > TownRadius))) ||
@@ -1218,6 +1338,8 @@ void FinishCompanionGather(PlayerbotAI* ai, ObjectGuid guid)
     {
         ai->companionErrands->gathering = false;
         ai->companionErrands->rejectedHerbs.insert(guid);
+        ObserveCompanionGoal(ai, GoalDomain::Gathering, GoalState::Opportunity, "node_visit_finished");
+        ai->companionErrands->goal = GoalDomain::Count;
         Returning(ai);
     }
 }
@@ -1249,11 +1371,34 @@ bool CompanionErrandAction::Execute(Event)
     {
         state.inventoryDue = false;
         state.events.RescheduleEvent(InventoryScan, Milliseconds(15000));
+        if (CompanionGoalRequested(botAI, GoalDomain::Talents) && CompanionGoalAllowed(botAI, GoalDomain::Talents))
+        {
+            uint32 before = bot->GetFreeTalentPoints();
+            if (before)
+                PlayerbotFactory(bot, bot->GetLevel()).InitTalentsTree(true, true, false);
+            uint32 after = bot->GetFreeTalentPoints();
+            ObserveCompanionGoal(botAI, GoalDomain::Talents, after ? GoalState::Opportunity : GoalState::Done,
+                after ? "talent_path_or_prerequisite_missing" : "talent_points_spent", 0, before - after);
+        }
+        std::array<ObjectGuid, EQUIPMENT_SLOT_END> equipmentBefore;
+        for (uint8 slot = EQUIPMENT_SLOT_START; slot < EQUIPMENT_SLOT_END; ++slot)
+            if (Item* item = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot))
+                equipmentBefore[slot] = item->GetGUID();
         botAI->DoSpecificAction("equip upgrade", Event(), true);
-        EquipOwnedBagUpgrade(bot);
+        uint32 changedEquipment = 0;
+        for (uint8 slot = EQUIPMENT_SLOT_START; slot < EQUIPMENT_SLOT_END; ++slot)
+            if (Item* item = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot))
+                changedEquipment += item->GetGUID() != equipmentBefore[slot];
+        if (changedEquipment && CompanionGoalRequested(botAI, GoalDomain::Equipment))
+            ObserveCompanionGoal(botAI, GoalDomain::Equipment, GoalState::Done, "equipment_worn", 0, changedEquipment);
+        if (CompanionGoalPermitted(botAI, GoalDomain::Bags))
+            EquipOwnedBagUpgrade(bot);
         LOG_INFO("playerbots.companion", "[Inventory] {} protection={} money={} scan_complete=true",
             bot->GetName(), PrefersCompanionShield(botAI), bot->GetMoney());
     }
+    if (CompanionGoalRequested(botAI, GoalDomain::Bags) &&
+        CompanionBagCapacity(bot) >= CompanionGoalTarget(botAI, GoalDomain::Bags))
+        ObserveCompanionGoal(botAI, GoalDomain::Bags, GoalState::Done, "target_capacity_observed");
     if (GetCompanionNarrativeFocus(bot->GetGUID()) == "follow")
         return false;
     if (!state.ready || bot->IsNonMeleeSpellCast(false) || !bot->GetLootGUID().IsEmpty())
@@ -1265,6 +1410,8 @@ bool CompanionErrandAction::Execute(Event)
     {
         LOG_INFO("playerbots.companion", "[Mount] {} spell={} learned={}",
             bot->GetName(), state.pendingMount, bot->HasSpell(state.pendingMount));
+        ObserveCompanionGoal(botAI, GoalDomain::Mount, bot->HasSpell(state.pendingMount) ? GoalState::Done : GoalState::Failed,
+            bot->HasSpell(state.pendingMount) ? "mount_learned" : "mount_not_learned", 0, bot->HasSpell(state.pendingMount));
         state.pendingMount = 0;
     }
 
@@ -1274,7 +1421,7 @@ bool CompanionErrandAction::Execute(Event)
         state.map = bot->GetMapId();
         state.zone = master->GetZoneId();
         state.settlement = Settlement(master);
-        if (state.mountDue && InTown(master))
+        if (state.mountDue && InTown(master) && CompanionGoalAllowed(botAI, GoalDomain::Mount))
         {
             for (Item* item : botAI->GetInventoryItems())
             {
@@ -1304,17 +1451,24 @@ bool CompanionErrandAction::Execute(Event)
                 (!master->isMoving() && bot->GetDistance(master) < 30.0f)))
             {
                 state.reserve = bot->GetMoney() / 5;
+                for (auto domain : {GoalDomain::Bags, GoalDomain::ClassTraining, GoalDomain::ProfessionTraining,
+                    GoalDomain::Equipment, GoalDomain::Mount, GoalDomain::Supplies})
+                    RefreshGoalQuote(botAI, domain);
                 double best = std::numeric_limits<double>::max();
                 botAI->DoSpecificAction("equip upgrade", Event(), true);
-                EquipOwnedBagUpgrade(bot);
+                if (CompanionGoalPermitted(botAI, GoalDomain::Bags))
+                    EquipOwnedBagUpgrade(bot);
                 auto const stock = PoisonStock(bot);
-                auto const supplies = IsManagedCompanion(botAI) ? NeededProfessionSupplies(bot) : ProfessionSupplies{};
+                auto const supplies = CompanionGoalAllowed(botAI, GoalDomain::Supplies) ?
+                    NeededProfessionSupplies(bot) : ProfessionSupplies{};
                 bool sell = false;
                 for (Item* item : botAI->GetInventoryItems())
-                    if (!state.failedSales.count(item->GetGUID()) && CanSellCompanionItem(botAI, item))
+                    if (CompanionGoalAllowed(botAI, GoalDomain::Maintenance) &&
+                        !state.failedSales.count(item->GetGUID()) && CanSellCompanionItem(botAI, item))
                         sell = true;
-                bool repair = NeedsEquipmentRepair(bot);
-                if (!sell && NeedsBagSpace(bot) && !state.warnedBags)
+                bool repair = CompanionGoalAllowed(botAI, GoalDomain::Maintenance) && NeedsEquipmentRepair(bot);
+                if (!sell && NeedsBagSpace(bot) && !state.warnedBags &&
+                    CompanionGoalAllowed(botAI, GoalDomain::Bags))
                 {
                     botAI->TellMaster("Mes sacs sont presque pleins. Je cherche de la place "
                         "en conservant mes objets utiles.");
@@ -1322,6 +1476,7 @@ bool CompanionErrandAction::Execute(Event)
                 }
                 bool budgetBlocked = false;
                 Errand selected = Errand::None;
+                GoalDomain selectedGoal = GoalDomain::Count;
                 for (auto const& [spawn, data] : sObjectMgr->GetAllCreatureData())
                 {
                     if (data.mapid != state.map || !(data.phaseMask & bot->GetPhaseMask()))
@@ -1343,44 +1498,64 @@ bool CompanionErrandAction::Execute(Event)
                     auto* trainer = sObjectMgr->GetTrainer(data.id);
                     Errand candidate = Errand::None;
                     double priority = 0;
+                    GoalDomain domain = GoalDomain::Count;
                     if (!state.rejectedBagVendors.count(uint32(spawn)) &&
                         ((sell && (creature->npcflag & UNIT_NPC_FLAG_VENDOR)) ||
                         (repair && (creature->npcflag & UNIT_NPC_FLAG_REPAIR))))
                     {
                         candidate = Errand::Bags;
-                        priority = -10000.0;
+                        domain = GoalDomain::Maintenance;
+                        priority = repair ? -100000.0 : -10000.0;
                     }
                     else if (!state.rejectedTrainers.count(uint32(spawn)) && ChooseLesson(botAI, trainer, 1.0f))
                     {
                         candidate = Errand::Trainer;
                         auto focus = GetCompanionNarrativeFocus(bot->GetGUID());
                         bool profession = trainer->GetTrainerType() != Trainer::Type::Class;
+                        auto const* lesson = ChooseLesson(botAI, trainer, 1.0f);
+                        domain = !profession ? GoalDomain::ClassTraining :
+                            lesson && (lesson->ReqSkillLine == SKILL_RIDING || TeachesRiding(lesson->SpellId)) ?
+                                GoalDomain::Mount : GoalDomain::ProfessionTraining;
                         priority = focus == "craft" ? (profession ? 0.0 : 10000.0) : (profession ? 10000.0 : 0.0);
                     }
-                    else if (!state.rejectedSupplyVendors.count(uint32(spawn)) &&
+                    else if (CompanionGoalAllowed(botAI, GoalDomain::Mount) &&
+                        !state.rejectedSupplyVendors.count(uint32(spawn)) &&
                         ChooseMount(botAI, sObjectMgr->GetNpcVendorItemList(data.id), state.reserve).item)
                     {
                         candidate = Errand::MountVendor;
+                        domain = GoalDomain::Mount;
                         priority = 12000.0;
                     }
-                    else if (!state.rejectedSupplyVendors.count(uint32(spawn)) &&
-                        (ChooseProfessionSupply(bot, sObjectMgr->GetNpcVendorItemList(data.id),
-                            state.reserve, supplies).item ||
-                        ChooseBag(bot, sObjectMgr->GetNpcVendorItemList(data.id), state.reserve).item))
+                    else if (CompanionGoalAllowed(botAI, GoalDomain::Bags) &&
+                        !state.rejectedSupplyVendors.count(uint32(spawn)) &&
+                        ChooseBag(bot, sObjectMgr->GetNpcVendorItemList(data.id), state.reserve).item)
+                    {
+                        candidate = Errand::BagVendor;
+                        domain = GoalDomain::Bags;
+                        priority = 14000.0;
+                    }
+                    else if (CompanionGoalAllowed(botAI, GoalDomain::Supplies) &&
+                        !state.rejectedSupplyVendors.count(uint32(spawn)) &&
+                        ChooseProfessionSupply(bot, sObjectMgr->GetNpcVendorItemList(data.id), state.reserve, supplies).item)
                     {
                         candidate = Errand::ProfessionVendor;
+                        domain = GoalDomain::Supplies;
                         priority = 15000.0;
                     }
-                    else if (IsManagedCompanion(botAI) && !state.rejectedVendors.count(uint32(spawn)) &&
+                    else if (CompanionGoalAllowed(botAI, GoalDomain::Supplies) &&
+                        IsManagedCompanion(botAI) && !state.rejectedVendors.count(uint32(spawn)) &&
                         ChoosePoison(bot, sObjectMgr->GetNpcVendorItemList(data.id), state.reserve, stock).item)
                     {
                         candidate = Errand::PoisonVendor;
+                        domain = GoalDomain::Supplies;
                         priority = 20000.0;
                     }
-                    if (candidate == Errand::None && !state.rejectedSupplyVendors.count(uint32(spawn)) &&
+                    if (candidate == Errand::None && CompanionGoalAllowed(botAI, GoalDomain::Equipment) &&
+                        !state.rejectedSupplyVendors.count(uint32(spawn)) &&
                         ChooseEquipment(botAI, sObjectMgr->GetNpcVendorItemList(data.id), state.reserve).item)
                     {
                         candidate = Errand::EquipmentVendor;
+                        domain = GoalDomain::Equipment;
                         priority = 17000.0;
                     }
                     if (candidate == Errand::None)
@@ -1388,11 +1563,13 @@ bool CompanionErrandAction::Execute(Event)
                         budgetBlocked = budgetBlocked || ChooseLesson(botAI, trainer, 1.0f, false);
                         continue;
                     }
-                    double score = bot->GetDistance(data.posX, data.posY, data.posZ) + priority;
+                    double score = bot->GetDistance(data.posX, data.posY, data.posZ) + priority -
+                        CompanionGoalPriority(botAI, domain);
                     if (score >= best)
                         continue;
                     best = score;
                     selected = candidate;
+                    selectedGoal = domain;
                     state.spawn = uint32(spawn);
                     state.x = data.posX;
                     state.y = data.posY;
@@ -1406,7 +1583,8 @@ bool CompanionErrandAction::Execute(Event)
                         previous.status == "no_eligible_lesson" || previous.status == "budget_insufficient")
                         RecordTraining(bot, budgetBlocked ? "budget_insufficient" : "no_eligible_lesson", 0, 0, 0);
                 }
-                if (best == std::numeric_limits<double>::max() && IsManagedCompanion(botAI) &&
+                if (best == std::numeric_limits<double>::max() && CompanionGoalAllowed(botAI, GoalDomain::Guild) &&
+                    IsCompanionInventoryManaged(botAI) &&
                     CompanionGuildBankVisitDue(bot->GetGUID()) && !master->isMoving() &&
                     bot->GetGuildId() && bot->GetGuildId() == master->GetGuildId())
                 {
@@ -1420,14 +1598,15 @@ bool CompanionErrandAction::Execute(Event)
                             continue;
                         distance = bot->GetDistance(bank);
                         state.kind = Errand::GuildBank;
+                        state.goal = GoalDomain::Guild;
                         state.target = guid;
                         state.x = bank->GetPositionX();
                         state.y = bank->GetPositionY();
                         state.z = bank->GetPositionZ();
                     }
                 }
-                if (best == std::numeric_limits<double>::max() && state.kind == Errand::None &&
-                    state.craftDue && state.crafts < 5 &&
+                if (state.kind == Errand::None && CompanionGoalAllowed(botAI, GoalDomain::Crafting) &&
+                    18000.0 - CompanionGoalPriority(botAI, GoalDomain::Crafting) < best && state.craftDue && state.crafts < 5 &&
                     !master->isMoving() && !bot->isMoving() && !bot->IsMounted() &&
                     !bot->IsNonMeleeSpellCast(false) && bot->GetDistance(master) < 30.0f && HasBagRoom(bot))
                 {
@@ -1467,6 +1646,7 @@ bool CompanionErrandAction::Execute(Event)
                                 continue;
                         }
                         priority = rank;
+                        state.craftIntermediate = rank == 60;
                         state.craftSpell = id;
                         state.craftOutput = spell->Effects[EFFECT_0].ItemType;
                         state.target = focus ? focus->GetGUID() : ObjectGuid::Empty;
@@ -1475,18 +1655,26 @@ bool CompanionErrandAction::Execute(Event)
                         state.z = focus ? focus->GetPositionZ() : bot->GetPositionZ();
                     }
                     if (priority)
+                    {
                         state.kind = Errand::Craft;
+                        state.goal = GoalDomain::Crafting;
+                        best = std::numeric_limits<double>::max();
+                    }
+                    else if (CompanionGoalRequested(botAI, GoalDomain::Crafting))
+                        ObserveCompanionGoal(botAI, GoalDomain::Crafting, GoalState::Opportunity,
+                            "recipe_materials_tools_or_station_missing");
                 }
                 if (best != std::numeric_limits<double>::max())
                 {
                     state.kind = selected;
+                    state.goal = selectedGoal;
                     state.learned = 0;
                     if (selected == Errand::Trainer)
                         RecordTraining(bot, "travelling", 0, 0, 0);
                     state.sold = 0;
                     state.repairs = 0;
                     if (selected != Errand::ProfessionVendor && selected != Errand::MountVendor &&
-                        selected != Errand::EquipmentVendor)
+                        selected != Errand::EquipmentVendor && selected != Errand::BagVendor)
                         botAI->TellMaster(selected == Errand::Bags ?
                         "Je vais vendre mon equipement obsolete et mes objets inutiles, puis faire les reparations." :
                         selected == Errand::Trainer ?
@@ -1500,7 +1688,7 @@ bool CompanionErrandAction::Execute(Event)
             state.herbDue = false;
             state.events.RescheduleEvent(HerbScan, Milliseconds(5000));
             if (!GetCompanionNarrativeFocus(bot->GetGUID()).starts_with("training") &&
-                IsCompanionInventoryManaged(botAI) &&
+                IsCompanionInventoryManaged(botAI) && CompanionGoalAllowed(botAI, GoalDomain::Gathering) &&
                 ((bot->HasSkill(SKILL_HERBALISM) && bot->HasSpell(2366)) ||
                     (bot->HasSkill(SKILL_MINING) && bot->HasSpell(2575))) && HasBagRoom(bot) &&
                 bot->GetDistance(master) <= 40.0f)
@@ -1545,12 +1733,15 @@ bool CompanionErrandAction::Execute(Event)
                 if (state.target)
                 {
                     state.kind = Errand::Herb;
+                    state.goal = GoalDomain::Gathering;
                     // The bounded detour itself is sufficient; avoid repeated gathering chatter.
                 }
             }
         }
         if (state.kind == Errand::None)
             return false;
+        if (state.goal != GoalDomain::Count)
+            ObserveCompanionGoal(botAI, state.goal, GoalState::Travelling, "native_plan_started");
         LOG_INFO("playerbots.companion", "[Errand] {} started kind={} spawn={} craft={} distance={}",
             bot->GetName(), uint32(state.kind), state.spawn, state.craftSpell,
             bot->GetDistance(state.x, state.y, state.z));
@@ -1565,10 +1756,17 @@ bool CompanionErrandAction::Execute(Event)
         {
             bool completed = bot->GetItemCount(state.craftOutput, false) > state.craftBefore;
             if (!completed)
+            {
                 state.rejectedCrafts.insert(state.craftSpell);
+                ObserveCompanionGoal(botAI, GoalDomain::Crafting, GoalState::Failed, "product_not_created");
+                state.goal = GoalDomain::Count;
+            }
             else
             {
                 ++state.crafts;
+                ObserveCompanionGoal(botAI, GoalDomain::Crafting, state.craftIntermediate ? GoalState::Pending : GoalState::Done,
+                    state.craftIntermediate ? "intermediate_created" : "product_created", 0, 1);
+                state.goal = GoalDomain::Count;
                 if (state.crafts == 1)
                     state.events.RescheduleEvent(CraftReset, Milliseconds(300000));
                 state.inventoryDue = true;
@@ -1659,7 +1857,9 @@ bool CompanionErrandAction::Execute(Event)
         if (bot->GetGameObjectIfCanInteractWith(state.target, GAMEOBJECT_TYPE_GUILD_BANK))
         {
             bot->StopMoving();
-            QueueCompanionGuildBank(botAI, state.target);
+            ObserveCompanionGoal(botAI, GoalDomain::Guild, QueueCompanionGuildBank(botAI, state.target) ?
+                GoalState::Verifying : GoalState::Failed, "guild_operation_queued");
+            state.goal = GoalDomain::Count;
             Returning(botAI);
             return true;
         }
@@ -1702,11 +1902,15 @@ bool CompanionErrandAction::Execute(Event)
             botAI->TellMaster("Entretien termine : " + std::to_string(state.sold) +
                 " objets devenus inutiles vendus, " + std::to_string(state.repairs) +
                 " pieces de cuivre en reparations. Je vous rejoins.");
-            if (NeedsBagSpace(bot) && !state.warnedBags)
+            if (NeedsBagSpace(bot) && !state.warnedBags && CompanionGoalAllowed(botAI, GoalDomain::Bags))
             {
                 botAI->TellMaster("Mes sacs restent presque pleins; les objets proteges sont conserves.");
                 state.warnedBags = true;
             }
+            if (state.goal == GoalDomain::Maintenance)
+                ObserveCompanionGoal(botAI, state.goal, NeedsEquipmentRepair(bot) || !state.failedSales.empty() ?
+                    GoalState::Opportunity : GoalState::Done, "maintenance_finished", 0, state.sold + (state.repairs != 0));
+            state.goal = GoalDomain::Count;
             state.events.RescheduleEvent(TownScan, Milliseconds(5000));
             Returning(botAI);
             return true;
@@ -1719,7 +1923,7 @@ bool CompanionErrandAction::Execute(Event)
         }
     }
     if (state.kind == Errand::PoisonVendor || state.kind == Errand::ProfessionVendor ||
-        state.kind == Errand::MountVendor || state.kind == Errand::EquipmentVendor)
+        state.kind == Errand::MountVendor || state.kind == Errand::EquipmentVendor || state.kind == Errand::BagVendor)
     {
         bool supplies = state.kind == Errand::ProfessionVendor;
         bool mount = state.kind == Errand::MountVendor;
@@ -1731,7 +1935,9 @@ bool CompanionErrandAction::Execute(Event)
                 ChooseProfessionSupply(bot, npc->GetVendorItems(), state.reserve, NeededProfessionSupplies(bot), npc) :
                 ChoosePoison(bot, npc->GetVendorItems(), state.reserve, PoisonStock(bot), npc);
             BagPurchase bag;
-            if (supplies && !purchase.item)
+            if (state.kind == Errand::BagVendor)
+                purchase = {};
+            if (state.kind == Errand::BagVendor && CompanionGoalAllowed(botAI, GoalDomain::Bags))
             {
                 bag = ChooseBag(bot, npc->GetVendorItems(), state.reserve, npc);
                 purchase = {bag.item, bag.vendorSlot, 1};
@@ -1753,6 +1959,21 @@ bool CompanionErrandAction::Execute(Event)
                         bot->SwapItem(uint16(INVENTORY_SLOT_BAG_0 << 8) | bag.storageSlot,
                             uint16(INVENTORY_SLOT_BAG_0 << 8) | bag.equipSlot);
                     state.inventoryDue = true;
+                    if (bag.item)
+                    {
+                        ObserveCompanionGoal(botAI, GoalDomain::Bags, GoalState::Verifying, "bag_acquired", 0, 1);
+                        if (CompanionBagCapacity(bot) >= CompanionGoalTarget(botAI, GoalDomain::Bags))
+                            ObserveCompanionGoal(botAI, GoalDomain::Bags, GoalState::Done, "bag_equipped");
+                        state.goal = GoalDomain::Count;
+                    }
+                    if (!bag.item && state.goal != GoalDomain::Count)
+                    {
+                        ObserveCompanionGoal(botAI, state.goal,
+                            state.goal == GoalDomain::Equipment ? GoalState::Pending :
+                                state.goal == GoalDomain::Mount ? GoalState::Verifying : GoalState::Done,
+                            "item_acquired", 0, 1);
+                        state.goal = GoalDomain::Count;
+                    }
                     botAI->TellMaster("J'ai achete " +
                         ChatHelper::FormatItem(sObjectMgr->GetItemTemplate(purchase.item)));
                     LOG_INFO("playerbots.companion", "[CompanionErrands] {} bought {} x {} at {}",
@@ -1760,7 +1981,7 @@ bool CompanionErrandAction::Execute(Event)
                     return true;
                 }
             }
-            if (supplies || mount || state.kind == Errand::EquipmentVendor)
+            if (supplies || mount || state.kind == Errand::EquipmentVendor || state.kind == Errand::BagVendor)
                 state.rejectedSupplyVendors.insert(state.spawn);
             else
                 state.rejectedVendors.insert(state.spawn);
@@ -1790,6 +2011,7 @@ bool CompanionErrandAction::Execute(Event)
             if (learned)
             {
                 ++state.learned;
+                ObserveCompanionGoal(botAI, state.goal, GoalState::Verifying, "lesson_confirmed", 0, 1);
                 if (auto const* info = sSpellMgr->GetSpellInfo(state.pendingLesson))
                     botAI->TellMaster("J'ai appris " + ChatHelper::FormatSpell(info));
             }
@@ -1810,6 +2032,8 @@ bool CompanionErrandAction::Execute(Event)
             auto const* lesson = ChooseLesson(botAI, trainer, bot->GetReputationPriceDiscount(npc));
             if (lesson)
             {
+                state.goal = trainer->GetTrainerType() == Trainer::Type::Class ? GoalDomain::ClassTraining :
+                    (lesson->ReqSkillLine == SKILL_RIDING || TeachesRiding(lesson->SpellId)) ? GoalDomain::Mount : GoalDomain::ProfessionTraining;
                 state.pendingLesson = lesson->SpellId;
                 state.pendingTrainer = npc->GetEntry();
                 state.moneyBeforeLesson = bot->GetMoney();
@@ -1819,6 +2043,7 @@ bool CompanionErrandAction::Execute(Event)
                 bot->StopMoving();
                 trainer->TeachSpell(npc, bot, state.pendingLesson);
                 RecordTraining(bot, "verifying", npc->GetEntry(), state.pendingLesson, state.learned);
+                ObserveCompanionGoal(botAI, state.goal, GoalState::Verifying, "lesson_pending");
                 return true;
             }
             bool budgetBlocked = ChooseLesson(botAI, trainer, bot->GetReputationPriceDiscount(npc), false);
@@ -1828,10 +2053,26 @@ bool CompanionErrandAction::Execute(Event)
                 npc->GetEntry(), 0, state.learned);
             LOG_INFO("playerbots.companion", "[Training] {} finished trainer={} learned={} money={} reserve={} budget={}",
                 bot->GetName(), npc->GetEntry(), state.learned, bot->GetMoney(), state.reserve, budgetBlocked);
-            botAI->TellMaster(budgetBlocked ? "Il me manque de l'argent disponible pour les lecons restantes." :
-                failed ? "L'apprentissage a echoue. Je conserve mon argent restant et reprendrai plus tard." :
-                state.learned ? "Mes nouvelles competences sont apprises. Je poursuis mes preparatifs." :
-                "Ce maitre n'a plus de lecon accessible pour mon niveau et mes competences.");
+            if (!budgetBlocked)
+                botAI->TellMaster(failed ? "L'apprentissage a echoue. Je conserve mon argent restant et reprendrai plus tard." :
+                    state.learned ? "Mes nouvelles competences sont apprises. Je poursuis mes preparatifs." :
+                    "Ce maitre n'a plus de lecon accessible pour mon niveau et mes competences.");
+            if (budgetBlocked)
+            {
+                auto const* blocked = ChooseLesson(botAI, trainer, bot->GetReputationPriceDiscount(npc), false);
+                if (blocked)
+                {
+                    state.goal = trainer->GetTrainerType() == Trainer::Type::Class ? GoalDomain::ClassTraining :
+                        (blocked->ReqSkillLine == SKILL_RIDING || TeachesRiding(blocked->SpellId)) ? GoalDomain::Mount : GoalDomain::ProfessionTraining;
+                    uint32 cost = uint32(std::floor(blocked->MoneyCost * bot->GetReputationPriceDiscount(npc)));
+                    ObserveCompanionGoal(botAI, state.goal, GoalState::Money, "verified_trainer_price",
+                        uint32((uint64(cost) * 5 + 3) / 4));
+                }
+            }
+            else
+                ObserveCompanionGoal(botAI, state.goal, failed ? GoalState::Failed : GoalState::Opportunity,
+                    failed ? "lesson_not_learned" : "local_trainer_exhausted");
+            state.goal = GoalDomain::Count;
             state.events.RescheduleEvent(TownScan, Milliseconds(5000));
             Returning(botAI);
             return true;

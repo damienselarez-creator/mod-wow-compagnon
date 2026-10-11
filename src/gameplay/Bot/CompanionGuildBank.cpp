@@ -6,6 +6,7 @@
 #include "CompanionGuildBank.h"
 #include "CompanionGuildBankStore.h"
 #include "CompanionErrands.h"
+#include "CompanionGoals.h"
 #include "Bag.h"
 #include "CastCustomSpellAction.h"
 #include "Config.h"
@@ -565,8 +566,13 @@ namespace
             Player* player = ObjectAccessor::FindPlayer(_character);
             Player* master = ObjectAccessor::FindPlayer(_owner);
             auto* ai = player ? GET_PLAYERBOT_AI(player) : nullptr;
-            if (!enabled.load() || !ai || !master || !player->IsInWorld() || !master->IsInWorld() ||
-                ai->GetMaster() != master || !IsCompanionInventoryManaged(ai) || !IsManagedCompanion(ai) ||
+            auto blocked = [&ai](char const* reason)
+            {
+                ObserveCompanionGoal(ai, CompanionGoals::Domain::Guild, CompanionGoals::State::Opportunity, reason);
+                return false;
+            };
+            if (!enabled.load() || !ai || !CompanionGoalAllowed(ai, CompanionGoals::Domain::Guild) || !master || !player->IsInWorld() || !master->IsInWorld() ||
+                ai->GetMaster() != master || !IsCompanionInventoryManaged(ai) ||
                 player->IsInCombat() || master->IsInCombat() || !player->IsAlive() || !master->IsAlive() ||
                 player->GetGroup() != master->GetGroup() || !player->GetGroup() ||
                 player->GetGuildId() != master->GetGuildId() || !player->GetGuildId() ||
@@ -575,19 +581,19 @@ namespace
                 !player->GetSession() || !master->GetSession() ||
                 player->GetSession()->IsLoggingOut() || master->GetSession()->IsLoggingOut() ||
                 player->IsNonMeleeSpellCast(false) || master->isMoving() || player->isMoving())
-                return false;
+                return blocked("guild_prerequisites_changed");
             GameObject* bank = ai->GetGameObject(_bank);
             if (!bank || !player->GetGameObjectIfCanInteractWith(_bank, GAMEOBJECT_TYPE_GUILD_BANK) ||
                 master->GetDistance(bank) > 30.0f)
-                return false;
+                return blocked("guild_bank_not_accessible");
             Guild* guild = sGuildMgr->GetGuildById(player->GetGuildId());
             uint64 now = uint64(std::time(nullptr));
             if (!guild)
-                return false;
+                return blocked("guild_unavailable");
             {
                 std::lock_guard<std::mutex> lock(stockMutex);
                 if (nextVisit[_character] > now)
-                    return false;
+                    return blocked("guild_visit_cooldown");
                 nextVisit[_character] = now + VisitInterval;
             }
             // Apply a previously withdrawn stack one native use at a time; do not replace enchantments.
@@ -599,7 +605,11 @@ namespace
                     {
                         BankUseItem use(ai);
                         if (use.Enhance(item, targets.front()))
+                        {
+                            ObserveCompanionGoal(ai, CompanionGoals::Domain::Guild,
+                                CompanionGoals::State::Opportunity, "enhancement_use_requested");
                             return true;
+                        }
                     }
                 }
             auto plan = PlanInventory(player);
@@ -632,9 +642,13 @@ namespace
                     break;
             }
             auto items = ReadBank(guild, player);
-            if (!WithdrawArticle(guild, ai, items, donated, now))
-                WithdrawMaterials(guild, ai, items, now);
+            bool withdrew = WithdrawArticle(guild, ai, items, donated, now);
+            if (!withdrew)
+                withdrew = WithdrawMaterials(guild, ai, items, now);
             ReadBank(guild, player);
+            ObserveCompanionGoal(ai, CompanionGoals::Domain::Guild, deposits || withdrew ?
+                CompanionGoals::State::Done : CompanionGoals::State::Opportunity,
+                deposits || withdrew ? "guild_items_transferred" : "no_permitted_useful_transfer", 0, deposits + withdrew);
             return true;
         }
 
@@ -679,7 +693,7 @@ bool CompanionGuildBankVisitDue(ObjectGuid character)
 
 bool QueueCompanionGuildBank(PlayerbotAI* ai, ObjectGuid bank)
 {
-    if (!CompanionGuildBankEnabled() || !IsCompanionInventoryManaged(ai) || !IsManagedCompanion(ai))
+    if (!CompanionGuildBankEnabled() || !IsCompanionInventoryManaged(ai) || !CompanionGoalAllowed(ai, CompanionGoals::Domain::Guild))
         return false;
     return PlayerbotWorldThreadProcessor::instance().QueueOperation(
         std::make_unique<BankOperation>(ai->GetBot()->GetGUID(), ai->GetMaster()->GetGUID(), bank));

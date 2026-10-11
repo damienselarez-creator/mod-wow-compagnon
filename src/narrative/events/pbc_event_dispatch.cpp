@@ -2,6 +2,7 @@
 #include "pbc_config.h"
 #include "pbc_character.h"
 #include "pbc_vocation.h"
+#include "CompanionGoals.h"
 #include "pbc_database.h"
 #include "pbc_utils.h"
 #include "pbc_locales.h"
@@ -570,6 +571,9 @@ void PBC_DispatchPartyMessageEvent(Player* sender, const std::string& msg,
                  senderName, chatType, isGroupChat ? "group empty" : "none nearby");
         return;
     }
+
+    if (PBC_CompanionGoalConversation(sender, bots, msg))
+        return;
 
     if (PBC_VocationConversation(sender, bots, msg))
         return;

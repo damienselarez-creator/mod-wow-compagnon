@@ -6,6 +6,7 @@
 
 #include "PlayerbotFactory.h"
 #include "CompanionVocation.h"
+#include "CompanionGoals.h"
 #include "PlayerbotsDatabase.h"
 #include "AccountMgr.h"
 #include "AiFactory.h"
@@ -1669,6 +1670,8 @@ void PlayerbotFactory::ResetQuests()
 
 uint32 PlayerbotFactory::InitTalentsTree(bool increment /*false*/, bool use_template /*true*/, bool reset /*false*/)
 {
+    if (!CompanionGoalAllowed(GET_PLAYERBOT_AI(bot), CompanionGoals::Domain::Talents))
+        return AiFactory::GetPlayerSpecTab(bot);
     uint32 specTab;
     uint8 cls = bot->getClass();
     std::map<uint8, uint32> tabs = AiFactory::GetPlayerSpecTabs(bot);
