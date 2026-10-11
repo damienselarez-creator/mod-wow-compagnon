@@ -73,7 +73,7 @@ struct Player : Unit, WorldLocation
     PlayerbotAI* ai = nullptr;
     uint32 money = 100, flights = 0;
     bool alive = true, inWorld = true, teleporting = false, combat = false;
-    bool mounted = false, nearNpc = false, flying = false, nativeAccept = true, instant = false;
+    bool mounted = false, nearNpc = false, flying = false, nativeAccept = true, instant = false, instantTransfer = false;
     struct Taxi
     {
         std::deque<uint32> path;
@@ -109,7 +109,9 @@ struct Player : Unit, WorldLocation
         ++flights;
         money -= 40;
         flying = !instant;
-        if (instant)
+        if (instantTransfer)
+            teleporting = true;
+        else if (instant)
             x = 1000;
         return !instant;
     }
@@ -325,6 +327,15 @@ int main()
     assert(RequestCompanionFlight(&instant));
     Tick(instant);
     assert(instant.bot.flights == 1 && instant.bot.x == 1000 && instant.notices.empty());
+
+    PlayerbotAI transfer;
+    Prepare(transfer, 10);
+    transfer.bot.nearNpc = true;
+    transfer.bot.instant = true;
+    transfer.bot.instantTransfer = true;
+    assert(RequestCompanionFlight(&transfer));
+    Tick(transfer);
+    assert(transfer.bot.flights == 1 && transfer.bot.teleporting && transfer.notices.empty());
 
     PlayerbotAI express;
     Prepare(express, 9);

@@ -210,11 +210,12 @@ namespace
             auto const* destination = sTaxiNodesStore.LookupEntry(plan.nodes.back());
             bool arrived = destination && bot->GetMapId() == destination->map_id &&
                 bot->GetExactDist(destination->x, destination->y, destination->z) < 30.0f;
-            EndFlight(botAI, plan, started || bot->IsInFlight() || arrived ? "flight_started" : "native_refusal");
-            if (!started && !bot->IsInFlight() && !arrived)
+            bool accepted = started || bot->IsInFlight() || arrived || bot->IsBeingTeleported();
+            EndFlight(botAI, plan, accepted ? "flight_started" : "native_refusal");
+            if (!accepted)
                 FlightNotice(botAI, "Le depart a ete refuse. Je suis encore pres du maitre de vol.",
                     "Take-off was refused. I am still near the flight master.");
-            return started || bot->IsInFlight() || arrived;
+            return accepted;
         }
     };
 
