@@ -1,4 +1,5 @@
 #include "CompanionErrandPolicy.h"
+#include "CompanionConsumablePolicy.h"
 #include <array>
 #include <cassert>
 #include <cmath>
@@ -14,6 +15,12 @@ constexpr uint32 SPELL_AURA_MOUNTED = 78, SPELL_AURA_MOD_INCREASE_MOUNTED_SPEED 
 constexpr uint32 SPELL_AURA_MOD_INCREASE_MOUNTED_FLIGHT_SPEED = 207;
 constexpr uint32 ITEM_SPELLTRIGGER_LEARN_SPELL_ID = 6, PLAYERSPELL_REMOVED = 1;
 constexpr uint32 EQUIP_ERR_OK = 0, NULL_BAG = 255, NULL_SLOT = 255;
+constexpr uint32 POWER_MANA = 0, MAX_MONEY_AMOUNT = 2147483647;
+struct CompanionConsumableProfile
+{
+    CompanionConsumables::Kind kind = CompanionConsumables::Kind::Unknown;
+    uint32 amount = 0, manaAmount = 0;
+};
 using ItemPosCountVec = std::vector<uint32>;
 struct SpellEffect
 {
@@ -55,18 +62,23 @@ struct ItemTemplate
     uint32 ItemId = 0, BuyCount = 1;
     int32 BuyPrice = 100;
     bool usable = true;
+    CompanionConsumableProfile profile;
     std::array<ItemSpell, 5> Spells{};
 };
 struct Item
 {
     ItemTemplate const* proto;
+    uint32 count = 1;
     ItemTemplate const* GetTemplate() const { return proto; }
+    uint32 GetCount() const { return count; }
 };
 struct KnownSpell { uint32 State = 0; bool Active = true; };
 struct Creature;
 struct Player
 {
     uint32 money = 1000;
+    uint32 maxMana = 100;
+    uint32 GetMaxPower(uint32) const { return maxMana; }
     bool room = true;
     float discount = 1.0f;
     std::map<uint32, KnownSpell*> spells;
@@ -107,6 +119,10 @@ struct ObjectMgr
 } objectMgr;
 auto* sObjectMgr = &objectMgr;
 struct PoisonPurchase { uint32 item = 0, slot = 0, batches = 0; };
+CompanionConsumableProfile DescribeCompanionConsumable(PlayerbotAI*, ItemTemplate const* item)
+{
+    return item->profile;
+}
 
 #include "production_travel.inc"
 
@@ -179,5 +195,43 @@ int main()
     objectMgr.items[10].Spells[1].SpellTrigger = 0;
     assert(!MountFromItem(&objectMgr.items[10]).spell);
     assert(!NeedsMount(&ai, DescribeMount(999)));
+    using Kind = CompanionConsumables::Kind;
+    for (uint32 id : {20, 21, 22, 23})
+    {
+        objectMgr.items[id].ItemId = id;
+        objectMgr.items[id].profile = {id <= 21 ? Kind::Healing : id == 22 ? Kind::Mana : Kind::Bandage,
+            id == 21 ? 500u : 100u, 0};
+    }
+    VendorItemData provisions{{{20}, {21}, {22}, {23}}};
+    assert(ChooseCombatSupply(&ai, &provisions, 200).item == 21);
+    assert(ChooseCombatSupply(&ai, &provisions, 200).batches == 3);
+    objectMgr.items[21].BuyPrice = 1000;
+    assert(ChooseCombatSupply(&ai, &provisions, 200).item == 20);
+    objectMgr.items[21].BuyPrice = 100;
+    objectMgr.items[21].usable = false;
+    assert(ChooseCombatSupply(&ai, &provisions, 200).item == 20);
+    objectMgr.items[21].usable = true;
+    Item potion{&objectMgr.items[20], 3};
+    ai.items = {&potion};
+    assert(ChooseCombatSupply(&ai, &provisions, 200).item == 22);
+    ai.bot.maxMana = 0;
+    assert(ChooseCombatSupply(&ai, &provisions, 200).item == 23);
+    objectMgr.items[23].usable = false;
+    assert(ChooseCombatSupply(&ai, &provisions, 200).item == 0);
+    objectMgr.items[23].usable = true;
+    ai.bot.maxMana = 100;
+    objectMgr.items[20].profile.manaAmount = 100;
+    assert(ChooseCombatSupply(&ai, &provisions, 200).item == 23);
+    ai.items.clear();
+    ai.bot.room = false;
+    assert(ChooseCombatSupply(&ai, &provisions, 200).item == 0);
+    ai.bot.room = true;
+    ai.bot.money = 50;
+    assert(ChooseCombatSupply(&ai, &provisions, 0).item == 0);
+    assert(ChooseCombatSupply(&ai, &provisions, 0, nullptr, false).item != 0);
+    ai.bot.money = 1000;
+    for (auto& offer : provisions.items)
+        offer.ExtendedCost = 1;
+    assert(ChooseCombatSupply(&ai, &provisions, 0).item == 0);
     std::cout << "Riding, native eligibility gates, budget, stock, duplicates and gather bounds: PASS\n";
 }
