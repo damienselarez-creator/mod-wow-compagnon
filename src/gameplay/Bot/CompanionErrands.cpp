@@ -925,10 +925,10 @@ namespace
                 state.rejectedTrainers.insert(state.spawn);
                 RecordTraining(ai->GetBot(), "interrupted_or_unreachable", 0, state.pendingLesson, state.learned);
             }
-            if (state.kind == Errand::Bags || state.kind == Errand::BagVendor)
+            if (state.kind == Errand::Bags)
                 state.rejectedBagVendors.insert(state.spawn);
             if (state.kind == Errand::ProfessionVendor || state.kind == Errand::MountVendor ||
-                state.kind == Errand::EquipmentVendor)
+                state.kind == Errand::EquipmentVendor || state.kind == Errand::BagVendor)
                 state.rejectedSupplyVendors.insert(state.spawn);
             if (state.kind == Errand::PoisonVendor)
                 state.rejectedVendors.insert(state.spawn);
@@ -1009,6 +1009,22 @@ namespace
         state.closest = std::numeric_limits<float>::max();
         state.events.RescheduleEvent(Deadline, Milliseconds(180000));
         state.events.RescheduleEvent(Progress, Milliseconds(30000));
+    }
+
+    void FinishVendorVisit(PlayerbotAI* ai, bool purchaseFailed)
+    {
+        auto& state = *ai->companionErrands;
+        if (state.kind == Errand::PoisonVendor)
+            state.rejectedVendors.insert(state.spawn);
+        else
+            state.rejectedSupplyVendors.insert(state.spawn);
+        if (state.goal != GoalDomain::Count)
+            ObserveCompanionGoal(ai, state.goal, purchaseFailed ? GoalState::Failed : GoalState::Opportunity,
+                purchaseFailed ? "native_purchase_not_confirmed" : "no_available_vendor_purchase");
+        state.goal = GoalDomain::Count;
+        // Confirmed purchases already have a factual notice; an empty visit is not a completed resupply.
+        state.events.RescheduleEvent(TownScan, Milliseconds(5000));
+        Returning(ai);
     }
 
     Trainer::Spell const* ChooseLesson(PlayerbotAI* ai, Trainer::Trainer* trainer, float discount, bool budget = true, GoalDomain requestedDomain = GoalDomain::Count)
@@ -1232,6 +1248,10 @@ void RequestCompanionTraining(PlayerbotAI* ai)
     state.paused = false;
     state.townDue = true;
     state.ready = true;
+    state.rejectedTrainers.clear();
+    state.rejectedSupplyVendors.clear();
+    state.rejectedBagVendors.clear();
+    state.rejectedVendors.clear();
     state.events.CancelEvent(Resume);
     RecordTraining(ai->GetBot(), "requested", 0, 0, 0);
 }
@@ -1243,13 +1263,20 @@ void UpdateCompanionErrands(PlayerbotAI* ai, uint32 elapsed)
     auto& state = *ai->companionErrands;
     bool changed = ReconsiderCompanionGoals(ai);
     uint64 revision = CompanionGoalRevision(ai);
-    if (changed || state.observedMoney != ai->GetBot()->GetMoney() || state.goalRevision != revision)
+    uint32 money = ai->GetBot()->GetMoney();
+    bool fundsAdded = money > state.observedMoney;
+    if (changed || state.observedMoney != money || state.goalRevision != revision)
     {
-        state.observedMoney = ai->GetBot()->GetMoney();
+        state.observedMoney = money;
         state.goalRevision = revision;
         state.townDue = true;
         state.herbDue = true;
         state.inventoryDue = true;
+    }
+    // Progress observations and our own spending must not reopen already exhausted or failed vendors.
+    // Explicit requests clear these lists in RequestCompanionTraining; new funds can unlock a real offer.
+    if (changed || fundsAdded)
+    {
         state.rejectedTrainers.clear();
         state.rejectedSupplyVendors.clear();
         state.rejectedBagVendors.clear();
@@ -1981,13 +2008,7 @@ bool CompanionErrandAction::Execute(Event)
                     return true;
                 }
             }
-            if (supplies || mount || state.kind == Errand::EquipmentVendor || state.kind == Errand::BagVendor)
-                state.rejectedSupplyVendors.insert(state.spawn);
-            else
-                state.rejectedVendors.insert(state.spawn);
-            botAI->TellMaster("Ravitaillement termine, je vous rejoins.");
-            state.events.RescheduleEvent(TownScan, Milliseconds(5000));
-            Returning(botAI);
+            FinishVendorVisit(botAI, purchase.item != 0);
             return true;
         }
         if (npc)
