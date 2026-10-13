@@ -10,6 +10,7 @@ using uint32 = uint32_t;
 using ObjectGuid = uint32;
 using GuidVector = std::vector<ObjectGuid>;
 constexpr int BOT_STATE_COMBAT = 1, POWER_MANA = 0, POWER_RAGE = 1, POWER_ENERGY = 3;
+namespace Powers { constexpr int POWER_MANA = 0; }
 constexpr int CLASS_WARRIOR = 1, CLASS_PALADIN = 2, CLASS_HUNTER = 3, CLASS_ROGUE = 4;
 constexpr int CLASS_PRIEST = 5, CLASS_DEATH_KNIGHT = 6, CLASS_SHAMAN = 7, CLASS_MAGE = 8;
 constexpr int CLASS_WARLOCK = 9, CLASS_DRUID = 11;
