@@ -309,6 +309,14 @@ int main()
     ai.managed = false;
     assert(!CanSellCompanionItem(&ai, &spare));
     ai.managed = true;
+    Player buyer;
+    Bag ordinary(12);
+    buyer.Put(255, 19, &ordinary);
+    for (uint8 slot = 23; slot < 39; ++slot)
+        buyer.Put(255, slot, &fillers[slot]);
+    EquipOwnedBagUpgrade(&buyer);
+    assert(!buyer.GetItemByPos(255, 23) && buyer.GetItemByPos(19, 0) == &fillers[23]);
+    // No owned upgrade: preserve a backpack slot for the next native vendor purchase.
     ai.bot.blocked = true;
     ai.bot.Put(255, 23, &future);
     auto capacity = CompanionBagCapacity(&ai.bot);

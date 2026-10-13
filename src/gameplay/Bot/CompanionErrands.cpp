@@ -774,7 +774,32 @@ namespace
         uint32 capacity = current ? current->GetBagSize() : 0;
         uint16 source = FindOwnedBagUpgrade(bot, capacity);
         if (!source)
+        {
+            // Keep room for a later native purchase, even when only an equipped bag has free space.
+            for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
+                if (!bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot))
+                    return;
+            for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
+            {
+                Item* occupant = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
+                if (occupant->IsBag() || occupant->IsInTrade() || occupant->IsWrapped())
+                    continue;
+                for (uint8 bagSlot = INVENTORY_SLOT_BAG_START; bagSlot < INVENTORY_SLOT_BAG_END; ++bagSlot)
+                    if (Bag* bag = bot->GetBagByPos(bagSlot); bag && !bag->GetTemplate()->BagFamily)
+                        for (uint32 inside = 0; inside < bag->GetBagSize(); ++inside)
+                            if (!bot->GetItemByPos(bagSlot, uint8(inside)))
+                            {
+                                ItemPosCountVec destination;
+                                if (bot->CanStoreItem(bagSlot, uint8(inside), destination, occupant, false) != EQUIP_ERR_OK)
+                                    continue;
+                                bot->SwapItem(uint16(INVENTORY_SLOT_BAG_0 << 8) | slot,
+                                    uint16(bagSlot << 8) | uint8(inside));
+                                if (!bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot))
+                                    return;
+                            }
+            }
             return;
+        }
         // Move an upgrade out of another bag before exchanging bag contents natively.
         if (uint8(source >> 8) != INVENTORY_SLOT_BAG_0)
         {
