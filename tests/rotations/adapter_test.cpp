@@ -260,6 +260,10 @@ int main()
     ai.bot.cls = CLASS_MAGE;
     ai.bot.auras["fireball!"] = {8000, 1};
     assert(BuildCompanionRotationSituation(&ai).procs & CompanionRotation::BrainFreeze);
+    ai.bot.cls = CLASS_DEATH_KNIGHT;
+    ai.bot.auras["rime"] = {-1, 1};
+    ai.bot.auras["freezing fog"] = {15000, 1};
+    assert(BuildCompanionRotationSituation(&ai).procs & CompanionRotation::Rime);
     CastHealingSpellAction heal;
     Player injured;
     injured.health = 250;

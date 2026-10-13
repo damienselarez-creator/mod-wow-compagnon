@@ -102,7 +102,7 @@ CompanionRotation::Situation BuildCompanionRotationSituation(PlayerbotAI* ai)
             break;
         case CLASS_DEATH_KNIGHT:
             proc("killing machine", KillingMachine);
-            proc("rime", Rime);
+            proc("freezing fog", Rime);
             break;
     }
     return s;
