@@ -95,6 +95,12 @@ int main()
     assert(Priority(s, a, "arcane missiles", 15) == 33);
     s.procs = HotStreak;
     assert(Priority(s, a, "pyroblast", 20) == 33);
+    s.procs = 0;
+    assert(Priority(s, a, "pyroblast", 20) == 4); // Expired proc cannot retain an expensive hard cast's old priority.
+    s.spec = 2;
+    assert(Priority(s, a, "fireball", 20) == 4);
+    s.spec = 0;
+    assert(Priority(s, a, "arcane missiles", 15) == 5.5f);
     s.characterClass = 9;
     s.health = 40;
     assert(Priority(s, a, "life tap", 29) == 0);

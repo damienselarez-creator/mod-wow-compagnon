@@ -108,6 +108,8 @@ namespace CompanionRotation
                         return prefer(29);
                     if (name == "slam" && (s.procs & Bloodsurge))
                         return prefer(32);
+                    if (name == "slam" && s.spec == 1)
+                        return std::min(original, 4.0f);
                     if (name == "execute" && s.targetHealth <= 20)
                         return prefer(30);
                 }
@@ -185,18 +187,26 @@ namespace CompanionRotation
             case 8: // Mage
                 if (name == "pyroblast" && (s.procs & HotStreak))
                     return prefer(33);
+                if (name == "pyroblast")
+                    return std::min(original, 4.0f);
                 if (name == "arcane missiles" && (s.procs & MissileBarrage) &&
                     (s.arcaneStacks >= 4 || s.mana < 35)) return prefer(33);
+                if (name == "arcane missiles" && !(s.procs & MissileBarrage))
+                    return std::min(original, 5.5f);
                 if (name == "arcane blast" && s.arcaneStacks >= 4 && s.mana < 25)
                     return std::min(original, 4.0f);
                 if (name == "ice lance" && (s.procs & Fingers))
                     return prefer(28);
                 if ((name == "fireball" || name == "frostfire bolt") && (s.procs & BrainFreeze))
                     return prefer(32);
+                if (s.spec == 2 && (name == "fireball" || name == "frostfire bolt"))
+                    return std::min(original, 4.0f);
                 break;
             case 9: // Warlock
                 if (name == "soul fire" && (s.procs & Decimation))
                     return prefer(33);
+                if (name == "soul fire" && s.spec == 1)
+                    return std::min(original, 4.0f);
                 if (name == "incinerate" && (s.procs & MoltenCore))
                     return prefer(31);
                 if (s.spec == 0 && name == "haunt")
