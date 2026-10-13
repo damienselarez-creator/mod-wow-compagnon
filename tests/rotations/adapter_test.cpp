@@ -235,6 +235,22 @@ int main()
     assert(CompanionRotationPriority(&ai, &cast, 5, situation) == 0);
     spellMgr.spells[1].attributes = SPELL_ATTR5_EXTRA_INITIAL_PERIOD;
     assert(CompanionRotationPriority(&ai, &cast, 5, situation) == 38); // Native first-tick flag changes impact timing.
+    ai.bot.cls = CLASS_PALADIN;
+    ai.bot.health = 100;
+    ai.context.GetValue<uint32>("spell id", "consecration")->data = 4;
+    SpellInfo ground;
+    ground.duration = 8000;
+    ground.effects.push_back({SPELL_EFFECT_APPLY_AURA, SPELL_AURA_PERIODIC_DAMAGE, 1000});
+    ground.effects.front().TargetA = {true, TARGET_UNIT_SRC_AREA_ENEMY};
+    ground.effects.front().radius = 8;
+    spellMgr.spells[4] = ground;
+    cast.name = "consecration";
+    cast.target = &ai.bot;
+    situation = BuildCompanionRotationSituation(&ai);
+    assert(CompanionRotationPriority(&ai, &cast, 20, situation) == 17);
+    // Low caster HP cannot make the enemies' lifetime look too short for a ground damage effect.
+    ai.bot.health = 1000;
+    cast.target = &enemy;
     ai.bot.cls = CLASS_ROGUE;
     ai.bot.spec = 2;
     ai.bot.tank = false;

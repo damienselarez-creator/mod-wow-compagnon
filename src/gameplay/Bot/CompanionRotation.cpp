@@ -183,6 +183,9 @@ float CompanionRotationPriority(PlayerbotAI* ai, Action* action, float relevance
     a.area = radius > 0 && (a.directDamage || a.periodicDamage);
     if (a.area)
     {
+        // Caster-centred damage must use the enemy's lifetime, never the caster's remaining health.
+        if (!bot->IsHostileTo(target))
+            a.life = situation.targetLife;
         a.hostile = true;
         Unit* center = aroundCaster ? bot : target;
         GuidVector const attackers = ai->GetAiObjectContext()->GetValue<GuidVector>("attackers")->Get();
