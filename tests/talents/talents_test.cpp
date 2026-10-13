@@ -20,7 +20,10 @@ constexpr int SPELL_SHAMAN_DUAL_WIELD = 101;
 constexpr int SKILL_DUAL_WIELD = 1;
 #define GET_PLAYERBOT_AI(bot) (bot)
 #define LOG_ERROR(...)
-uint32 urand(uint32 first, uint32) { return first; }
+uint32 urand(uint32 first, uint32)
+{
+    return first;
+}
 
 struct TalentEntry
 {
@@ -43,8 +46,14 @@ template <class Entry>
 struct Store
 {
     std::vector<Entry> entries;
-    uint32 GetNumRows() const { return entries.size(); }
-    Entry const* LookupEntry(uint32 id) const { return id < entries.size() ? &entries[id] : nullptr; }
+    uint32 GetNumRows() const
+    {
+        return entries.size();
+    }
+    Entry const* LookupEntry(uint32 id) const
+    {
+        return id < entries.size() ? &entries[id] : nullptr;
+    }
 };
 
 Store<TalentEntry> sTalentStore;
@@ -69,16 +78,43 @@ struct Player
     uint32 sent = 0;
     uint32 denied = 0;
 
-    uint8 getClass() const { return cls; }
-    uint32 getClassMask() const { return 1u << (cls - 1); }
-    uint32 GetLevel() const { return level; }
-    uint32 GetFreeTalentPoints() const { return freePoints; }
-    uint32 GetActiveSpec() const { return 0; }
-    bool HasAura(uint32) const { return false; }
-    bool HasSpell(uint32) const { return false; }
+    uint8 getClass() const
+    {
+        return cls;
+    }
+    uint32 getClassMask() const
+    {
+        return 1u << (cls - 1);
+    }
+    uint32 GetLevel() const
+    {
+        return level;
+    }
+    uint32 GetFreeTalentPoints() const
+    {
+        return freePoints;
+    }
+    uint32 GetActiveSpec() const
+    {
+        return 0;
+    }
+    bool HasAura(uint32) const
+    {
+        return false;
+    }
+    bool HasSpell(uint32) const
+    {
+        return false;
+    }
     void SetSkill(uint32, uint32, uint32, uint32) { }
-    void SetCanDualWield(bool enabled) { dualWield = enabled; }
-    void SendTalentsInfoData(bool) { ++sent; }
+    void SetCanDualWield(bool enabled)
+    {
+        dualWield = enabled;
+    }
+    void SendTalentsInfoData(bool)
+    {
+        ++sent;
+    }
     void resetTalents(bool)
     {
         for (auto const& [id, count] : learned)
@@ -121,7 +157,10 @@ struct Player
 
 namespace AiFactory
 {
-    std::map<uint8, uint32> GetPlayerSpecTabs(Player* bot) { return bot->Points(); }
+    std::map<uint8, uint32> GetPlayerSpecTabs(Player* bot)
+    {
+        return bot->Points();
+    }
     uint32 GetPlayerSpecTab(Player* bot)
     {
         auto points = bot->Points();
@@ -135,7 +174,10 @@ namespace AiFactory
 
 namespace CompanionVocation
 {
-    Vocation Get(Player* bot) { return bot->vocation; }
+    Vocation Get(Player* bot)
+    {
+        return bot->vocation;
+    }
 }
 
 namespace CompanionGoals
@@ -143,7 +185,10 @@ namespace CompanionGoals
     enum class Domain { Talents };
 }
 
-bool CompanionGoalAllowed(Player* bot, CompanionGoals::Domain) { return bot->allowed; }
+bool CompanionGoalAllowed(Player* bot, CompanionGoals::Domain)
+{
+    return bot->allowed;
+}
 
 struct Config
 {
@@ -160,7 +205,10 @@ struct PlayerbotFactory
     uint32 InitTalentsTree(bool increment = false, bool use_template = true, bool reset = false);
     void InitTalentsByTemplate(uint32 specTab, bool primaryOnly = false);
     void InitCompanionTalents(uint32 specNo);
-    void InitTalents(uint32 specNo) { fallbackTrees.push_back(specNo); }
+    void InitTalents(uint32 specNo)
+    {
+        fallbackTrees.push_back(specNo);
+    }
 };
 
 #include "tree.inc"
