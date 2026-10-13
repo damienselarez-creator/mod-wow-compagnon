@@ -226,7 +226,10 @@ struct StatsWeightCalculator
 #include "selection.inc"
 #include "equip.inc"
 #include "protection.inc"
+bool IsCompanionCraftingStock(PlayerbotAI*, Item*) { return false; }
 #include "sale.inc"
+#include "eligibility.inc"
+void ConsolidateCompanionStacks(PlayerbotAI*) { }
 #include "maintenance.inc"
 
 int main()

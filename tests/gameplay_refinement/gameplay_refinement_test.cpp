@@ -229,11 +229,12 @@ struct OutOfRangeTrigger
 };
 #include "reach.inc"
 #include "range.inc"
+#include "signature.inc"
 struct OpportunityState
 {
     uint64 inventorySignature = 0, progressionSignature = 0;
     uint32 observedLevel = 0;
-    bool mountDue = false, townDue = false, craftDue = false, herbDue = false;
+    bool mountDue = false, townDue = false, craftDue = false, herbDue = false, bagInventoryDue = false;
     std::set<uint32> rejectedTrainers, rejectedLessons, rejectedCrafts, rejectedSupplyVendors;
 };
 void RefreshOpportunities(PlayerbotAI* botAI, OpportunityState& state)

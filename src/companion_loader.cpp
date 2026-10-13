@@ -7,6 +7,7 @@ void AddCompanionNarrativeScripts();
 void AddCompanionGuildBankScripts();
 void AddCompanionJourneyScripts();
 void AddCompanionGoalScripts();
+void AddCompanionInventoryScripts();
 
 void Addmod_wow_compagnonScripts()
 {
@@ -15,4 +16,5 @@ void Addmod_wow_compagnonScripts()
     AddCompanionGuildBankScripts();
     AddCompanionJourneyScripts();
     AddCompanionGoalScripts();
+    AddCompanionInventoryScripts();
 }

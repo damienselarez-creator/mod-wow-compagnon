@@ -47,6 +47,8 @@ struct PlayerbotAI
 };
 bool IsCompanionInventoryManaged(PlayerbotAI* ai) { return ai && ai->managed; }
 bool Protected(PlayerbotAI*, Item* item) { return item->protectedItem; }
+bool craftingStock = false;
+bool IsCompanionCraftingStock(PlayerbotAI*, Item*) { return craftingStock; }
 bool CanSellObsoleteBag(Player*, Item*) { return false; }
 struct CompanionConsumable { CompanionConsumables::Kind kind = CompanionConsumables::Kind::Unknown; };
 CompanionConsumable scrollProfile;
@@ -71,6 +73,14 @@ struct StatsWeightCalculator
 
 int main()
 {
+    PlayerbotAI artisan;
+    Item surplus;
+    surplus.proto.Quality = ITEM_QUALITY_POOR;
+    artisan.context.usage = ITEM_USAGE_VENDOR;
+    craftingStock = true;
+    assert(!CanSellCompanionItem(&artisan, &surplus));
+    craftingStock = false;
+    assert(CanSellCompanionItem(&artisan, &surplus));
     PlayerbotAI ai;
     Item old, replacement;
     assert(!CanSellCompanionItem(&ai, &old)); // Better item in bags alone cannot authorize a sale.

@@ -12,7 +12,7 @@ using Milliseconds = uint32;
 enum Timer : uint32
 {
     Decision = 1, TownScan, HerbScan, Deadline, Progress, Resume, ClearRejected, VerifyLesson,
-    MountRetry, InventoryScan, CraftCooldown, CraftReset, TownRest, BagScan
+    MountRetry, InventoryScan, CraftCooldown, CraftReset, TownRest
 };
 enum class Errand
 {
@@ -96,6 +96,8 @@ std::string GetCompanionNarrativeFocus(uint32) { return "normal"; }
 void RecordTraining(Player*, std::string const&, uint32, uint32, uint32) { }
 uint32 bagScans = 0;
 void MaintainCompanionBags(PlayerbotAI*) { ++bagScans; }
+bool bagSafe = true;
+bool BagMaintenanceEligible(PlayerbotAI*) { return bagSafe; }
 void StopTrip(PlayerbotAI* ai, bool) { ai->companionErrands->kind = Errand::None; }
 void CancelCompanionErrands(PlayerbotAI* ai, bool automatic = false)
 { ai->automaticCancellation = automatic; StopTrip(ai, false); }
@@ -131,11 +133,21 @@ int main()
     PlayerbotAI ai;
     ai.eligible = false;
     ai.companionErrands->paused = true;
-    ai.companionErrands->events.due.push_back(BagScan);
+    ai.companionErrands->bagInventoryDue = true;
+    bagSafe = false;
+    UpdateCompanionErrands(&ai, 1000);
+    assert(bagScans == 0 && ai.companionErrands->bagInventoryDue);
+    bagSafe = true;
     UpdateCompanionErrands(&ai, 1000);
     assert(bagScans == 1); // Local bag maintenance does not depend on a town trip being eligible.
     UpdateCompanionErrands(&ai, 1000);
-    assert(bagScans == 1); // No repeated scan until its event is due again.
+    assert(bagScans == 1); // Stable inventory never schedules another bag scan.
+    for (int tick = 0; tick < 20; ++tick)
+    {
+        ai.companionErrands->events.due.push_back(InventoryScan);
+        UpdateCompanionErrands(&ai, 15000);
+    }
+    assert(bagScans == 1); // General progression ticks do not trigger bag maintenance.
     ai.eligible = true;
     ai.companionErrands->paused = false;
     RejectAll(ai);

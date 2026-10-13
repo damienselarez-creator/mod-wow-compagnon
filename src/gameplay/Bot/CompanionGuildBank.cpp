@@ -555,8 +555,8 @@ namespace
     class BankOperation : public PlayerbotOperation
     {
     public:
-        BankOperation(ObjectGuid character, ObjectGuid owner, ObjectGuid bank)
-            : _character(character), _owner(owner), _bank(bank) { }
+        BankOperation(ObjectGuid character, ObjectGuid owner, ObjectGuid bank, bool depositOnly)
+            : _character(character), _owner(owner), _bank(bank), _depositOnly(depositOnly) { }
 
         ObjectGuid GetBotGuid() const override { return _character; }
         std::string GetName() const override { return "Companion guild bank sharing"; }
@@ -566,8 +566,10 @@ namespace
             Player* player = ObjectAccessor::FindPlayer(_character);
             Player* master = ObjectAccessor::FindPlayer(_owner);
             auto* ai = player ? GET_PLAYERBOT_AI(player) : nullptr;
-            auto blocked = [&ai](char const* reason)
+            auto blocked = [this, &ai](char const* reason)
             {
+                if (_depositOnly)
+                    FinishCompanionInventoryStorage(ai);
                 ObserveCompanionGoal(ai, CompanionGoals::Domain::Guild, CompanionGoals::State::Opportunity, reason);
                 return false;
             };
@@ -592,13 +594,13 @@ namespace
                 return blocked("guild_unavailable");
             {
                 std::lock_guard<std::mutex> lock(stockMutex);
-                if (nextVisit[_character] > now)
+                if (!_depositOnly && nextVisit[_character] > now)
                     return blocked("guild_visit_cooldown");
                 nextVisit[_character] = now + VisitInterval;
             }
             // Apply a previously withdrawn stack one native use at a time; do not replace enchantments.
             for (Item* item : ai->GetInventoryItems())
-                if (EnhancementSpell(item->GetTemplate()))
+                if (!_depositOnly && EnhancementSpell(item->GetTemplate()))
                 {
                     auto targets = EnhancementTargets(player, item->GetTemplate());
                     if (!targets.empty())
@@ -642,10 +644,14 @@ namespace
                     break;
             }
             auto items = ReadBank(guild, player);
-            bool withdrew = WithdrawArticle(guild, ai, items, donated, now);
-            if (!withdrew)
+            bool withdrew = !_depositOnly && WithdrawArticle(guild, ai, items, donated, now);
+            if (!_depositOnly && !withdrew)
                 withdrew = WithdrawMaterials(guild, ai, items, now);
             ReadBank(guild, player);
+            if (_depositOnly)
+                FinishCompanionInventoryStorage(ai, deposits >= 6 && HasCompanionGuildDeposit(ai));
+            else if (deposits || withdrew)
+                NotifyCompanionInventoryChanged(ai);
             ObserveCompanionGoal(ai, CompanionGoals::Domain::Guild, deposits || withdrew ?
                 CompanionGoals::State::Done : CompanionGoals::State::Opportunity,
                 deposits || withdrew ? "guild_items_transferred" : "no_permitted_useful_transfer", 0, deposits + withdrew);
@@ -656,6 +662,7 @@ namespace
         ObjectGuid _character;
         ObjectGuid _owner;
         ObjectGuid _bank;
+        bool _depositOnly;
     };
 
     class BankWorldScript : public WorldScript
@@ -691,12 +698,34 @@ bool CompanionGuildBankVisitDue(ObjectGuid character)
     return nextVisit[character] <= uint64(std::time(nullptr));
 }
 
-bool QueueCompanionGuildBank(PlayerbotAI* ai, ObjectGuid bank)
+bool IsCompanionCraftingStock(PlayerbotAI* ai, Item* item)
+{
+    if (!IsCompanionInventoryManaged(ai) || !item)
+        return false;
+    auto const* proto = item->GetTemplate();
+    if (proto->Class == ITEM_CLASS_TRADE_GOODS || proto->Class == ITEM_CLASS_REAGENT ||
+        proto->Class == ITEM_CLASS_RECIPE || proto->Class == ITEM_CLASS_GEM || EnhancementSpell(proto))
+        return true;
+    return PlanInventory(ai->GetBot()).products.count(item->GetEntry()) != 0;
+}
+
+bool HasCompanionGuildDeposit(PlayerbotAI* ai)
+{
+    if (!IsCompanionInventoryManaged(ai))
+        return false;
+    auto const plan = PlanInventory(ai->GetBot());
+    for (Item* item : ai->GetInventoryItems())
+        if (DepositSurplus(ai, item, plan))
+            return true;
+    return false;
+}
+
+bool QueueCompanionGuildBank(PlayerbotAI* ai, ObjectGuid bank, bool depositOnly)
 {
     if (!CompanionGuildBankEnabled() || !IsCompanionInventoryManaged(ai) || !CompanionGoalAllowed(ai, CompanionGoals::Domain::Guild))
         return false;
     return PlayerbotWorldThreadProcessor::instance().QueueOperation(
-        std::make_unique<BankOperation>(ai->GetBot()->GetGUID(), ai->GetMaster()->GetGUID(), bank));
+        std::make_unique<BankOperation>(ai->GetBot()->GetGUID(), ai->GetMaster()->GetGUID(), bank, depositOnly));
 }
 
 bool CompanionGuildBankHasProduct(uint32 guild, uint32 item)

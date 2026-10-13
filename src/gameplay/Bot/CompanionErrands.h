@@ -24,6 +24,8 @@ bool RequestCompanionTrainerVisit(PlayerbotAI* ai, Creature* npc);
 
 bool IsCompanionInventoryManaged(PlayerbotAI* ai);
 bool CanSellCompanionItem(PlayerbotAI* ai, Item* item);
+void NotifyCompanionInventoryChanged(PlayerbotAI* ai);
+void FinishCompanionInventoryStorage(PlayerbotAI* ai, bool retry = false);
 
 bool IsManagedCompanion(PlayerbotAI* ai);
 void UpdateCompanionErrands(PlayerbotAI* ai, uint32 elapsed);

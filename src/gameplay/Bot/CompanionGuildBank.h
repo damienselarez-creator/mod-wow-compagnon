@@ -8,10 +8,13 @@
 
 #include "ObjectGuid.h"
 class PlayerbotAI;
+class Item;
 
 bool CompanionGuildBankEnabled();
 bool CompanionGuildBankVisitDue(ObjectGuid character);
-bool QueueCompanionGuildBank(PlayerbotAI* ai, ObjectGuid bank);
+bool QueueCompanionGuildBank(PlayerbotAI* ai, ObjectGuid bank, bool depositOnly = false);
+bool IsCompanionCraftingStock(PlayerbotAI* ai, Item* item);
+bool HasCompanionGuildDeposit(PlayerbotAI* ai);
 bool CompanionGuildBankHasProduct(uint32 guild, uint32 item);
 void AddCompanionGuildBankScripts();
 #endif

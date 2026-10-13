@@ -5,6 +5,7 @@
 #include "PlayerbotFactory.h"
 #include "CompanionGuildBank.h"
 #include "CompanionEquipment.h"
+#include "CompanionInventoryPolicy.h"
 #include "CompanionConsumables.h"
 #include "StatsWeightCalculator.h"
 #include "CompanionVocation.h"
@@ -56,7 +57,7 @@ namespace
     enum Timer : uint32
     {
         Decision = 1, TownScan, HerbScan, Deadline, Progress, Resume, ClearRejected, VerifyLesson,
-        MountRetry, InventoryScan, CraftCooldown, CraftReset, TownRest, BagScan
+        MountRetry, InventoryScan, CraftCooldown, CraftReset, TownRest
     };
     enum class Errand
     {
@@ -268,23 +269,22 @@ namespace
         return false;
     }
 
-    bool NeedsBagSpace(Player* bot)
+    uint32 FreeGeneralBagSlots(Player* bot)
     {
-        uint32 free = 0, total = 0;
+        uint32 free = 0;
         for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
-        {
-            ++total;
             if (!bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot))
                 ++free;
-        }
         for (uint8 slot = INVENTORY_SLOT_BAG_START; slot < INVENTORY_SLOT_BAG_END; ++slot)
             if (Bag* bag = bot->GetBagByPos(slot))
                 if (!bag->GetTemplate()->BagFamily)
-                {
-                    total += bag->GetBagSize();
                     free += bag->GetFreeSlots();
-                }
-        return SelfbotInventoryPolicy::NeedsSpace(free, total);
+        return free;
+    }
+
+    bool NeedsBagSpace(Player* bot)
+    {
+        return SelfbotInventoryPolicy::NeedsSpace(FreeGeneralBagSlots(bot), CompanionBagCapacity(bot));
     }
 
     bool NeedsEquipmentRepair(Player* bot)
@@ -900,6 +900,8 @@ struct CompanionErrandState
     bool mountDue = true;
     bool inventoryDue = true;
     bool bagInventoryDue = true;
+    uint64 storageAttemptSignature = 0;
+    bool guildDepositOnly = false;
     bool craftDue = true;
     bool townRest = false;
     bool restWaiting = false;
@@ -933,7 +935,7 @@ struct CompanionErrandState
     float closest = std::numeric_limits<float>::max();
     uint32 sold = 0;
     uint32 repairs = 0;
-    bool warnedBags = false;
+    CompanionInventory::Step bagNotice = CompanionInventory::Step::None;
     std::set<ObjectGuid> failedSales;
     std::set<uint32> rejectedBagVendors;
     std::set<uint32> rejectedTrainers;
@@ -968,7 +970,7 @@ bool IsCompanionInventoryManaged(PlayerbotAI* ai)
 
 bool CanSellCompanionItem(PlayerbotAI* ai, Item* item)
 {
-    if (!IsCompanionInventoryManaged(ai) || !item || Protected(ai, item))
+    if (!IsCompanionInventoryManaged(ai) || !item || Protected(ai, item) || IsCompanionCraftingStock(ai, item))
         return false;
     auto const* proto = item->GetTemplate();
     if (item->IsBag())
@@ -1009,6 +1011,58 @@ bool CanSellCompanionItem(PlayerbotAI* ai, Item* item)
     return calculator.CalculateItem(current->GetEntry(), current->GetItemRandomPropertyId()) >
         calculator.CalculateItem(item->GetEntry(), item->GetItemRandomPropertyId()) *
             sPlayerbotAIConfig.equipUpgradeThreshold;
+}
+
+namespace
+{
+    uint64 InventorySignature(PlayerbotAI* ai)
+    {
+        uint64 signature = 14695981039346656037ULL;
+        for (Item* item : ai->GetInventoryItems())
+        {
+            signature ^= uint64(item->GetEntry()) * 31 + item->GetCount();
+            signature *= 1099511628211ULL;
+        }
+        return signature;
+    }
+
+    bool HasCompanionSale(PlayerbotAI* ai)
+    {
+        for (Item* item : ai->GetInventoryItems())
+            if (!ai->companionErrands->failedSales.count(item->GetGUID()) && CanSellCompanionItem(ai, item))
+                return true;
+        return false;
+    }
+
+    CompanionInventory::Step InventoryCleanupStep(PlayerbotAI* ai, bool salePending)
+    {
+        Player* bot = ai->GetBot();
+        Player* master = ai->GetMaster();
+        bool full = FreeGeneralBagSlots(bot) == 0;
+        bool depositPending = full && !salePending && CompanionGuildBankEnabled() && master &&
+            bot->GetGuildId() && bot->GetGuildId() == master->GetGuildId() &&
+            CompanionGoalAllowed(ai, GoalDomain::Guild) &&
+            ai->companionErrands->storageAttemptSignature != InventorySignature(ai) && HasCompanionGuildDeposit(ai);
+        return CompanionInventory::Next(full, salePending, depositPending);
+    }
+}
+
+void NotifyCompanionInventoryChanged(PlayerbotAI* ai)
+{
+    if (!IsCompanionInventoryManaged(ai) || !ai->companionErrands)
+        return;
+    auto& state = *ai->companionErrands;
+    state.bagInventoryDue = true;
+    state.inventoryDue = true;
+    state.townDue = true;
+}
+
+void FinishCompanionInventoryStorage(PlayerbotAI* ai, bool retry)
+{
+    if (!IsCompanionInventoryManaged(ai) || !ai->companionErrands)
+        return;
+    NotifyCompanionInventoryChanged(ai);
+    ai->companionErrands->storageAttemptSignature = retry ? 0 : InventorySignature(ai);
 }
 
 bool IsManagedCompanion(PlayerbotAI* ai)
@@ -1367,11 +1421,51 @@ namespace
         return true;
     }
 
+    void ConsolidateCompanionStacks(PlayerbotAI* ai)
+    {
+        Player* bot = ai->GetBot();
+        std::map<uint32, std::vector<ObjectGuid>> stacks;
+        for (Item* item : ai->GetInventoryItems())
+            if (Player::IsInventoryPos(item->GetBagSlot(), item->GetSlot()) &&
+                item->GetTemplate()->GetMaxStackSize() > 1 && !item->IsInTrade() && !item->IsWrapped() &&
+                !item->IsRefundable() && !item->IsBOPTradable())
+                stacks[item->GetEntry()].push_back(item->GetGUID());
+        uint32 moves = 0;
+        for (auto const& [entry, items] : stacks)
+            for (size_t target = 0; target < items.size(); ++target)
+                for (size_t source = target + 1; source < items.size() && moves < 256; ++source)
+                {
+                    Item* destination = bot->GetItemByGuid(items[target]);
+                    Item* origin = bot->GetItemByGuid(items[source]);
+                    if (!destination || !origin ||
+                        destination->GetItemRandomPropertyId() != origin->GetItemRandomPropertyId() ||
+                        destination->CanBeMergedPartlyWith(origin->GetTemplate()) != EQUIP_ERR_OK)
+                        continue;
+                    uint32 maximum = destination->GetTemplate()->GetMaxStackSize();
+                    if (destination->GetCount() >= maximum)
+                        break;
+                    uint32 before = origin->GetCount();
+                    uint32 amount = std::min(before, maximum - destination->GetCount());
+                    uint16 from = uint16(origin->GetBagSlot() << 8) | origin->GetSlot();
+                    uint16 to = uint16(destination->GetBagSlot() << 8) | destination->GetSlot();
+                    if (amount == before)
+                        bot->SwapItem(from, to);
+                    else
+                        bot->SplitItem(from, to, amount);
+                    ++moves;
+                    // Native merging can delete the source item. Resolve its GUID afresh.
+                    Item* remaining = bot->GetItemByGuid(items[source]);
+                    if (!remaining || remaining->GetCount() < before)
+                        ai->companionErrands->townDue = true;
+                }
+    }
+
     void MaintainCompanionBags(PlayerbotAI* ai)
     {
         if (!BagMaintenanceEligible(ai))
             return;
         Player* bot = ai->GetBot();
+        ConsolidateCompanionStacks(ai);
         uint32 before = CompanionBagCapacity(bot);
         // Four equipped slots bound the work; every successful exchange increases capacity.
         for (uint8 pass = INVENTORY_SLOT_BAG_START; pass < INVENTORY_SLOT_BAG_END; ++pass)
@@ -1473,7 +1567,6 @@ void UpdateCompanionErrands(PlayerbotAI* ai, uint32 elapsed)
         {
             case Decision: state.ready = true; break;
             case InventoryScan: state.inventoryDue = true; break;
-            case BagScan: state.bagInventoryDue = true; break;
             case CraftCooldown: state.craftDue = true; break;
             case CraftReset: state.crafts = 0; break;
             case TownScan: state.townDue = true; break;
@@ -1494,7 +1587,6 @@ void UpdateCompanionErrands(PlayerbotAI* ai, uint32 elapsed)
             case ClearRejected:
                 state.rejectedBagVendors.clear();
                 state.failedSales.clear();
-                state.warnedBags = false;
                 state.rejectedTrainers.clear();
                 state.rejectedLessons.clear();
                 state.rejectedVendors.clear();
@@ -1514,11 +1606,11 @@ void UpdateCompanionErrands(PlayerbotAI* ai, uint32 elapsed)
                 break;
         }
     }
-    if (state.bagInventoryDue)
+    if (state.bagInventoryDue && BagMaintenanceEligible(ai))
     {
-        state.bagInventoryDue = false;
-        state.events.RescheduleEvent(BagScan, Milliseconds(15000));
         MaintainCompanionBags(ai);
+        // Coalesce notifications generated by our own native swaps; retry unsafe states when they become safe.
+        state.bagInventoryDue = false;
     }
     if (state.kind == Errand::None)
         return;
@@ -1613,12 +1705,7 @@ bool CompanionErrandAction::Execute(Event)
             ObserveCompanionGoal(botAI, GoalDomain::Talents, after ? GoalState::Opportunity : GoalState::Done,
                 after ? "talent_path_or_prerequisite_missing" : "talent_points_spent", 0, before - after);
         }
-        uint64 signature = 14695981039346656037ULL;
-        for (Item* item : botAI->GetInventoryItems())
-        {
-            signature ^= uint64(item->GetEntry()) * 31 + item->GetCount();
-            signature *= 1099511628211ULL;
-        }
+        uint64 signature = InventorySignature(botAI);
         uint64 progression = bot->GetSpellMap().size();
         for (uint32 skill : {uint32(SKILL_BLACKSMITHING), uint32(SKILL_LEATHERWORKING), uint32(SKILL_ALCHEMY),
             uint32(SKILL_HERBALISM), uint32(SKILL_MINING), uint32(SKILL_TAILORING), uint32(SKILL_ENGINEERING),
@@ -1652,6 +1739,7 @@ bool CompanionErrandAction::Execute(Event)
             state.craftDue = true;
             state.townDue = true;
             state.herbDue = true;
+            state.bagInventoryDue = true;
             // Failed vendors remain excluded; a loot change does not repair a native purchase refusal.
         }
         std::array<ObjectGuid, EQUIPMENT_SLOT_END> equipmentBefore;
@@ -1666,8 +1754,13 @@ bool CompanionErrandAction::Execute(Event)
                 changedEquipment += item->GetGUID() != equipmentBefore[slot];
         if (changedEquipment && CompanionGoalRequested(botAI, GoalDomain::Equipment))
             ObserveCompanionGoal(botAI, GoalDomain::Equipment, GoalState::Done, "equipment_worn", 0, changedEquipment);
-        if (CompanionGoalPermitted(botAI, GoalDomain::Bags))
-            EquipOwnedBagUpgrade(bot);
+        if (state.bagInventoryDue && BagMaintenanceEligible(botAI))
+        {
+            MaintainCompanionBags(botAI);
+            state.bagInventoryDue = false;
+        }
+        if (FreeGeneralBagSlots(bot))
+            state.bagNotice = CompanionInventory::Step::None;
         LOG_INFO("playerbots.companion", "[Inventory] {} protection={} money={} scan_complete=true",
             bot->GetName(), PrefersCompanionShield(botAI), bot->GetMoney());
     }
@@ -1738,8 +1831,6 @@ bool CompanionErrandAction::Execute(Event)
                 double best = std::numeric_limits<double>::max();
                 if (CompanionGoalPermitted(botAI, GoalDomain::Equipment))
                     botAI->DoSpecificAction("equip upgrade", Event(), true);
-                if (CompanionGoalPermitted(botAI, GoalDomain::Bags))
-                    EquipOwnedBagUpgrade(bot);
                 auto const stock = PoisonStock(bot);
                 auto const supplies = CompanionGoalAllowed(botAI, GoalDomain::Supplies) ?
                     NeededProfessionSupplies(bot) : ProfessionSupplies{};
@@ -1749,13 +1840,8 @@ bool CompanionErrandAction::Execute(Event)
                         !state.failedSales.count(item->GetGUID()) && CanSellCompanionItem(botAI, item))
                         sell = true;
                 bool repair = CompanionGoalAllowed(botAI, GoalDomain::Maintenance) && NeedsEquipmentRepair(bot);
-                if (!sell && NeedsBagSpace(bot) && !state.warnedBags &&
-                    CompanionGoalAllowed(botAI, GoalDomain::Bags))
-                {
-                    botAI->TellMaster("Mes sacs sont presque pleins. Je cherche de la place "
-                        "en conservant mes objets utiles.");
-                    state.warnedBags = true;
-                }
+                auto cleanup = InventoryCleanupStep(botAI, sell);
+                bool buyBags = CompanionInventory::BuyBags(CompanionGoalRequested(botAI, GoalDomain::Bags), cleanup);
                 bool budgetBlocked = false;
                 Errand selected = Errand::None;
                 GoalDomain selectedGoal = GoalDomain::Count;
@@ -1817,7 +1903,8 @@ bool CompanionErrandAction::Execute(Event)
                         auto const* goods = sObjectMgr->GetNpcVendorItemList(data.id);
                         if (CompanionGoalAllowed(botAI, GoalDomain::Mount) && ChooseMount(botAI, goods, state.reserve).item)
                             consider(Errand::MountVendor, GoalDomain::Mount, 12000.0);
-                        if (CompanionGoalAllowed(botAI, GoalDomain::Bags) && ChooseBag(bot, goods, state.reserve).item)
+                        if (buyBags && CompanionGoalAllowed(botAI, GoalDomain::Bags) &&
+                            ChooseBag(bot, goods, state.reserve).item)
                             consider(Errand::BagVendor, GoalDomain::Bags, 14000.0);
                         if (CompanionGoalAllowed(botAI, GoalDomain::Supplies) &&
                             (ChooseProfessionSupply(bot, goods, state.reserve, supplies).item ||
@@ -1843,7 +1930,8 @@ bool CompanionErrandAction::Execute(Event)
                 }
                 if (CompanionGoalAllowed(botAI, GoalDomain::Guild) &&
                     IsCompanionInventoryManaged(botAI) &&
-                    CompanionGuildBankVisitDue(bot->GetGUID()) && !master->isMoving() &&
+                    (cleanup == CompanionInventory::Step::Deposit || CompanionGuildBankVisitDue(bot->GetGUID())) &&
+                    !master->isMoving() &&
                     bot->GetGuildId() && bot->GetGuildId() == master->GetGuildId())
                 {
                     float distance = 30.0f;
@@ -1854,7 +1942,8 @@ bool CompanionErrandAction::Execute(Event)
                             !bot->CanSeeOrDetect(bank) || !bot->IsWithinLOSInMap(bank) ||
                             master->GetDistance(bank) > 30.0f || bot->GetDistance(bank) >= distance)
                             continue;
-                        double score = CompanionActivity::Score(GoalDomain::Guild, 16000.0,
+                        double score = CompanionActivity::Score(GoalDomain::Guild,
+                            cleanup == CompanionInventory::Step::Deposit ? -70000.0 : 16000.0,
                             CompanionGoalPriority(botAI, GoalDomain::Guild), bot->GetDistance(bank),
                             false, false, false);
                         if (score >= best)
@@ -1863,13 +1952,15 @@ bool CompanionErrandAction::Execute(Event)
                         best = score;
                         selected = Errand::GuildBank;
                         selectedGoal = GoalDomain::Guild;
+                        state.guildDepositOnly = cleanup == CompanionInventory::Step::Deposit;
                         state.target = guid;
                         state.x = bank->GetPositionX();
                         state.y = bank->GetPositionY();
                         state.z = bank->GetPositionZ();
                     }
                 }
-                if (state.kind == Errand::None && CompanionGoalAllowed(botAI, GoalDomain::Crafting) &&
+                if (state.kind == Errand::None && cleanup != CompanionInventory::Step::Deposit &&
+                    CompanionGoalAllowed(botAI, GoalDomain::Crafting) &&
                     18000.0 - CompanionGoalPriority(botAI, GoalDomain::Crafting) < best && state.craftDue && state.crafts < 5 &&
                     !master->isMoving() && !bot->isMoving() && !bot->IsMounted() &&
                     !bot->IsNonMeleeSpellCast(false) && bot->GetDistance(master) < 30.0f && HasBagRoom(bot))
@@ -1949,6 +2040,14 @@ bool CompanionErrandAction::Execute(Event)
                         selected == Errand::GuildBank ?
                         "Je passe au coffre de guilde pour partager les ressources utiles." :
                         "Je vais acheter mes poisons, puis je vous rejoins.");
+                }
+                if ((cleanup == CompanionInventory::Step::Deposit || cleanup == CompanionInventory::Step::Expand) &&
+                    state.bagNotice != cleanup && CompanionGoalAllowed(botAI, GoalDomain::Bags))
+                {
+                    botAI->TellMaster(cleanup == CompanionInventory::Step::Deposit ?
+                        "Mes sacs sont pleins. J'ai des materiaux a deposer au coffre de guilde." :
+                        "Mes sacs sont pleins apres le tri. Il me faut des sacs plus grands.");
+                    state.bagNotice = cleanup;
                 }
             }
         }
@@ -2126,7 +2225,10 @@ bool CompanionErrandAction::Execute(Event)
         if (bot->GetGameObjectIfCanInteractWith(state.target, GAMEOBJECT_TYPE_GUILD_BANK))
         {
             bot->StopMoving();
-            ObserveCompanionGoal(botAI, GoalDomain::Guild, QueueCompanionGuildBank(botAI, state.target) ?
+            bool queued = QueueCompanionGuildBank(botAI, state.target, state.guildDepositOnly);
+            if (!queued && state.guildDepositOnly)
+                FinishCompanionInventoryStorage(botAI);
+            ObserveCompanionGoal(botAI, GoalDomain::Guild, queued ?
                 GoalState::Verifying : GoalState::Failed, "guild_operation_queued");
             state.goal = GoalDomain::Count;
             Returning(botAI);
@@ -2161,6 +2263,7 @@ bool CompanionErrandAction::Execute(Event)
                     else
                     {
                         state.sold += before - after;
+                        NotifyCompanionInventoryChanged(botAI);
                         LOG_INFO("playerbots.companion", "[CompanionBags] {} sold {} x {} at {}",
                             bot->GetName(), before - after, entry, npc->GetEntry());
                     }
@@ -2172,11 +2275,6 @@ bool CompanionErrandAction::Execute(Event)
                 botAI->TellMaster("Entretien termine : " + std::to_string(state.sold) +
                 " objets devenus inutiles vendus, " + std::to_string(state.repairs) +
                 " pieces de cuivre en reparations. Je vous rejoins.");
-            if (NeedsBagSpace(bot) && !state.warnedBags && CompanionGoalAllowed(botAI, GoalDomain::Bags))
-            {
-                botAI->TellMaster("Mes sacs restent presque pleins; les objets proteges sont conserves.");
-                state.warnedBags = true;
-            }
             if (state.goal == GoalDomain::Maintenance)
                 ObserveCompanionGoal(botAI, state.goal, NeedsEquipmentRepair(bot) || !state.failedSales.empty() ?
                     GoalState::Opportunity : GoalState::Done, "maintenance_finished", 0, state.sold + (state.repairs != 0));
@@ -2207,7 +2305,9 @@ bool CompanionErrandAction::Execute(Event)
             BagPurchase bag;
             if (state.kind == Errand::BagVendor)
                 purchase = {};
-            if (state.kind == Errand::BagVendor && CompanionGoalAllowed(botAI, GoalDomain::Bags))
+            if (state.kind == Errand::BagVendor && CompanionGoalAllowed(botAI, GoalDomain::Bags) &&
+                CompanionInventory::BuyBags(CompanionGoalRequested(botAI, GoalDomain::Bags),
+                    InventoryCleanupStep(botAI, HasCompanionSale(botAI))))
             {
                 bag = ChooseBag(bot, npc->GetVendorItems(), state.reserve, npc);
                 purchase = {bag.item, bag.vendorSlot, 1};
