@@ -56,7 +56,7 @@ namespace
     enum Timer : uint32
     {
         Decision = 1, TownScan, HerbScan, Deadline, Progress, Resume, ClearRejected, VerifyLesson,
-        MountRetry, InventoryScan, CraftCooldown, CraftReset, TownRest
+        MountRetry, InventoryScan, CraftCooldown, CraftReset, TownRest, BagScan
     };
     enum class Errand
     {
@@ -229,7 +229,7 @@ namespace
     {
         Player* player = ai->GetBot();
         auto const* proto = item->GetTemplate();
-        if (!Player::IsInventoryPos(item->GetBagSlot(), item->GetSlot()) || item->IsBag() ||
+        if (!Player::IsInventoryPos(item->GetBagSlot(), item->GetSlot()) || item->IsNotEmptyBag() ||
             !proto->SellPrice || proto->StartQuest || proto->Class == ITEM_CLASS_QUEST ||
             (proto->Class == ITEM_CLASS_CONSUMABLE && proto->SubClass != ITEM_SUBCLASS_SCROLL) ||
             proto->Class == ITEM_CLASS_PROJECTILE ||
@@ -689,21 +689,36 @@ namespace
 
     uint16 FindOwnedBagUpgrade(Player* bot, uint32 capacity)
     {
-        auto useful = [bot, capacity](Item* item)
+        uint16 best = 0;
+        auto consider = [bot, &capacity, &best](Item* item, uint16 position)
         {
-            return item && item->IsBag() && !item->IsInTrade() && !item->GetTemplate()->BagFamily &&
+            if (item && item->IsBag() && !item->IsNotEmptyBag() && !item->IsWrapped() &&
+                !item->IsInTrade() && !item->GetTemplate()->BagFamily &&
                 bot->CanUseItem(item->GetTemplate()) == EQUIP_ERR_OK &&
-                item->GetTemplate()->ContainerSlots > capacity;
+                item->GetTemplate()->ContainerSlots > capacity)
+            {
+                capacity = item->GetTemplate()->ContainerSlots;
+                best = position;
+            }
         };
         for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
-            if (useful(bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot)))
-                return uint16(INVENTORY_SLOT_BAG_0 << 8) | slot;
+            consider(bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot), uint16(INVENTORY_SLOT_BAG_0 << 8) | slot);
         for (uint8 slot = INVENTORY_SLOT_BAG_START; slot < INVENTORY_SLOT_BAG_END; ++slot)
             if (Bag* bag = bot->GetBagByPos(slot))
                 for (uint32 inside = 0; inside < bag->GetBagSize(); ++inside)
-                    if (useful(bot->GetItemByPos(slot, uint8(inside))))
-                        return uint16(slot << 8) | uint8(inside);
-        return 0;
+                    consider(bot->GetItemByPos(slot, uint8(inside)), uint16(slot << 8) | uint8(inside));
+        return best;
+    }
+
+    bool CanSellObsoleteBag(Player* bot, Item* item)
+    {
+        if (!item || !item->IsBag() || item->IsNotEmptyBag() || item->GetTemplate()->BagFamily ||
+            bot->CanUseItem(item->GetTemplate()) != EQUIP_ERR_OK)
+            return false;
+        uint8 target = SmallestGeneralBagSlot(bot);
+        Bag* smallest = target != NULL_SLOT ? bot->GetBagByPos(target) : nullptr;
+        // An empty equipped slot still needs a bag. Specialty bags never justify selling general capacity.
+        return smallest && item->GetTemplate()->ContainerSlots <= smallest->GetBagSize();
     }
 
     BagPurchase ChooseBag(Player* bot, VendorItemData const* goods, uint32 reserve, Creature* vendor = nullptr,
@@ -752,32 +767,6 @@ namespace
 
     void EquipOwnedBagUpgrade(Player* bot)
     {
-        // Buying or exchanging a bag needs a backpack slot, not merely free space in another bag.
-        bool backpackRoom = false;
-        for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
-            backpackRoom = backpackRoom || !bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
-        if (!backpackRoom)
-        {
-            uint8 sourceSlot = NULL_SLOT;
-            for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
-                if (Item* item = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
-                    item && !item->IsBag() && !item->IsInTrade())
-                {
-                    sourceSlot = slot;
-                    break;
-                }
-            bool moved = false;
-            for (uint8 bagSlot = INVENTORY_SLOT_BAG_START;
-                bagSlot < INVENTORY_SLOT_BAG_END && !moved && sourceSlot != NULL_SLOT; ++bagSlot)
-                if (Bag* bag = bot->GetBagByPos(bagSlot); bag && !bag->GetTemplate()->BagFamily)
-                    for (uint32 inside = 0; inside < bag->GetBagSize() && !moved; ++inside)
-                        if (!bot->GetItemByPos(bagSlot, uint8(inside)))
-                        {
-                            bot->SwapItem(uint16(INVENTORY_SLOT_BAG_0 << 8) | sourceSlot,
-                                uint16(bagSlot << 8) | uint8(inside));
-                            moved = !bot->GetItemByPos(INVENTORY_SLOT_BAG_0, sourceSlot);
-                        }
-        }
         uint8 target = SmallestGeneralBagSlot(bot);
         if (target == NULL_SLOT)
             return;
@@ -789,17 +778,24 @@ namespace
         // Move an upgrade out of another bag before exchanging bag contents natively.
         if (uint8(source >> 8) != INVENTORY_SLOT_BAG_0)
         {
+            Item* upgrade = bot->GetItemByPos(uint8(source >> 8), uint8(source));
             for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
-                if (!bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot))
-                {
-                    uint16 temporary = uint16(INVENTORY_SLOT_BAG_0 << 8) | slot;
-                    Item* upgrade = bot->GetItemByPos(uint8(source >> 8), uint8(source));
-                    bot->SwapItem(source, temporary);
-                    if (bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot) != upgrade)
-                        return;
-                    source = temporary;
-                    break;
-                }
+            {
+                Item* occupant = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
+                if (occupant && (occupant->IsBag() || occupant->IsInTrade() || occupant->IsWrapped()))
+                    continue;
+                // Exchange with a backpack item when completely full; no extra free slot is needed.
+                ItemPosCountVec destination;
+                if (occupant && bot->CanStoreItem(uint8(source >> 8), uint8(source), destination,
+                    occupant, true) != EQUIP_ERR_OK)
+                    continue;
+                uint16 temporary = uint16(INVENTORY_SLOT_BAG_0 << 8) | slot;
+                bot->SwapItem(source, temporary);
+                if (bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot) != upgrade)
+                    return;
+                source = temporary;
+                break;
+            }
             if (uint8(source >> 8) != INVENTORY_SLOT_BAG_0)
                 return;
         }
@@ -878,6 +874,7 @@ struct CompanionErrandState
     bool gathering = false;
     bool mountDue = true;
     bool inventoryDue = true;
+    bool bagInventoryDue = true;
     bool craftDue = true;
     bool townRest = false;
     bool restWaiting = false;
@@ -949,6 +946,8 @@ bool CanSellCompanionItem(PlayerbotAI* ai, Item* item)
     if (!IsCompanionInventoryManaged(ai) || !item || Protected(ai, item))
         return false;
     auto const* proto = item->GetTemplate();
+    if (item->IsBag())
+        return proto->Quality <= ITEM_QUALITY_RARE && CanSellObsoleteBag(ai->GetBot(), item);
     if (proto->Class == ITEM_CLASS_CONSUMABLE)
     {
         auto const profile = DescribeCompanionConsumable(ai, proto);
@@ -1318,6 +1317,60 @@ void CancelCompanionErrands(PlayerbotAI* ai, bool automatic)
     state.events.RescheduleEvent(Resume, Milliseconds(automatic ? 10000 : 60000));
 }
 
+namespace
+{
+    bool BagMaintenanceEligible(PlayerbotAI* ai)
+    {
+        if (!IsCompanionInventoryManaged(ai) || HasPendingCompanionFlight(ai) ||
+            !CompanionGoalPermitted(ai, GoalDomain::Bags))
+            return false;
+        Player* bot = ai->GetBot();
+        Player* master = ai->GetMaster();
+        if (!bot->IsInWorld() || !master->IsInWorld() || !bot->GetSession() || !master->GetSession() ||
+            bot->GetSession()->IsLoggingOut() || master->GetSession()->IsLoggingOut() ||
+            !bot->IsAlive() || !master->IsAlive() || bot->IsBeingTeleported() || master->IsBeingTeleported() ||
+            bot->GetMap() != master->GetMap() || !(bot->GetPhaseMask() & master->GetPhaseMask()) ||
+            bot->IsInCombat() || master->IsInCombat() || bot->GetTradeData() || master->GetTradeData() ||
+            bot->IsInFlight() || bot->IsFlying() || bot->IsFalling() || bot->GetTransport() || bot->GetVehicle() ||
+            bot->IsNonMeleeSpellCast(false) || !bot->GetLootGUID().IsEmpty())
+            return false;
+        if (Group* group = bot->GetGroup())
+            for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+                if (Player* member = ref->GetSource())
+                    if (member->IsInCombat())
+                        return false;
+        return true;
+    }
+
+    void MaintainCompanionBags(PlayerbotAI* ai)
+    {
+        if (!BagMaintenanceEligible(ai))
+            return;
+        Player* bot = ai->GetBot();
+        uint32 before = CompanionBagCapacity(bot);
+        // Four equipped slots bound the work; every successful exchange increases capacity.
+        for (uint8 pass = INVENTORY_SLOT_BAG_START; pass < INVENTORY_SLOT_BAG_END; ++pass)
+        {
+            uint32 previous = CompanionBagCapacity(bot);
+            EquipOwnedBagUpgrade(bot);
+            if (CompanionBagCapacity(bot) <= previous)
+                break;
+        }
+        uint32 after = CompanionBagCapacity(bot);
+        if (after <= before)
+            return;
+        auto& state = *ai->companionErrands;
+        state.inventoryDue = true;
+        state.townDue = true;
+        if (CompanionGoalRequested(ai, GoalDomain::Bags))
+            ObserveCompanionGoal(ai, GoalDomain::Bags,
+                after >= CompanionGoalTarget(ai, GoalDomain::Bags) ? GoalState::Done : GoalState::Verifying,
+                "bag_equipped", 0, after - before);
+        LOG_INFO("playerbots.companion", "[Bags] {} capacity_before={} capacity_after={} equipped=true",
+            bot->GetName(), before, after);
+    }
+}
+
 void RequestCompanionTraining(PlayerbotAI* ai)
 {
     if (!IsCompanionInventoryManaged(ai))
@@ -1347,7 +1400,13 @@ void RequestCompanionTraining(PlayerbotAI* ai)
 void UpdateCompanionErrands(PlayerbotAI* ai, uint32 elapsed)
 {
     if (!ai->companionErrands)
-        return;
+    {
+        if (!IsCompanionInventoryManaged(ai))
+            return;
+        ai->companionErrands = std::make_shared<CompanionErrandState>();
+        ai->companionErrands->reserve = ai->GetBot()->GetMoney() / 5;
+        ai->companionErrands->events.ScheduleEvent(ClearRejected, Milliseconds(300000));
+    }
     auto& state = *ai->companionErrands;
     bool changed = ReconsiderCompanionGoals(ai);
     uint64 revision = CompanionGoalRevision(ai);
@@ -1389,6 +1448,7 @@ void UpdateCompanionErrands(PlayerbotAI* ai, uint32 elapsed)
         {
             case Decision: state.ready = true; break;
             case InventoryScan: state.inventoryDue = true; break;
+            case BagScan: state.bagInventoryDue = true; break;
             case CraftCooldown: state.craftDue = true; break;
             case CraftReset: state.crafts = 0; break;
             case TownScan: state.townDue = true; break;
@@ -1428,6 +1488,12 @@ void UpdateCompanionErrands(PlayerbotAI* ai, uint32 elapsed)
                 state.events.RescheduleEvent(Resume, Milliseconds(15000));
                 break;
         }
+    }
+    if (state.bagInventoryDue)
+    {
+        state.bagInventoryDue = false;
+        state.events.RescheduleEvent(BagScan, Milliseconds(15000));
+        MaintainCompanionBags(ai);
     }
     if (state.kind == Errand::None)
         return;
@@ -2126,6 +2192,7 @@ bool CompanionErrandAction::Execute(Event)
             if (purchase.item)
             {
                 bot->StopMoving();
+                uint32 bagCapacityBefore = bag.item ? CompanionBagCapacity(bot) : 0;
                 uint32 before = bot->GetItemCount(purchase.item, false);
                 uint32 previousVendor = bot->GetSession()->GetCurrentVendor();
                 bot->GetSession()->SetCurrentVendor(0);
@@ -2142,8 +2209,10 @@ bool CompanionErrandAction::Execute(Event)
                     state.inventoryDue = true;
                     if (bag.item)
                     {
+                        state.bagInventoryDue = true;
                         ObserveCompanionGoal(botAI, GoalDomain::Bags, GoalState::Verifying, "bag_acquired", 0, 1);
-                        if (CompanionBagCapacity(bot) >= CompanionGoalTarget(botAI, GoalDomain::Bags))
+                        if (CompanionBagCapacity(bot) > bagCapacityBefore &&
+                            CompanionBagCapacity(bot) >= CompanionGoalTarget(botAI, GoalDomain::Bags))
                             ObserveCompanionGoal(botAI, GoalDomain::Bags, GoalState::Done, "bag_equipped");
                         state.goal = GoalDomain::Count;
                     }

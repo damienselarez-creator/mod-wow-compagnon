@@ -42,6 +42,8 @@ struct Item
     ItemTemplate const* GetTemplate() const { return proto; }
     bool IsBag() const { return proto->Class == ITEM_CLASS_CONTAINER; }
     bool IsInTrade() const { return false; }
+    bool IsNotEmptyBag() const { return false; }
+    bool IsWrapped() const { return false; }
 };
 struct Bag : Item
 {
@@ -135,6 +137,7 @@ struct Player
         if (!swapFails)
             std::swap(positions[source], positions[target]);
     }
+    uint32 CanStoreItem(uint8, uint8, ItemPosCountVec&, Item*, bool) const { return EQUIP_ERR_OK; }
     std::map<uint32, KnownSpell*> spells;
     std::set<uint32> categories;
     uint32 money = 100, maxSkill = 75;
@@ -335,7 +338,7 @@ int main()
     cramped.positions[uint16(19 << 8) | 0] = &large;
     EquipOwnedBagUpgrade(&cramped);
     assert(cramped.GetBagByPos(19) == &large); // Full backpack, but free space in another bag: still succeeds.
-    assert(cramped.GetItemByPos(19, 1) == &filler);
+    assert(cramped.GetItemByPos(19, 0) == &filler);
     std::cout << "PASS: real profession supply discovery and vendor choice, tools, vials, "
         "parchment, reserves, affordable bag upgrades\n";
 }

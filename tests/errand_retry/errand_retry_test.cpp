@@ -12,7 +12,7 @@ using Milliseconds = uint32;
 enum Timer : uint32
 {
     Decision = 1, TownScan, HerbScan, Deadline, Progress, Resume, ClearRejected, VerifyLesson,
-    MountRetry, InventoryScan, CraftCooldown, CraftReset, TownRest
+    MountRetry, InventoryScan, CraftCooldown, CraftReset, TownRest, BagScan
 };
 enum class Errand
 {
@@ -50,6 +50,7 @@ struct CompanionErrandState
     bool townDue = false, herbDue = false, inventoryDue = false, ready = false;
     bool paused = false, craftDue = false, warnedBags = false, mountDue = false, verificationDue = false;
     bool townRest = false, restWaiting = false;
+    bool bagInventoryDue = false;
     std::set<uint32> rejectedTrainers, rejectedSupplyVendors, rejectedBagVendors, rejectedVendors;
     std::set<uint32> failedSales, rejectedLessons, rejectedHerbs, rejectedCrafts;
 };
@@ -93,6 +94,8 @@ bool InTown(Player*) { return true; }
 uint32 Settlement(Player*) { return 1; }
 std::string GetCompanionNarrativeFocus(uint32) { return "normal"; }
 void RecordTraining(Player*, std::string const&, uint32, uint32, uint32) { }
+uint32 bagScans = 0;
+void MaintainCompanionBags(PlayerbotAI*) { ++bagScans; }
 void StopTrip(PlayerbotAI* ai, bool) { ai->companionErrands->kind = Errand::None; }
 void CancelCompanionErrands(PlayerbotAI* ai, bool automatic = false)
 { ai->automaticCancellation = automatic; StopTrip(ai, false); }
@@ -126,6 +129,15 @@ void AssertRejected(PlayerbotAI& ai, bool rejected)
 int main()
 {
     PlayerbotAI ai;
+    ai.eligible = false;
+    ai.companionErrands->paused = true;
+    ai.companionErrands->events.due.push_back(BagScan);
+    UpdateCompanionErrands(&ai, 1000);
+    assert(bagScans == 1); // Local bag maintenance does not depend on a town trip being eligible.
+    UpdateCompanionErrands(&ai, 1000);
+    assert(bagScans == 1); // No repeated scan until its event is due again.
+    ai.eligible = true;
+    ai.companionErrands->paused = false;
     RejectAll(ai);
     // Ordinary goal progress used to invalidate every exhausted vendor, even without any new funds.
     for (int tick = 0; tick < 40; ++tick)

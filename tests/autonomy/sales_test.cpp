@@ -20,6 +20,7 @@ struct Item
     int GetEntry() { return id; }
     int GetItemRandomPropertyId() { return 0; }
     int GetUInt32Value(int field) { return field == ITEM_FIELD_MAXDURABILITY ? maxDurability : durability; }
+    bool IsBag() const { return false; }
 };
 struct Player
 {
@@ -46,6 +47,7 @@ struct PlayerbotAI
 };
 bool IsCompanionInventoryManaged(PlayerbotAI* ai) { return ai && ai->managed; }
 bool Protected(PlayerbotAI*, Item* item) { return item->protectedItem; }
+bool CanSellObsoleteBag(Player*, Item*) { return false; }
 struct CompanionConsumable { CompanionConsumables::Kind kind = CompanionConsumables::Kind::Unknown; };
 CompanionConsumable scrollProfile;
 bool usefulScroll = false;
