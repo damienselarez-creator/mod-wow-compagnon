@@ -1737,15 +1737,10 @@ uint32 PlayerbotFactory::InitTalentsTree(bool increment /*false*/, bool use_temp
     }
     if (vocation.managed)
     {
-        // Preserve the agreed role at low levels even when an endgame template lists off-tree talents first.
+        // Use the chosen tree exclusively, including when an endgame template contains secondary talents.
         if (use_template)
             InitTalentsByTemplate(specTab, true);
-        InitCompanionTalents(specTab, 51);
-        if (use_template && AiFactory::GetPlayerSpecTabs(bot)[specTab] >= 51 && bot->GetFreeTalentPoints())
-            InitTalentsByTemplate(specTab);
-        // If the role template is incomplete, never invent an unrelated secondary build.
-        if (bot->GetFreeTalentPoints())
-            InitCompanionTalents(specTab, 71);
+        InitCompanionTalents(specTab);
         if (bot->getClass() == CLASS_SHAMAN && bot->HasSpell(SPELL_SHAMAN_DUAL_WIELD))
         {
             bot->SetSkill(SKILL_DUAL_WIELD, 0, 1, 1);
@@ -3696,7 +3691,7 @@ void PlayerbotFactory::InitTalents(uint32 specNo)
     }
 }
 
-void PlayerbotFactory::InitCompanionTalents(uint32 specNo, uint32 targetPoints)
+void PlayerbotFactory::InitCompanionTalents(uint32 specNo)
 {
     std::vector<TalentEntry const*> talents;
     for (uint32 i = 0; i < sTalentStore.GetNumRows(); ++i)
@@ -3714,8 +3709,7 @@ void PlayerbotFactory::InitCompanionTalents(uint32 specNo, uint32 targetPoints)
             return left->Col < right->Col;
         return left->TalentID < right->TalentID;
     });
-    uint32 spent = AiFactory::GetPlayerSpecTabs(bot)[specNo];
-    while (bot->GetFreeTalentPoints() && spent < targetPoints)
+    while (bot->GetFreeTalentPoints())
     {
         bool progressed = false;
         for (auto const* talent : talents)
@@ -3730,7 +3724,6 @@ void PlayerbotFactory::InitCompanionTalents(uint32 specNo, uint32 targetPoints)
             bot->LearnTalent(talent->TalentID, nextRank);
             if (bot->GetFreeTalentPoints() < before)
             {
-                spent += before - bot->GetFreeTalentPoints();
                 progressed = true;
                 break;
             }
