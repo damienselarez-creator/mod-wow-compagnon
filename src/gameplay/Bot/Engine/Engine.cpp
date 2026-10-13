@@ -10,6 +10,7 @@
 #include "PerfMonitor.h"
 #include "Playerbots.h"
 #include "Queue.h"
+#include "CompanionRotation.h"
 #include "Strategy.h"
 #include "Timer.h"
 
@@ -158,23 +159,44 @@ bool Engine::DoNextAction(Unit* /*unit*/, uint32 /*depth*/, bool minimal)
     ProcessTriggers(minimal);
     PushDefaultActions();
 
+    auto const rotation = BuildCompanionRotationSituation(botAI);
+    std::map<std::pair<Action*, float>, float> rotationScores;
+    auto score = [this, &rotation, &rotationScores, minimal](ActionBasket* candidate)
+    {
+        float base = candidate->getRelevance();
+        if (!rotation.enabled)
+            return base;
+        if (minimal && base < 100)
+            return 0.0f;
+        Action* action = InitializeAction(candidate->getAction());
+        auto const key = std::make_pair(action, base);
+        auto found = rotationScores.find(key);
+        if (found != rotationScores.end())
+            return found->second;
+        float priority = CompanionRotationPriority(botAI, action, base, rotation);
+        rotationScores.emplace(key, priority);
+        return priority;
+    };
+
     uint32 iterations = 0;
     uint32 iterationsPerTick = queue.Size() * (minimal ? 2 : sPlayerbotAIConfig.iterationsPerTick);
 
     while (++iterations <= iterationsPerTick)
     {
-        basket = queue.Peek();
+        basket = rotation.enabled ? queue.PeekScored(score) : queue.Peek();
         if (!basket)
             break;
 
-        float relevance = basket->getRelevance();  // for reference
+        float relevance = score(basket);
         bool skipPrerequisites = basket->isSkipPrerequisites();
 
         if (minimal && (relevance < 100))
             continue;
 
         Event event = basket->getEvent();
-        ActionNode* actionNode = queue.Pop();  // NOTE: Pop() deletes basket
+        ActionNode* actionNode = queue.PopSelected(basket); // Deletes the selected basket, not the old static maximum.
+        if (!actionNode)
+            break;
         Action* action = InitializeAction(actionNode);
 
         if (!action)
@@ -504,6 +526,8 @@ void Engine::ProcessTriggers(bool minimal)
 
 void Engine::PushDefaultActions()
 {
+    if (botAI->GetState() == BOT_STATE_COMBAT && HasStrategyType(STRATEGY_TYPE_COMBAT))
+        MultiplyAndPush(CompanionRotationDefaults(botAI), 0.0f, false, Event(), "default");
     for (std::map<std::string, Strategy*>::iterator i = strategies.begin(); i != strategies.end(); i++)
     {
         Strategy* strategy = i->second;

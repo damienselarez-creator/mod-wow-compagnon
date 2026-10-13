@@ -48,6 +48,26 @@ public:
      */
     ActionBasket* Peek();
 
+    template<class Score>
+    ActionBasket* PeekScored(Score const& score) const
+    {
+        ActionBasket* selected = nullptr;
+        float highest = 0;
+        for (ActionBasket* basket : actions)
+            if (basket)
+            {
+                float value = score(basket);
+                if (value > highest)
+                {
+                    highest = value;
+                    selected = basket;
+                }
+            }
+        return selected;
+    }
+
+    ActionNode* PopSelected(ActionBasket* selected);
+
     /**
      * @brief Returns the current size of the queue
      * @return Number of actions in the queue

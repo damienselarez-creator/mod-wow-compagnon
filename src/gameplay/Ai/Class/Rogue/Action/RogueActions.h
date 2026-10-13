@@ -8,6 +8,7 @@
 #define PLAYERBOTS_ROGUEACTIONS_H
 
 #include "GenericSpellActions.h"
+#include "Player.h"
 #include "UseItemAction.h"
 
 class PlayerbotAI;
@@ -178,6 +179,41 @@ public:
 
     bool Execute(Event event) override;
     bool isPossible() override { return true; }
+};
+
+class CastHemorrhageAction : public CastMeleeSpellAction
+{
+public:
+    explicit CastHemorrhageAction(PlayerbotAI* ai) : CastMeleeSpellAction(ai, "hemorrhage") { }
+};
+
+class CastShadowDanceAction : public CastBuffSpellAction
+{
+public:
+    explicit CastShadowDanceAction(PlayerbotAI* ai) : CastBuffSpellAction(ai, "shadow dance") { }
+};
+
+class CastShadowstepAction : public CastSpellAction
+{
+public:
+    explicit CastShadowstepAction(PlayerbotAI* ai) : CastSpellAction(ai, "shadowstep") { }
+    bool isUseful() override
+    {
+        Unit* target = GetTarget();
+        return target && bot->GetDistance(target) > 5 && CastSpellAction::isUseful();
+    }
+};
+
+class CastPremeditationAction : public CastSpellAction
+{
+public:
+    explicit CastPremeditationAction(PlayerbotAI* ai) : CastSpellAction(ai, "premeditation") { }
+    bool isUseful() override
+    {
+        Unit* target = GetTarget();
+        return target && bot->GetComboPoints(target) <= 2 &&
+            (botAI->HasAura("stealth", bot) || botAI->HasAura("shadow dance", bot)) && CastSpellAction::isUseful();
+    }
 };
 
 class FanOfKnivesAction : public CastMeleeSpellAction

@@ -5,6 +5,7 @@
  */
 
 #include "AiFactory.h"
+#include "CompanionCombat.h"
 #include "BattlegroundMgr.h"
 #include "DKAiObjectContext.h"
 #include "DruidAiObjectContext.h"
@@ -373,7 +374,9 @@ void AiFactory::AddDefaultCombatStrategies(Player* player, PlayerbotAI* const fa
         case CLASS_ROGUE:
             if (tab == ROGUE_TAB_COMBAT)
                 engine->addStrategiesNoInit("combat", nullptr);
-            else // if (tab == ROGUE_TAB_ASSASSINATION || tab == ROGUE_TAB_SUBTLETY)
+            else if (tab == ROGUE_TAB_SUBTLETY && RefinedCompanionCombat(facade))
+                engine->addStrategiesNoInit("subtlety", nullptr);
+            else
                 engine->addStrategiesNoInit("assassin", nullptr);
 
             engine->addStrategiesNoInit("dps assist", "aoe", nullptr);

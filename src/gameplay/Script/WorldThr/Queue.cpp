@@ -7,6 +7,7 @@
 #include "Queue.h"
 #include "Log.h"
 #include "PlayerbotAIConfig.h"
+#include <algorithm>
 
 void Queue::Push(ActionBasket* action)
 {
@@ -41,6 +42,12 @@ ActionNode* Queue::Pop()
 ActionBasket* Queue::Peek()
 {
     return findHighestRelevanceBasket();
+}
+
+ActionNode* Queue::PopSelected(ActionBasket* selected)
+{
+    return selected && std::find(actions.begin(), actions.end(), selected) != actions.end() ?
+        extractAndDeleteBasket(selected) : nullptr;
 }
 
 uint32 Queue::Size()

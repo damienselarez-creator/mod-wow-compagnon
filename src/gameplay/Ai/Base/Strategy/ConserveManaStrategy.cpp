@@ -5,6 +5,7 @@
  */
 
 #include "ConserveManaStrategy.h"
+#include "CompanionCombat.h"
 #include "GenericSpellActions.h"
 #include "LastSpellCastValue.h"
 #include "PlayerbotAIConfig.h"
@@ -104,6 +105,8 @@ float HealerAutoSaveManaMultiplier::GetValue(Action* action)
         return 1.0f;
     bool isTank = target->ToPlayer() ? botAI->IsTank(target->ToPlayer()) : false;
     uint8 health = target->GetHealthPct();
+    if (RefinedCompanionCombat(botAI) && health < sPlayerbotAIConfig.lowHealth)
+        return 1.0f;
     HealingManaEfficiency manaEfficiency = healingAction->manaEfficiency;
     uint8 estAmount = healingAction->estAmount;
     uint8 lossAmount = 100 - health;

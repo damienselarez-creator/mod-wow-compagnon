@@ -8,6 +8,7 @@
 #include "AiObjectContext.h"
 #include "AssassinationRogueStrategy.h"
 #include "CombatRogueStrategy.h"
+#include "SubtletyRogueStrategy.h"
 #include "GenericRogueNonCombatStrategy.h"
 #include "NamedObjectContext.h"
 #include "Playerbots.h"
@@ -49,13 +50,13 @@ public:
     {
         creators["combat"] = &RogueCombatStrategyFactoryInternal::combat;
         creators["assassin"] = &RogueCombatStrategyFactoryInternal::assassin;
-        // creators["subtlety"] = &RogueCombatStrategyFactoryInternal::subtlety;
+        creators["subtlety"] = &RogueCombatStrategyFactoryInternal::subtlety;
     }
 
 private:
     static Strategy* combat(PlayerbotAI* botAI) { return new CombatRogueStrategy(botAI); }
     static Strategy* assassin(PlayerbotAI* botAI) { return new AssassinationRogueStrategy(botAI); }
-    // static Strategy* subtlety(PlayerbotAI* botAI) { return new SubtletyRogueStrategy(botAI); }
+    static Strategy* subtlety(PlayerbotAI* botAI) { return new SubtletyRogueStrategy(botAI); }
 };
 
 class RogueTriggerFactoryInternal : public NamedObjectContext<Trigger>
@@ -163,6 +164,10 @@ public:
             &RogueAiObjectContextInternal::use_instant_poison_off_hand;
         creators["fan of knives"] = &RogueAiObjectContextInternal::fan_of_knives;
         creators["killing spree"] = &RogueAiObjectContextInternal::killing_spree;
+        creators["hemorrhage"] = &RogueAiObjectContextInternal::hemorrhage;
+        creators["shadow dance"] = &RogueAiObjectContextInternal::shadow_dance;
+        creators["shadowstep"] = &RogueAiObjectContextInternal::shadowstep;
+        creators["premeditation"] = &RogueAiObjectContextInternal::premeditation;
         creators["cold blood"] = &RogueAiObjectContextInternal::cold_blood;
     }
 
@@ -173,6 +178,10 @@ private:
     }
     static Action* blade_flurry(PlayerbotAI* botAI) { return new CastBladeFlurryAction(botAI); }
     static Action* riposte(PlayerbotAI* botAI) { return new CastRiposteAction(botAI); }
+    static Action* hemorrhage(PlayerbotAI* ai) { return new CastHemorrhageAction(ai); }
+    static Action* shadow_dance(PlayerbotAI* ai) { return new CastShadowDanceAction(ai); }
+    static Action* shadowstep(PlayerbotAI* ai) { return new CastShadowstepAction(ai); }
+    static Action* premeditation(PlayerbotAI* ai) { return new CastPremeditationAction(ai); }
     static Action* mutilate(PlayerbotAI* botAI) { return new CastMutilateAction(botAI); }
     static Action* sinister_strike(PlayerbotAI* botAI)
     {
