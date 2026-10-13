@@ -706,7 +706,8 @@ bool IsCompanionCraftingStock(PlayerbotAI* ai, Item* item)
     if (proto->Class == ITEM_CLASS_TRADE_GOODS || proto->Class == ITEM_CLASS_REAGENT ||
         proto->Class == ITEM_CLASS_RECIPE || proto->Class == ITEM_CLASS_GEM || EnhancementSpell(proto))
         return true;
-    return PlanInventory(ai->GetBot()).products.count(item->GetEntry()) != 0;
+    // An obsolete soulbound craft cannot be shared; let the normal equipment sale checks decide.
+    return item->CanBeTraded() && PlanInventory(ai->GetBot()).products.count(item->GetEntry()) != 0;
 }
 
 bool HasCompanionGuildDeposit(PlayerbotAI* ai)

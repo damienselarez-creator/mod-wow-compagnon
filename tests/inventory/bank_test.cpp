@@ -292,4 +292,17 @@ int main()
     nextVisit[1] = 0;
     assert(normal.Execute());
     assert(material.count == 20 && withdrawals == 2 && changed == 1);
+    std::vector<Item> bulk(7);
+    bot.items.clear();
+    for (uint8 index = 0; index < 7; ++index)
+    {
+        bulk[index].proto.ItemId = 10 + index;
+        bulk[index].count = 21;
+        bulk[index].slot = 23 + index;
+        bot.items.push_back(&bulk[index]);
+    }
+    assert(deposit.Execute() && retryRequested);
+    assert(bulk[5].count == 20 && bulk[6].count == 21);
+    assert(deposit.Execute() && !retryRequested);
+    assert(bulk[6].count == 20 && withdrawals == 2);
 }

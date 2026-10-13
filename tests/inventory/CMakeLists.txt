@@ -17,6 +17,7 @@ extract("    uint64 InventorySignature(" "bool IsManagedCompanion(" "workflow.in
 extract("    void ConsolidateCompanionStacks(" "    void MaintainCompanionBags(" "stacks.inc")
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/../../src/gameplay/Bot/CompanionGuildBank.cpp" source)
 extract("    class BankOperation" "    class BankWorldScript" "bank.inc")
+extract("bool IsCompanionCraftingStock(" "bool HasCompanionGuildDeposit(" "stock.inc")
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/../../src/gameplay/Script/CompanionInventory.cpp" source)
 extract("    class CompanionInventoryScript" "\n}\n\nvoid AddCompanionInventoryScripts" "hooks.inc")
 foreach(suite workflow bank)

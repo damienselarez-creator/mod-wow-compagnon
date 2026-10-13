@@ -20,6 +20,7 @@ enum class GoalDomain { Guild };
 struct ItemTemplate
 {
     uint32 ItemId = 1, maximum = 20, BagFamily = 0;
+    int Class = 4;
     uint32 GetMaxStackSize() const
     {
         return maximum;
@@ -31,6 +32,7 @@ struct Item
     uint32 guid = 0, count = 1;
     uint8 bag = 255, slot = 23;
     bool removed = false, trade = false, wrapped = false, refund = false, bop = false, sale = false;
+    bool shareable = true;
     int property = 0;
     uint32 GetEntry() const
     {
@@ -59,6 +61,10 @@ struct Item
     int GetItemRandomPropertyId() const
     {
         return property;
+    }
+    bool CanBeTraded() const
+    {
+        return shareable;
     }
     bool IsInTrade() const
     {
@@ -208,6 +214,21 @@ namespace
 #include "workflow.inc"
 #include "stacks.inc"
 
+constexpr int ITEM_CLASS_TRADE_GOODS = 7, ITEM_CLASS_REAGENT = 5, ITEM_CLASS_RECIPE = 9, ITEM_CLASS_GEM = 3;
+bool EnhancementSpell(ItemTemplate const*)
+{
+    return false;
+}
+struct InventoryPlan
+{
+    std::set<uint32> products;
+};
+InventoryPlan PlanInventory(Player*)
+{
+    return {{10}};
+}
+#include "stock.inc"
+
 struct Creature;
 struct VendorItem;
 struct PlayerScript
@@ -281,6 +302,11 @@ int main()
     assert(FreeGeneralBagSlots(&ai.bot) == 1 && ai.bot.moves == 2);
     assert(stock[0].count == 20 && stock[1].count == 16 && stock[2].removed);
     assert(InventoryCleanupStep(&ai, false) == Step::None);
+    assert(IsCompanionCraftingStock(&ai, &stock[0]));
+    stock[0].shareable = false;
+    assert(!IsCompanionCraftingStock(&ai, &stock[0]));
+    stock[0].proto.Class = ITEM_CLASS_TRADE_GOODS;
+    assert(IsCompanionCraftingStock(&ai, &stock[0])); // Bound materials are still never vendored.
     auto moves = ai.bot.moves;
     ConsolidateCompanionStacks(&ai);
     assert(ai.bot.moves == moves);
