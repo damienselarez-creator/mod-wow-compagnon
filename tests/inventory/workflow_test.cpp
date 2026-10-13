@@ -255,7 +255,7 @@ int main()
     assert(HasCompanionSale(&ai));
     ai.companionErrands->failedSales.insert(stock[3].guid);
     assert(!HasCompanionSale(&ai));
-    FinishCompanionInventoryStorage(&ai);
+    FinishCompanionInventoryStorage(&ai, false);
     assert(InventoryCleanupStep(&ai, false) == Step::Expand); // Full/denied bank was actually tried.
     ++stock[4].count;
     assert(InventoryCleanupStep(&ai, false) == Step::Deposit); // A genuinely changed stock can retry.

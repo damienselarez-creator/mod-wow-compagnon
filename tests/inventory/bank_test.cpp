@@ -163,7 +163,7 @@ namespace ObjectAccessor
     }
 }
 #define Player PlayerWithGuid
-#define GET_PLAYERBOT_AI(player) ((player) == &bot ? &ai : nullptr)
+#define GET_PLAYERBOT_AI(player) ((player) == &bot ? &::ai : nullptr)
 #define LOG_INFO(...)
 bool IsCompanionInventoryManaged(PlayerbotAI* value)
 {
