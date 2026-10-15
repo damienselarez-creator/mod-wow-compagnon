@@ -61,13 +61,15 @@ struct Player
 {
     uint32 money = 100;
     bool moving = false;
+    bool town = true;
     float distance = 0;
+    float pointDistance = 0;
     bool isMoving() { return moving; }
     uint32 GetMoney() const { return money; }
     uint32 GetGUID() const { return 1; }
     uint32 GetMapId() const { return 1; }
     uint32 GetZoneId() const { return 1; }
-    float GetDistance(float, float, float) const { return 0; }
+    float GetDistance(float, float, float) const { return pointDistance; }
     float GetDistance(Player*) const { return distance; }
 };
 struct PlayerbotAI
@@ -93,8 +95,8 @@ bool IsCompanionInventoryManaged(PlayerbotAI*) { return true; }
 bool CompanionGoalAllowed(PlayerbotAI*, GoalDomain) { return true; }
 bool CompanionGoalRequested(PlayerbotAI* ai, GoalDomain) { return ai->requested; }
 bool Eligible(PlayerbotAI* ai) { return ai->eligible; }
-bool InTown(Player*) { return true; }
-uint32 Settlement(Player*) { return 1; }
+bool InTown(Player* player) { return player->town; }
+uint32 Settlement(Player* player) { return player->town ? 1 : 0; }
 std::string GetCompanionNarrativeFocus(uint32) { return "normal"; }
 void RecordTraining(Player*, std::string const&, uint32, uint32, uint32) { }
 uint32 bagScans = 0;
@@ -233,4 +235,33 @@ int main()
         FinishVendorVisit(&vendorAI, false);
         assert(observations == before);
     }
+    PlayerbotAI camp;
+    camp.master.town = false;
+    auto& campState = *camp.companionErrands;
+    campState.kind = Errand::Craft;
+    campState.settlement = 0;
+    campState.goal = GoalDomain::Crafting;
+    UpdateCompanionErrands(&camp, 1000);
+    assert(!camp.automaticCancellation && campState.kind == Errand::Craft);
+    camp.master.moving = true;
+    UpdateCompanionErrands(&camp, 1000);
+    assert(camp.automaticCancellation); // A safe camp must not prevent following the departing player.
+    camp.automaticCancellation = false;
+    camp.master.moving = false;
+    camp.master.pointDistance = 180;
+    camp.bot.distance = 180;
+    campState.kind = Errand::Herb;
+    campState.goal = GoalDomain::Gathering;
+    UpdateCompanionErrands(&camp, 1000);
+    assert(!camp.automaticCancellation);
+    camp.master.moving = true;
+    UpdateCompanionErrands(&camp, 1000);
+    assert(camp.automaticCancellation); // The wider stationary detour closes when the adventure resumes.
+    campState.crafts = 5;
+    campState.craftActions = 24;
+    campState.secondaryCrafts = 2;
+    campState.events.due.push_back(CraftReset);
+    UpdateCompanionErrands(&camp, 1000);
+    assert(!campState.crafts && !campState.craftActions && !campState.secondaryCrafts);
+    assert(campState.craftDue && campState.townDue && campState.professionDue);
 }
