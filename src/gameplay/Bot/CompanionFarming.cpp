@@ -17,6 +17,7 @@
 #include "LootAction.h"
 #include "LootObjectStack.h"
 #include "MotionMaster.h"
+#include "NearestGameObjects.h"
 #include "NewRpgBaseAction.h"
 #include "PlayerbotSpellRepository.h"
 #include "Playerbots.h"
