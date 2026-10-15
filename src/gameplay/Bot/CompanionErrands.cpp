@@ -2010,7 +2010,8 @@ bool CompanionErrandAction::Execute(Event)
                     14000.0 - CompanionGoalPriority(botAI, GoalDomain::Crafting) < best && state.craftDue &&
                     CompanionCraftBudgetAvailable(state.crafts, state.craftActions, state.secondaryCrafts,
                         state.professionPlan.primary) && !master->isMoving() &&
-                    !bot->IsNonMeleeSpellCast(false) && bot->GetDistance(master) < 30.0f && HasBagRoom(bot))
+                    !bot->IsNonMeleeSpellCast(false) &&
+                    bot->GetDistance(master) < (state.craftActions ? 180.0f : 30.0f) && HasBagRoom(bot))
                 {
                     state.craftDue = false;
                     state.events.RescheduleEvent(CraftCooldown, Milliseconds(30000));
@@ -2036,7 +2037,7 @@ bool CompanionErrandAction::Execute(Event)
                                 if (station->isSpawned() && station->GetGoType() == GAMEOBJECT_TYPE_SPELL_FOCUS &&
                                     station->GetGOInfo()->spellFocus.focusId == spell->RequiresSpellFocus &&
                                     bot->GetDistance(station) < closest && bot->CanSeeOrDetect(station) &&
-                                    SafeHerb(bot, station))
+                                    master->GetDistance(station) <= 180.0f && SafeHerb(bot, station))
                                 {
                                     focus = station;
                                     closest = bot->GetDistance(station);
