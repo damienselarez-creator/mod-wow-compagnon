@@ -9,6 +9,7 @@
 #include "CompanionConsumables.h"
 #include "CompanionProfessions.h"
 #include "CompanionLootSources.h"
+#include "CompanionFarming.h"
 #include "StatsWeightCalculator.h"
 #include "CompanionVocation.h"
 #include "CastCustomSpellAction.h"
@@ -892,6 +893,7 @@ namespace
 
 struct CompanionErrandState
 {
+    std::shared_ptr<CompanionFarmingState> farming;
     EventMap events;
     Errand kind = Errand::None;
     bool ready = true;
@@ -954,6 +956,16 @@ struct CompanionErrandState
     std::set<uint32> rejectedSupplyVendors;
     std::set<ObjectGuid> rejectedHerbs;
 };
+
+std::shared_ptr<CompanionFarmingState>& CompanionFarmRuntime(PlayerbotAI* ai)
+{
+    if (!ai->companionErrands)
+    {
+        ai->companionErrands = std::make_shared<CompanionErrandState>();
+        ai->companionErrands->events.ScheduleEvent(ClearRejected, Milliseconds(300000));
+    }
+    return ai->companionErrands->farming;
+}
 
 CompanionProfessionPlan GetCompanionProfessionPlan(PlayerbotAI* ai)
 {
@@ -1539,6 +1551,8 @@ void RequestCompanionTraining(PlayerbotAI* ai)
 
 void UpdateCompanionErrands(PlayerbotAI* ai, uint32 elapsed)
 {
+    if (IsCompanionFarming(ai) || IsCompanionReturningFromFarm(ai))
+        return;
     if (!ai->companionErrands)
     {
         if (!IsCompanionInventoryManaged(ai))
@@ -1683,12 +1697,16 @@ bool IsCompanionGathering(PlayerbotAI* ai)
 
 bool IsCompanionGatherLoot(PlayerbotAI* ai, ObjectGuid guid)
 {
+    if (IsCompanionFarmLoot(ai, guid))
+        return true;
     return ai->companionErrands && ai->companionErrands->kind == Errand::Herb &&
         ai->companionErrands->target == guid;
 }
 
 void FinishCompanionGather(PlayerbotAI* ai, ObjectGuid guid)
 {
+    if (FinishCompanionFarmLoot(ai, guid))
+        return;
     if (IsCompanionGatherLoot(ai, guid))
     {
         ai->companionErrands->gathering = false;
@@ -1701,6 +1719,10 @@ void FinishCompanionGather(PlayerbotAI* ai, ObjectGuid guid)
 
 bool CompanionErrandAction::isUseful()
 {
+    if (IsCompanionFarming(botAI))
+        return bot->IsAlive() && !bot->IsInCombat();
+    if (IsCompanionReturningFromFarm(botAI))
+        return false;
     if (!Eligible(botAI))
         return false;
     if (!botAI->companionErrands)
@@ -1718,6 +1740,8 @@ bool CompanionErrandAction::isUseful()
 
 bool CompanionErrandAction::Execute(Event)
 {
+    if (IsCompanionFarming(botAI))
+        return ExecuteCompanionFarming(botAI);
     if (!isUseful())
         return false;
     auto& state = *botAI->companionErrands;

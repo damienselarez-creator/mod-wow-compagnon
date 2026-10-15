@@ -5,6 +5,7 @@
 #include "CompanionCombat.h"
 #include "CompanionCombatPolicy.h"
 #include "CompanionErrands.h"
+#include "CompanionFarming.h"
 #include "Playerbots.h"
 #include "Spell.h"
 
@@ -172,6 +173,16 @@ float CompanionRescueUrgency(PlayerbotAI* ai, Unit* enemy)
 
 bool CompanionCombatSpellAllowed(PlayerbotAI* ai, Unit* target, SpellInfo const* info)
 {
+    if (target && IsCompanionFarming(ai) && target != ai->GetBot())
+    {
+        if (ai->GetBot()->IsFriendlyTo(target))
+        {
+            if (target->GetCharmerOrOwnerPlayerOrPlayerItself() != ai->GetBot())
+                return false;
+        }
+        else if (!CompanionFarmAttackAllowed(ai, target))
+            return false;
+    }
     if (!RefinedCompanionCombat(ai) || !target || !info)
         return true;
     Player* bot = ai->GetBot();
@@ -219,7 +230,7 @@ bool CompanionCombatSpellAllowed(PlayerbotAI* ai, Unit* target, SpellInfo const*
                 return false;
     }
     // Healers keep their spell action available for a nearby emergency instead of starting an offensive cast.
-    if (!(friendly && info->HasEffect(SPELL_EFFECT_HEAL)) && ai->IsHeal(bot) &&
+    if (!IsCompanionFarming(ai) && !(friendly && info->HasEffect(SPELL_EFFECT_HEAL)) && ai->IsHeal(bot) &&
         bot->getPowerType() == POWER_MANA && bot->GetPowerPct(POWER_MANA) > 10.0f && bot->GetGroup())
         for (GroupReference* ref = bot->GetGroup()->GetFirstMember(); ref; ref = ref->next())
             if (Player* member = ref->GetSource(); SameGroup(bot, member) &&

@@ -1,5 +1,6 @@
 #include "SelfbotInventory.h"
 #include "CompanionErrands.h"
+#include "CompanionFarming.h"
 #include "CompanionCombat.h"
 /*
  * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
@@ -276,6 +277,7 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
     if (!bot->Unit::IsFalling())
         bot->SetFallInformation(0, bot->GetPositionZ());
 
+    UpdateCompanionFarming(this, elapsed);
     UpdateCompanionCombat(this);
     UpdateCompanionErrands(this, elapsed);
 
@@ -1515,7 +1517,8 @@ void PlayerbotAI::ChangeEngineOnNonCombat()
 
 void PlayerbotAI::DoNextAction(bool min)
 {
-    if (!bot->IsInWorld() || bot->IsBeingTeleported() || (GetMaster() && GetMaster()->IsBeingTeleported()))
+    if (!bot->IsInWorld() || bot->IsBeingTeleported() ||
+        (!IsCompanionFarming(this) && GetMaster() && GetMaster()->IsBeingTeleported()))
     {
         SetNextCheckDelay(sPlayerbotAIConfig.globalCoolDown);
         return;
@@ -4668,6 +4671,9 @@ bool PlayerbotAI::AllowActive(ActivityType activityType)
 
     // always allow packet handling (e.g. group invites, trade, loot, friend requests etc)
     if (activityType == PACKET_ACTIVITY)
+        return true;
+    if (IsCompanionInventoryManaged(this) &&
+        GetCompanionFarmAssignment(this).mode != CompanionFarm::Mode::Follow)
         return true;
 
     // all bots forced active, no rotation or scaling needed

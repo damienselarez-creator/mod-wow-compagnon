@@ -92,6 +92,8 @@ std::string lastReason;
 bool ReconsiderCompanionGoals(PlayerbotAI* ai) { return ai->reconsider; }
 uint64 CompanionGoalRevision(PlayerbotAI* ai) { return ai->revision; }
 bool IsCompanionInventoryManaged(PlayerbotAI*) { return true; }
+bool IsCompanionFarming(PlayerbotAI*) { return false; }
+bool IsCompanionReturningFromFarm(PlayerbotAI*) { return false; }
 bool CompanionGoalAllowed(PlayerbotAI*, GoalDomain) { return true; }
 bool CompanionGoalRequested(PlayerbotAI* ai, GoalDomain) { return ai->requested; }
 bool Eligible(PlayerbotAI* ai) { return ai->eligible; }

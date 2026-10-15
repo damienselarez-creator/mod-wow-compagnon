@@ -7,6 +7,7 @@
 #include "PartyMemberToHeal.h"
 #include "CompanionErrands.h"
 #include "CompanionCombat.h"
+#include "CompanionFarming.h"
 #include "Playerbots.h"
 #include "ServerFacade.h"
 
@@ -31,6 +32,8 @@ inline bool compareByHealth(Unit const* u1, Unit const* u2) { return u1->GetHeal
 
 Unit* PartyMemberToHeal::Calculate()
 {
+    if (IsCompanionFarming(botAI))
+        return bot;
     IsTargetOfHealingSpell predicate;
 
     Group* group = bot->GetGroup();

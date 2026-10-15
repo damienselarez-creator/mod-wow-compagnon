@@ -1,5 +1,6 @@
 #include "CompanionFlight.h"
 #include "CompanionErrands.h"
+#include "CompanionFarming.h"
 #include "LastMovementValue.h"
 #include "MovementActions.h"
 #include "Playerbots.h"
@@ -31,7 +32,7 @@ namespace
 
     bool FlightFollower(PlayerbotAI* ai)
     {
-        return IsCompanionInventoryManaged(ai) && ai->GetBot()->GetSession() &&
+        return IsCompanionInventoryManaged(ai) && !IsCompanionFarming(ai) && ai->GetBot()->GetSession() &&
             ai->GetMaster()->GetSession() && !ai->GetMaster()->GetSession()->IsLoggingOut() &&
             ai->GetBot()->GetSession()->GetAccountId() == ai->GetMaster()->GetSession()->GetAccountId() &&
             ai->GetBot()->GetGroup() && ai->GetBot()->GetGroup() == ai->GetMaster()->GetGroup() &&

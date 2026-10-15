@@ -5,6 +5,7 @@
  */
 
 #include "AttackersValue.h"
+#include "CompanionFarming.h"
 #include "CellImpl.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
@@ -131,6 +132,8 @@ bool AttackersValue::IsPossibleTarget(Unit* attacker, Player* bot, float /*range
 {
     PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
     if (!botAI)
+        return false;
+    if (!CompanionFarmAttackAllowed(botAI, attacker))
         return false;
 
     // Basic check

@@ -109,6 +109,8 @@ struct PlayerbotAI
 };
 #define GET_PLAYERBOT_AI(player) ((player)->ai)
 bool IsCompanionInventoryManaged(PlayerbotAI* ai) { return ai && ai->managed; }
+bool detached = false;
+bool IsCompanionFarming(PlayerbotAI*) { return detached; }
 void CancelCompanionErrands(PlayerbotAI*) { }
 struct Journey
 {
@@ -192,6 +194,16 @@ int main()
     journey.home = WorldLocation{0, 8, 9, 10}; // Superseded / mismatched packet.
     Process(&human, journey);
     assert(bot.bindings == 1 && !journey.home);
+
+    detached = true;
+    journey = {};
+    journey.destination = human.pos;
+    journey.started = true;
+    journey.home = WorldLocation{0, 5, 6, 7};
+    journey.area = 42;
+    Process(&human, journey);
+    assert(bot.teleports == 1 && bot.bindings == 1);
+    detached = false;
 
     Player second, third, fourth, otherHuman;
     second.guid = 3;

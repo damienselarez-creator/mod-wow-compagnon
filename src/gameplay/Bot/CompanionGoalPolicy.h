@@ -5,6 +5,7 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include "CompanionFarmPolicy.h"
 
 namespace CompanionGoals
 {
@@ -31,6 +32,7 @@ namespace CompanionGoals
     };
     struct Book
     {
+        CompanionFarm::Assignment farming;
         std::array<Goal, size_t(Domain::Count)> goals{};
         Domain topic = Domain::Count;
         uint64_t topicUntil = 0;

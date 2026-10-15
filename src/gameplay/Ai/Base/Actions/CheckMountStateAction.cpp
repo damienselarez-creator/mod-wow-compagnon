@@ -6,6 +6,7 @@
 
 #include "CheckMountStateAction.h"
 #include "CompanionErrands.h"
+#include "CompanionFarming.h"
 #include "PlayerbotsDatabase.h"
 #include "AreaDefines.h"
 #include "BattleGroundTactics.h"
@@ -150,6 +151,8 @@ bool CheckMountStateAction::Execute(Event /*event*/)
 
 bool CheckMountStateAction::isUseful()
 {
+    if (IsCompanionFarming(botAI))
+        return false;
     if (IsCompanionGathering(botAI) || HasCompanionCraftPlan(botAI) ||
         (IsCompanionInventoryManaged(botAI) && bot->IsNonMeleeSpellCast(false)))
         return false;

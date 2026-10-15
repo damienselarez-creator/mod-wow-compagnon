@@ -36,7 +36,9 @@ public:
                     goals.push_back({goal.requested, goal.forbidden, goal.quiet, goal.deferredUntil,
                         goal.since, goal.updated, uint8_t(goal.state), goal.reason, goal.requiredMoney,
                         goal.target, goal.confirmed});
-                characters[key] = {{"goals", goals}};
+                auto const& farm = book.farming;
+                characters[key] = {{"goals", goals}, {"farming", {uint8_t(farm.mode), farm.map, farm.zone,
+                    farm.x, farm.y, farm.z, farm.status, farm.harvested, farm.revision}}};
             }
             auto temporary = Path;
             temporary += ".tmp";
@@ -108,6 +110,34 @@ public:
                     character.at("goals").size() != size_t(CompanionGoals::Domain::Count))
                     return false;
                 CompanionGoals::Book book;
+                if (character.contains("farming"))
+                {
+                    auto const& farm = character.at("farming");
+                    if (!farm.is_array() || (farm.size() != 8 && farm.size() != 9) || !farm[0].is_number_unsigned() ||
+                        farm[0].get<uint64_t>() > uint64_t(CompanionFarm::Mode::Returning) ||
+                        !farm[6].is_string())
+                        return false;
+                    for (auto column : {1, 2, 7})
+                        if (!farm[column].is_number_unsigned() || farm[column].get<uint64_t>() > UINT32_MAX)
+                            return false;
+                    for (auto column : {3, 4, 5})
+                        if (!farm[column].is_number())
+                            return false;
+                    book.farming = {CompanionFarm::Mode(farm[0].get<uint8_t>()), farm[1].get<uint32_t>(),
+                        farm[2].get<uint32_t>(), farm[3].get<float>(), farm[4].get<float>(), farm[5].get<float>(),
+                        farm[6].get<std::string>(), farm[7].get<uint32_t>()};
+                    if (farm.size() == 9)
+                    {
+                        if (!farm[8].is_number_unsigned())
+                            return false;
+                        book.farming.revision = farm[8].get<uint64_t>();
+                    }
+                    if (!book.farming.Valid())
+                        return false;
+                    if (book.farming.mode != CompanionFarm::Mode::Follow &&
+                        book.farming.status != "start_requested" && book.farming.status != "awaiting_safe_start")
+                        book.farming.status = "restart_revalidate";
+                }
                 size_t index = 0;
                 for (auto const& row : character.at("goals"))
                 {

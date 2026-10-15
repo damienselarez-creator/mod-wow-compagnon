@@ -117,6 +117,7 @@ struct Unit
     bool IsNonMeleeSpellCast(bool) { return casting; }
     int stops = 0;
     virtual Player* ToPlayer() { return nullptr; }
+    Player* GetCharmerOrOwnerPlayerOrPlayerItself() { return ToPlayer(); }
     bool IsAlive() { return alive; }
     bool IsInWorld() { return world; }
     int GetMap() { return map; }
@@ -200,6 +201,9 @@ struct PlayerbotAI
     int GetState() { return 1; }
 };
 bool IsCompanionInventoryManaged(PlayerbotAI* ai) { return ai->managed; }
+bool farming = false, farmAttack = true;
+bool IsCompanionFarming(PlayerbotAI*) { return farming; }
+bool CompanionFarmAttackAllowed(PlayerbotAI*, Unit*) { return farmAttack; }
 #include "combat.inc"
 struct Event { };
 #define AI_VALUE(type, name) target
@@ -262,6 +266,14 @@ int main()
     ai.managed = true;
     sPlayerbotAIConfig.companionCombatRefinement = false;
     assert(CompanionCombatSpellAllowed(&ai, &enemy, &damage));
+    farming = true;
+    farmAttack = false;
+    assert(!CompanionCombatSpellAllowed(&ai, &enemy, &damage));
+    assert(!CompanionCombatSpellAllowed(&ai, &human, &damage));
+    assert(CompanionCombatSpellAllowed(&ai, &bot, &damage));
+    farmAttack = true;
+    assert(CompanionCombatSpellAllowed(&ai, &enemy, &damage));
+    farming = false;
     sPlayerbotAIConfig.companionCombatRefinement = true;
     SpellInfo area = damage;
     area.Effects[0].TargetA = {true, TARGET_UNIT_SRC_AREA_ENEMY};

@@ -144,6 +144,8 @@ public:
     void RemoveShapeshift() { }
 };
 bool IsCompanionInventoryManaged(PlayerbotAI* ai) { return ai && ai->managed; }
+bool detached = false;
+bool IsCompanionFarming(PlayerbotAI*) { return detached; }
 void CancelCompanionErrands(PlayerbotAI* ai) { ++ai->cancelled; }
 int PBC_CompanionClientLocale(Player*, Player*) { return 1; }
 bool PBC_IsFrenchClient(int) { return true; }
@@ -273,6 +275,10 @@ int main()
     delayed.bot.nearNpc = true;
     Tick(delayed);
     assert(delayed.bot.flights == 1);
+
+    detached = true;
+    assert(!RequestCompanionFlight(&delayed));
+    detached = false;
 
     PlayerbotAI poor;
     Prepare(poor, 3);

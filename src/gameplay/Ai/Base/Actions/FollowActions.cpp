@@ -7,6 +7,7 @@
 #include "FollowActions.h"
 #include "CompanionErrands.h"
 #include "CompanionFlight.h"
+#include "CompanionFarming.h"
 #include "Event.h"
 #include "Formations.h"
 #include "LastMovementValue.h"
@@ -240,6 +241,8 @@ bool FollowAction::Execute(Event /*event*/)
 
 bool FollowAction::isUseful()
 {
+    if (IsCompanionFarming(botAI))
+        return false;
     if (HasPendingCompanionFlight(botAI) || IsCompanionErrandActive(botAI))
         return false;
     // move from group takes priority over follow as it's added and removed automatically
@@ -349,6 +352,8 @@ bool FleeToGroupLeaderAction::Execute(Event /*event*/)
 
 bool FleeToGroupLeaderAction::isUseful()
 {
+    if (IsCompanionFarming(botAI))
+        return false;
     if (!botAI->GetGroupLeader())
         return false;
 

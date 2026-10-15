@@ -3,6 +3,8 @@
 #include "CompanionGoalStore.h"
 #include "CompanionErrands.h"
 #include "CompanionProfessions.h"
+#include "CompanionFarming.h"
+#include "CompanionFarmDialogue.h"
 #include "Bag.h"
 #include "Config.h"
 #include "EventMap.h"
@@ -47,7 +49,7 @@ namespace
         return &history.Books[Key(bot)];
     }
 
-    bool Authorized(Player* player, Player* bot)
+    bool AuthorizedOwner(Player* player, Player* bot)
     {
         auto* ai = bot ? GET_PLAYERBOT_AI(bot) : nullptr;
         return g_PBC_Enable && ai && IsCompanionInventoryManaged(ai) && player &&
@@ -55,8 +57,13 @@ namespace
             player->GetSession() && bot->GetSession() && !player->GetSession()->IsHeadless() &&
             bot->GetSession()->IsHeadless() && !player->GetSession()->IsLoggingOut() &&
             player->GetSession()->GetAccountId() == bot->GetSession()->GetAccountId() &&
-            player->GetGroup() && player->GetGroup() == bot->GetGroup() &&
-            player->GetMap() == bot->GetMap() && bot->IsWithinDistInMap(player, 40.0f);
+            player->GetGroup() && player->GetGroup() == bot->GetGroup();
+    }
+
+    bool Authorized(Player* player, Player* bot)
+    {
+        return AuthorizedOwner(player, bot) && player->GetMap() == bot->GetMap() &&
+            bot->IsWithinDistInMap(player, 40.0f);
     }
 
     Domain Topic(Player* bot)
@@ -109,6 +116,49 @@ bool CompanionGoalPermitted(PlayerbotAI* ai, CompanionGoals::Domain domain)
     std::lock_guard<std::mutex> lock(goalsMutex);
     auto* book = Find(ai->GetBot());
     return history.Ready && (!book || book->Permitted(domain, Now()));
+}
+
+CompanionFarm::Assignment GetCompanionFarmAssignment(PlayerbotAI* ai)
+{
+    std::lock_guard<std::mutex> lock(goalsMutex);
+    auto* book = ai ? Find(ai->GetBot()) : nullptr;
+    return book ? book->farming : CompanionFarm::Assignment{};
+}
+
+bool SetCompanionFarmAssignment(PlayerbotAI* ai, CompanionFarm::Assignment const& assignment)
+{
+    if (!IsCompanionInventoryManaged(ai) || !assignment.Valid())
+        return false;
+    std::lock_guard<std::mutex> lock(goalsMutex);
+    auto* book = Find(ai->GetBot(), true);
+    if (!book || book->farming.revision != assignment.revision || assignment.revision == UINT64_MAX)
+        return false;
+    auto previous = *book;
+    book->farming = assignment;
+    ++book->farming.revision;
+    book->topic = CompanionGoals::Domain::Gathering;
+    book->topicUntil = Now() + 600;
+    ++book->revision;
+    history.Dirty = true;
+    if (history.Save())
+        return book->lastRequestSaved = true;
+    *book = previous;
+    book->lastRequestSaved = false;
+    return false;
+}
+
+void ObserveCompanionFarming(PlayerbotAI* ai, uint64_t revision, std::string const& status, uint32_t harvested)
+{
+    std::lock_guard<std::mutex> lock(goalsMutex);
+    auto* book = ai ? Find(ai->GetBot()) : nullptr;
+    if (!book || book->farming.revision != revision || (book->farming.status == status && !harvested))
+        return;
+    book->farming.status = status;
+    book->farming.harvested = uint32_t(std::min<uint64_t>(UINT32_MAX,
+        uint64_t(book->farming.harvested) + harvested));
+    history.Dirty = true;
+    LOG_INFO("playerbots.companion", "[Farm] {} status={} harvested={}",
+        ai->GetBot()->GetName(), status, book->farming.harvested);
 }
 
 bool CompanionGoalAllowed(PlayerbotAI* ai, CompanionGoals::Domain domain)
@@ -217,6 +267,10 @@ std::string CompanionGoalsContext(Player* bot)
                 free += bag->GetFreeSlots();
         }
     facts["general_free"] = free;
+    auto farm = GetCompanionFarmAssignment(ai);
+    facts["farming"] = {{"mode", farm.mode == CompanionFarm::Mode::Working ? "independent" :
+        farm.mode == CompanionFarm::Mode::Returning ? "returning" : "following"},
+        {"status", farm.status}, {"zone", farm.zone}, {"confirmed_harvests", farm.harvested}};
     auto project = GetCompanionProfessionPlan(ai);
     facts["profession_project"] = {{"target_recipe", project.root}, {"next_recipe", project.next},
         {"next_skill", project.skill}, {"next_is_primary", project.primary},
@@ -261,6 +315,8 @@ std::string CompanionGoalsContext(Player* bot)
         "Only confirmed_operations attest completed native actions; travelling/pending are intentions. "
         "Never invent bag names, vendor prices, purchases, learned spells or completed projects. "
         "The profession project is a bounded plan, not a completed craft or a discovered deposit. "
+        "Independent farming stays in its starting zone, even when the owner leaves; returning cancels that work. "
+        "A farming assignment does not prove a harvest: use its status and confirmed_harvests. "
         "Next work can be a secondary activity while the main target waits; its materials and result are distinct. "
         "Missing materials are current shortages for that plan; do not invent their source or an expedition. "
         "A zero required_money means no verified quote yet, not a free purchase. "
@@ -273,6 +329,32 @@ std::string CompanionGoalsContext(Player* bot)
 bool PBC_CompanionGoalChat(Player* player, Player* bot, std::string const& message)
 {
     using namespace CompanionGoals;
+    auto farmIntent = CompanionFarm::Parse(message);
+    if (farmIntent != CompanionFarm::Intent::None && AuthorizedOwner(player, bot))
+    {
+        auto* ai = GET_PLAYERBOT_AI(bot);
+        auto assignment = GetCompanionFarmAssignment(ai);
+        if (farmIntent == CompanionFarm::Intent::Status)
+            return true;
+        if (farmIntent == CompanionFarm::Intent::Start)
+        {
+            if (!CompanionGoalPermitted(ai, Domain::Gathering))
+            {
+                assignment.status = "start_blocked_by_location_or_directive";
+                SetCompanionFarmAssignment(ai, assignment);
+                return true;
+            }
+            assignment = {CompanionFarm::Mode::Working, 0, 0, 0, 0, 0, "start_requested", 0, assignment.revision};
+        }
+        else
+        {
+            assignment.mode = CompanionFarm::Mode::Returning;
+            assignment.status = "return_requested";
+        }
+        // Remote chat records intent only; the bot applies movement changes on its own AI update.
+        SetCompanionFarmAssignment(ai, assignment);
+        return true;
+    }
     if (!Authorized(player, bot))
         return false;
     auto intent = Parse(message, Topic(bot));
@@ -322,7 +404,8 @@ bool PBC_CompanionGoalConversation(Player* player, std::vector<Player*> const& b
     std::vector<Player*> eligible, named, topics;
     auto words = PBCVocationPolicy::Words(message);
     for (Player* bot : bots)
-        if (Authorized(player, bot))
+        if (Authorized(player, bot) || (CompanionFarm::Parse(message) != CompanionFarm::Intent::None &&
+            AuthorizedOwner(player, bot)))
         {
             eligible.push_back(bot);
             if (PBCVocationPolicy::Has(words, bot->GetName()))

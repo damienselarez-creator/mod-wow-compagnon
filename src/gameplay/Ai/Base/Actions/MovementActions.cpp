@@ -5,6 +5,7 @@
  */
 
 #include "MovementActions.h"
+#include "CompanionFarming.h"
 #include "Corpse.h"
 #include "Event.h"
 #include "FleeManager.h"
@@ -1335,7 +1336,7 @@ void MovementAction::SetNextMovementDelay(float delayMillis)
 
 bool MovementAction::Flee(Unit* target)
 {
-    Player* master = GetMaster();
+    Player* master = IsCompanionFarming(botAI) ? nullptr : GetMaster();
     if (!target)
         target = master;
 

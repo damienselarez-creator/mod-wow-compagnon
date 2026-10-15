@@ -2,6 +2,7 @@
  * WoW Compagnon, GNU GPL v2 or later. See AUTHORS.
  */
 #include "CompanionErrands.h"
+#include "CompanionFarming.h"
 #include "EventMap.h"
 #include "MotionMaster.h"
 #include "Playerbots.h"
@@ -98,7 +99,7 @@ namespace
         {
             Player* bot = ref->GetSource();
             PlayerbotAI* ai = bot ? GET_PLAYERBOT_AI(bot) : nullptr;
-            if (!ai || ai->GetMaster() != master || !IsCompanionInventoryManaged(ai))
+            if (!ai || ai->GetMaster() != master || !IsCompanionInventoryManaged(ai) || IsCompanionFarming(ai))
                 continue;
 
             if (journey.home && Ready(bot) && !SameHome(bot, *journey.home, journey.area))
@@ -141,7 +142,7 @@ namespace
             {
                 Player* bot = ref->GetSource();
                 PlayerbotAI* ai = bot ? GET_PLAYERBOT_AI(bot) : nullptr;
-                if (ai && ai->GetMaster() == master && IsCompanionInventoryManaged(ai) &&
+                if (ai && ai->GetMaster() == master && IsCompanionInventoryManaged(ai) && !IsCompanionFarming(ai) &&
                     !SameHome(bot, *journey.home, journey.area))
                     homePending = true;
             }

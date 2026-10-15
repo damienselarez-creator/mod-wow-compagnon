@@ -6,6 +6,7 @@
 
 #include "AttackAction.h"
 #include "CompanionCombat.h"
+#include "CompanionFarming.h"
 #include "CreatureAI.h"
 #include "Event.h"
 #include "LastMovementValue.h"
@@ -55,6 +56,8 @@ bool AttackMyTargetAction::Execute(Event /*event*/)
 
 bool AttackAction::Attack(Unit* target, bool /*with_pet*/ /*true*/)
 {
+    if (!CompanionFarmAttackAllowed(botAI, target))
+        return false;
     if (!target)
     {
         if (verbose)

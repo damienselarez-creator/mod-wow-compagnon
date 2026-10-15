@@ -8,6 +8,7 @@
 #include "Config.h"
 #include "CompanionErrands.h"
 #include "CompanionFlight.h"
+#include "CompanionFarming.h"
 #include "Event.h"
 #include "LastMovementValue.h"
 #include "PlayerbotAIConfig.h"
@@ -16,6 +17,8 @@
 
 bool TaxiAction::Execute(Event event)
 {
+    if (IsCompanionFarming(botAI))
+        return false;
     botAI->RemoveShapeshift();
 
     LastMovement& movement = context->GetValue<LastMovement&>("last taxi")->Get();
