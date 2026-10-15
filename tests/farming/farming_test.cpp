@@ -262,6 +262,7 @@ int main(int argc, char** argv)
     assert(GetCompanionFarmAssignment(&ai).harvested == 1); // A visit is not a successful harvest.
     state.source.kind = SourceKind::Creature;
     state.source.skin = 20;
+    state.source.skill = SKILL_SKINNING;
     ai.bot.skin = true;
     state.target = neutral.guid;
     state.selected = state.awaitingLoot = true;

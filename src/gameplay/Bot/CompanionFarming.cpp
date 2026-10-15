@@ -195,7 +195,7 @@ bool FinishCompanionFarmLoot(PlayerbotAI* ai, ObjectGuid guid)
         count > state.before ? 1 : 0);
     state.awaitingLoot = false;
     if (!state.skinning && state.source.kind == SourceKind::Creature && state.source.skin &&
-        ai->GetBot()->HasSkill(SKILL_SKINNING))
+        state.source.skill && ai->GetBot()->HasSkill(state.source.skill))
     {
         state.corpseLooted = true;
         state.events.RescheduleEvent(Progress, Milliseconds(5000));
@@ -368,7 +368,7 @@ namespace
             for (auto const& [item, quantity] : plan.missing)
                 if (quantity && (CompanionLootSources::Has(source.kind == SourceKind::Deposit ?
                     CompanionLootSourceIndex::Kind::Gameobject : CompanionLootSourceIndex::Kind::Creature,
-                        source.loot, item) || (bot->HasSkill(SKILL_SKINNING) &&
+                        source.loot, item) || (source.skill &&
                         CompanionLootSources::Has(CompanionLootSourceIndex::Kind::Skinning, source.skin, item))))
                     return true;
             return false;
@@ -390,7 +390,7 @@ namespace
             auto retain = [&](FarmSource const& source)
             {
                 bool needed = Needed(source, plan);
-                bool skin = source.kind == SourceKind::Creature && source.skin && bot->HasSkill(SKILL_SKINNING);
+                bool skin = source.kind == SourceKind::Creature && source.skin && source.skill;
                 bool level = source.level && source.level <= bot->GetLevel() &&
                     bot->GetLevel() - source.level <= 4 &&
                     bot->GetLevel() < sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL);
@@ -421,8 +421,13 @@ namespace
                 auto const* faction = sFactionTemplateStore.LookupEntry(creature->faction);
                 if (!faction || !bot->GetFactionTemplateEntry()->IsHostileTo(*faction))
                     continue;
-                retain({SourceKind::Creature, uint32(spawn), creature->lootid, creature->SkinLootId,
-                    data.posX, data.posY, data.posZ, 0, 0, creature->maxlevel});
+                uint32 skill = creature->GetRequiredLootSkill();
+                uint32 level = creature->maxlevel;
+                // Same native threshold as LootObject::Refresh, checked again against the spawned creature.
+                uint32 required = level < 10 ? 1 : level < 20 ? (level - 10) * 10 : level * 5;
+                bool gather = bot->HasSkill(skill) && bot->GetSkillValue(skill) >= required;
+                retain({SourceKind::Creature, uint32(spawn), creature->lootid, gather ? creature->SkinLootId : 0,
+                    data.posX, data.posY, data.posZ, gather ? skill : 0, required, level});
             }
             for (auto const& [score, source] : candidates)
                 state.sources.push_back(source);

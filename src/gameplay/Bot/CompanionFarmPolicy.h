@@ -4,6 +4,7 @@
 #ifndef COMPANION_FARM_POLICY_H
 #define COMPANION_FARM_POLICY_H
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <string>
@@ -36,7 +37,7 @@ namespace CompanionFarm
         float progress = skill && required <= skill && skill - required < 100 ?
             1500.0f * (1.0f - float(skill - required) / 100.0f) : 0.0f;
         if (creatureLevel && creatureLevel <= level && level - creatureLevel <= 4)
-            progress = 1000.0f - 150.0f * (level - creatureLevel);
+            progress = std::max(progress, 1000.0f - 150.0f * (level - creatureLevel));
         return distance - (needed ? 5000.0f : 0.0f) - progress;
     }
 }
