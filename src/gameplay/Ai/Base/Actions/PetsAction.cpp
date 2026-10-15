@@ -5,6 +5,7 @@
  */
 
 #include "PetsAction.h"
+#include "CompanionFarming.h"
 #include "CharmInfo.h"
 #include "Creature.h"
 #include "CreatureAI.h"
@@ -496,6 +497,11 @@ bool SetPetStanceAction::Execute(Event /*event*/)
             break;
     }
 
+    if (IsCompanionFarming(botAI))
+    {
+        react = REACT_DEFENSIVE;
+        stanceText = "defensive (independent farming)";
+    }
     // Apply the stance to all target creatures (pets/guardians)
     for (Creature* target : targets)
     {

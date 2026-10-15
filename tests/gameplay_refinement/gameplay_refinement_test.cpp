@@ -153,7 +153,8 @@ struct Group
     GroupReference* GetFirstMember() { return first; }
     bool isRaidGroup() { return raid; }
 };
-struct Pet : Unit { };
+constexpr int REACT_DEFENSIVE = 1;
+struct Pet : Unit { int reaction = 2; void SetReactState(int value) { reaction = value; } };
 struct Player : Unit
 {
     Group* group = nullptr;
@@ -270,10 +271,12 @@ int main()
     farmAttack = false;
     assert(!CompanionCombatSpellAllowed(&ai, &enemy, &damage));
     assert(!CompanionCombatSpellAllowed(&ai, &human, &damage));
-    assert(CompanionCombatSpellAllowed(&ai, &bot, &damage));
+    assert(!CompanionCombatSpellAllowed(&ai, &bot, &damage));
     farmAttack = true;
+    bot.combat = true;
     assert(CompanionCombatSpellAllowed(&ai, &enemy, &damage));
     farming = false;
+    bot.combat = false;
     sPlayerbotAIConfig.companionCombatRefinement = true;
     SpellInfo area = damage;
     area.Effects[0].TargetA = {true, TARGET_UNIT_SRC_AREA_ENEMY};
@@ -293,6 +296,19 @@ int main()
     assert(bot.stops == 1 && pet.stops == 1 && !bot.victim && !pet.victim);
     assert(!bot.casts[CURRENT_AUTOREPEAT_SPELL]);
     enemy.cc = false;
+    farming = true;
+    farmAttack = false;
+    bot.victim = pet.victim = &enemy;
+    sPlayerbotAIConfig.companionCombatRefinement = false;
+    UpdateCompanionCombat(&ai);
+    assert(!bot.victim && !pet.victim && pet.reaction == REACT_DEFENSIVE);
+    farmAttack = true;
+    bot.victim = &enemy;
+    UpdateCompanionCombat(&ai);
+    assert(bot.victim == &enemy); // Actual self-defence remains possible with refinement disabled.
+    bot.victim = nullptr;
+    farming = false;
+    sPlayerbotAIConfig.companionCombatRefinement = true;
 
     SpellInfo heal; heal.Effects[0].Effect = SPELL_EFFECT_HEAL;
     Spell arriving{&heal, {human.guid}};

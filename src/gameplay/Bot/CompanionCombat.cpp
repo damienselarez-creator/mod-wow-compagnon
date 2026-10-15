@@ -173,6 +173,10 @@ float CompanionRescueUrgency(PlayerbotAI* ai, Unit* enemy)
 
 bool CompanionCombatSpellAllowed(PlayerbotAI* ai, Unit* target, SpellInfo const* info)
 {
+    if (IsCompanionFarming(ai) && info && !ai->GetBot()->IsInCombat())
+        for (auto const& effect : info->GetEffects())
+            if (DamageEffect(effect))
+                return false;
     if (target && IsCompanionFarming(ai) && target != ai->GetBot())
     {
         if (ai->GetBot()->IsFriendlyTo(target))
@@ -242,16 +246,24 @@ bool CompanionCombatSpellAllowed(PlayerbotAI* ai, Unit* target, SpellInfo const*
 
 void UpdateCompanionCombat(PlayerbotAI* ai)
 {
-    if (!RefinedCompanionCombat(ai))
+    bool farming = IsCompanionFarming(ai);
+    if (!RefinedCompanionCombat(ai) && !farming)
         return;
     Player* bot = ai->GetBot();
-    if (Unit* victim = bot->GetVictim(); victim && victim->HasBreakableByDamageCrowdControlAura())
+    if (Unit* victim = bot->GetVictim(); victim && (victim->HasBreakableByDamageCrowdControlAura() ||
+        (farming && !CompanionFarmAttackAllowed(ai, victim))))
         bot->AttackStop();
     if (Spell* shot = bot->GetCurrentSpell(CURRENT_AUTOREPEAT_SPELL))
         if (Unit* target = ai->GetUnit(shot->m_targets.GetUnitTargetGUID());
-            target && target->HasBreakableByDamageCrowdControlAura())
+            target && (target->HasBreakableByDamageCrowdControlAura() ||
+                (farming && !CompanionFarmAttackAllowed(ai, target))))
             bot->InterruptSpell(CURRENT_AUTOREPEAT_SPELL);
     if (Pet* pet = bot->GetPet())
-        if (Unit* victim = pet->GetVictim(); victim && victim->HasBreakableByDamageCrowdControlAura())
+    {
+        if (farming)
+            pet->SetReactState(REACT_DEFENSIVE);
+        if (Unit* victim = pet->GetVictim(); victim && (victim->HasBreakableByDamageCrowdControlAura() ||
+            (farming && !CompanionFarmAttackAllowed(ai, victim))))
             pet->AttackStop();
+    }
 }

@@ -6,8 +6,10 @@
 #include "CompanionGoals.h"
 #include "CompanionLootSources.h"
 #include "CompanionProfessions.h"
-#include "AttackAction.h"
+#include "CompanionFarmRegionPolicy.h"
+#include "CompanionGuildBank.h"
 #include "Bag.h"
+#include "CastCustomSpellAction.h"
 #include "CellImpl.h"
 #include "EventMap.h"
 #include "GridNotifiers.h"
@@ -16,6 +18,7 @@
 #include "LootObjectStack.h"
 #include "MotionMaster.h"
 #include "NewRpgBaseAction.h"
+#include "PlayerbotSpellRepository.h"
 #include "Playerbots.h"
 #include "World.h"
 #include "pbc_companion_language.h"
@@ -26,8 +29,8 @@
 
 namespace
 {
-    enum FarmEvent : uint32 { Decision = 1, Retry, Progress, Expired };
-    enum class SourceKind : uint8 { Deposit, Creature };
+    enum FarmEvent : uint32 { Decision = 1, Retry, Progress, Expired, PlanDue, WorkReset, TrackingDue, BankDone };
+    enum class SourceKind : uint8 { Deposit, Creature, Survey, Workshop, Bank };
     struct FarmSource
     {
         SourceKind kind = SourceKind::Deposit;
@@ -36,6 +39,7 @@ namespace
         uint32 skin = 0;
         float x = 0, y = 0, z = 0;
         uint32 skill = 0, required = 0, level = 0;
+        uint32 zone = 0, tier = 0;
         uint64 Key() const { return (uint64(kind) << 32) | spawn; }
     };
 
@@ -108,6 +112,19 @@ struct CompanionFarmingState
     bool awaitingLoot = false;
     bool corpseLooted = false;
     bool skinning = false;
+    bool planDue = true, trackingDue = true, awaitingCraft = false, bankPending = false;
+    uint32 products = 0, actions = 0, secondary = 0;
+    uint32 craftSpell = 0, craftOutput = 0, craftBefore = 0, craftSkill = 0, skillBefore = 0;
+    uint32 lastRecipe = 0, lastSkill = 0, lastSkillBefore = 0, lastSkillAfter = 0;
+    bool craftPrimary = false, craftIntermediate = false;
+    uint64 skills = 0;
+    ObjectGuid defenseTarget;
+    CompanionProfessionPlan plan;
+    CompanionFarm::Region region;
+    std::vector<CompanionFarm::Site> sites;
+    std::set<uint64> visited;
+    std::set<uint32> rejectedCrafts;
+    std::vector<FarmSource> facilities;
     float closest = std::numeric_limits<float>::max();
     float progressX = 0, progressY = 0, progressZ = 0;
     uint32 before = 0;
@@ -160,9 +177,8 @@ bool CompanionFarmAttackAllowed(PlayerbotAI* ai, Unit* target)
     if (!IsCompanionFarming(ai) || !target)
         return true;
     Player* bot = ai->GetBot();
-    auto const& state = CompanionFarmRuntime(ai);
-    return (state && target->GetGUID() == state->target) || target->IsInCombatWith(bot) ||
-        (target->GetVictim() && target->GetVictim()->GetCharmerOrOwnerPlayerOrPlayerItself() == bot);
+    return CompanionFarm::DefensiveAttack(target->IsHostileTo(bot), target->IsInCombatWith(bot),
+        target->GetVictim() && target->GetVictim()->GetCharmerOrOwnerPlayerOrPlayerItself() == bot);
 }
 
 void CancelCompanionFarmRuntime(PlayerbotAI* ai)
@@ -172,6 +188,8 @@ void CancelCompanionFarmRuntime(PlayerbotAI* ai)
     auto& stored = CompanionFarmRuntime(ai);
     if (!stored)
         return;
+    if (stored->awaitingCraft && !ai->GetBot()->IsInCombat())
+        ai->GetBot()->InterruptNonMeleeSpells(false);
     ClearFarmTarget(ai, *stored);
     stored.reset();
 }
@@ -207,6 +225,7 @@ bool FinishCompanionFarmLoot(PlayerbotAI* ai, ObjectGuid guid)
     state.events.CancelEvent(Progress);
     state.events.CancelEvent(Expired);
     state.notice.clear();
+    state.planDue = true;
     return true;
 }
 
@@ -220,7 +239,7 @@ namespace
 
         bool Execute(Event) override
         {
-            if (!FarmSafe(bot))
+            if (!FarmSafe(bot) || bot->GetTradeData())
                 return false;
             if (assignment.mode != CompanionFarm::Mode::Working || assignment.revision != state.revision ||
                 assignment.status == "start_requested" || assignment.status == "awaiting_safe_start")
@@ -229,81 +248,82 @@ namespace
                 return true;
             state.ready = false;
             state.events.RescheduleEvent(Decision, Milliseconds(1000));
-            if (!CompanionGoalAllowed(botAI, CompanionGoals::Domain::Gathering))
-                return Wait("gathering_deferred_or_forbidden", "Je mets la recolte en pause, comme demande.",
-                    "I am pausing gathering as requested.");
-            if (bot->GetMapId() != assignment.map)
-                return Wait("assignment_map_changed", "Je ne suis plus dans ma zone de recolte.",
-                    "I am no longer on the map assigned for gathering.");
-            if (!HasRoom(bot))
-                return Wait("bags_full", "Mes sacs sont pleins. J'arrete la recolte en attendant tes instructions.",
-                    "My bags are full. I am pausing gathering until you give me instructions.");
-            if (bot->IsNonMeleeSpellCast(false) || !bot->GetLootGUID().IsEmpty())
+            if (bot->IsNonMeleeSpellCast(false) || !bot->GetLootGUID().IsEmpty() || state.bankPending)
                 return true;
+            if (state.awaitingCraft)
+                return FinishCraft();
+            if (!CompanionGoalAllowed(botAI, CompanionGoals::Domain::Gathering))
+                return Wait("gathering_deferred_or_forbidden", "Je mets mon travail en pause, comme demande.",
+                    "I am pausing my work as requested.");
+            if (bot->GetMapId() != assignment.map)
+                return Wait("assignment_map_changed", "Je dois choisir une nouvelle region de travail ici.",
+                    "I need to choose a new working region on this map.");
+            RefreshPlan();
             if (!state.indexed)
                 Index();
-            if (!state.selected && !Select())
-                return Wait("no_accessible_resource", "Je ne trouve pas de ressource exploitable ici pour mes metiers.",
-                    "I cannot find an accessible resource here for my professions.");
+            if (!state.selected)
+            {
+                if (!HasRoom(bot) && SelectBank())
+                    return true;
+                if (SelectWork())
+                    return true;
+                if (SelectBank())
+                    return true;
+                if (!HasRoom(bot))
+                    return Wait("bags_full", "Mes sacs sont pleins, je ne peux plus recolter pour le moment.",
+                        "My bags are full; I cannot gather more for now.");
+                if (EnsureTracking())
+                    return true;
+                if (!SelectDefenceLoot() && !SelectVisible() && !SelectSurvey())
+                    return Wait("no_useful_profession_region", "Je n'ai pas de ressource adaptee a chercher ici. "
+                        "Je garde mes materiaux pour mon artisanat.",
+                        "I have no suitable resource to seek here. I am keeping my materials for crafting.");
+            }
+            else if (state.source.kind == SourceKind::Survey)
+            {
+                if (EnsureTracking())
+                    return true;
+                if (!SelectDefenceLoot())
+                    SelectVisible();
+            }
             if (state.awaitingLoot)
                 return true;
-            WorldObject* object = state.source.kind == SourceKind::Deposit ?
-                static_cast<WorldObject*>(ObjectAccessor::GetSpawnedGameObjectByDBGUID(assignment.map, state.source.spawn)) :
-                static_cast<WorldObject*>(ObjectAccessor::GetSpawnedCreatureByDBGUID(assignment.map, state.source.spawn));
+            if (state.source.kind == SourceKind::Survey)
+            {
+                if (bot->GetDistance(state.source.x, state.source.y, state.source.z) < 40.0f)
+                {
+                    state.visited.insert(CompanionFarm::SurveyCell(state.source.x, state.source.y));
+                    ClearFarmTarget(botAI, state);
+                    return true;
+                }
+                return Travel("scouting_profession_region");
+            }
+            WorldObject* object = state.source.kind == SourceKind::Creature ?
+                static_cast<WorldObject*>(botAI->GetCreature(state.target)) :
+                static_cast<WorldObject*>(ObjectAccessor::GetSpawnedGameObjectByDBGUID(assignment.map,
+                    state.source.spawn));
             float distance = object ? bot->GetDistance(object) :
                 bot->GetDistance(state.source.x, state.source.y, state.source.z);
-            if (distance + 2.0f < state.closest ||
-                bot->GetExactDist(state.progressX, state.progressY, state.progressZ) > 10.0f)
-            {
-                state.closest = distance;
-                state.progressX = bot->GetPositionX();
-                state.progressY = bot->GetPositionY();
-                state.progressZ = bot->GetPositionZ();
-                state.events.RescheduleEvent(Progress, Milliseconds(30000));
-            }
             if (!object || distance > 25.0f)
             {
                 if (!object && distance < 15.0f)
-                    return Reject("resource_not_spawned");
-                ObserveCompanionFarming(botAI, state.revision, "travelling_to_resource");
-                if (!MoveFarTo(WorldPosition(assignment.map, state.source.x, state.source.y, state.source.z), false) &&
-                    !bot->isMoving() && !IsWaitingForLastMove(MovementPriority::MOVEMENT_NORMAL))
-                    return Reject("resource_route_unavailable");
-                return true;
+                    return Reject("observed_resource_disappeared");
+                return Travel(state.source.kind == SourceKind::Workshop ? "travelling_to_workshop" :
+                    state.source.kind == SourceKind::Bank ? "travelling_to_guild_bank" : "approaching_observed_resource");
             }
             if (!bot->CanSeeOrDetect(object) || !bot->IsWithinLOSInMap(object) || !Safe(object))
                 return Reject("resource_unsafe_or_invisible");
-            if (GameObject* deposit = object->ToGameObject(); deposit &&
-                (!deposit->isSpawned() || deposit->getLootState() != GO_READY ||
-                    deposit->HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE)))
+            if (GameObject* go = object->ToGameObject(); go &&
+                (!go->isSpawned() || go->HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE)))
                 return Reject("resource_unavailable");
-            for (GroupReference* ref = bot->GetGroup()->GetFirstMember(); ref; ref = ref->next())
-                if (Player* member = ref->GetSource(); member && member != bot && member->IsInWorld() &&
-                    member->GetMap() == bot->GetMap())
-                    if (PlayerbotAI* other = GET_PLAYERBOT_AI(member); other &&
-                        IsCompanionGatherLoot(other, object->GetGUID()))
-                        return Reject("resource_claimed_by_companion");
-            state.target = object->GetGUID();
             if (Creature* creature = object->ToCreature(); creature && creature->IsAlive())
-            {
-                if (!bot->IsValidAttackTarget(creature) || creature->hasLootRecipient() ||
-                    creature->GetLevel() > bot->GetLevel() || creature->GetCreatureTemplate()->rank != CREATURE_ELITE_NORMAL)
-                    return Reject("creature_not_solo_target");
-                context->GetValue<Unit*>("current target")->Set(creature);
-                return FarmAttack(botAI).Start(creature);
-            }
-            if (Creature* creature = object->ToCreature(); creature && state.corpseLooted &&
-                !creature->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE))
-                return true; // Native loot release may enable skinning on the next session update.
+                return Reject("farming_does_not_initiate_attacks");
             if (distance > INTERACTION_DISTANCE - 2.0f)
             {
                 MoveTo(assignment.map, object->GetPositionX(), object->GetPositionY(), object->GetPositionZ(),
                     false, false, true, true);
                 return true;
             }
-            LootObject loot(bot, state.target);
-            if (loot.IsEmpty() || !loot.IsLootPossible(bot))
-                return Reject("native_loot_unavailable");
             if (bot->isMoving())
             {
                 bot->StopMoving();
@@ -314,26 +334,36 @@ namespace
                 bot->RemoveAurasByType(SPELL_AURA_MOUNTED);
                 return true;
             }
+            if (state.source.kind == SourceKind::Workshop)
+                return CastWork();
+            if (state.source.kind == SourceKind::Bank)
+            {
+                if (!QueueCompanionGuildBank(botAI, object->GetGUID()))
+                    return Reject("guild_operation_unavailable");
+                ClearFarmTarget(botAI, state);
+                state.bankPending = true;
+                state.events.RescheduleEvent(BankDone, Milliseconds(10000));
+                ObserveCompanionFarming(botAI, state.revision, "guild_transfer_requested");
+                return true;
+            }
+            state.target = object->GetGUID();
+            if (Creature* creature = object->ToCreature(); creature && state.corpseLooted &&
+                !creature->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE))
+                return true;
+            LootObject loot(bot, state.target);
+            if (loot.IsEmpty() || !loot.IsLootPossible(bot))
+                return Reject("native_loot_unavailable");
             state.before = CarriedCount(botAI);
             state.skinning = state.corpseLooted;
             state.awaitingLoot = true;
             context->GetValue<LootObject>("loot target")->Set(loot);
             if (!OpenLootAction(botAI).Execute(Event()))
-            {
-                state.awaitingLoot = false;
                 return Reject("native_gathering_failed");
-            }
-            ObserveCompanionFarming(botAI, state.revision, "gathering");
+            ObserveCompanionFarming(botAI, state.revision, "gathering_observed_resource");
             return true;
         }
 
     private:
-        class FarmAttack : public AttackAction
-        {
-        public:
-            explicit FarmAttack(PlayerbotAI* ai) : AttackAction(ai, "farm resource creature") { }
-            bool Start(Unit* target) { return Attack(target); }
-        };
         CompanionFarmingState& state;
         CompanionFarm::Assignment assignment;
 
@@ -353,119 +383,348 @@ namespace
         bool Reject(std::string const& reason)
         {
             state.rejected.insert(state.source.Key());
+            if (state.source.kind == SourceKind::Survey)
+                state.visited.insert(CompanionFarm::SurveyCell(state.source.x, state.source.y));
             ClearFarmTarget(botAI, state);
             ObserveCompanionFarming(botAI, state.revision, reason);
             return true;
         }
 
-        bool AccessibleMap(uint32 map, uint32 phase) const
+        void Start(FarmSource const& source, ObjectGuid guid = ObjectGuid::Empty)
         {
-            return map == assignment.map && (phase & bot->GetPhaseMask());
+            ClearFarmTarget(botAI, state);
+            state.source = source;
+            state.selected = true;
+            state.target = guid;
+            state.closest = std::numeric_limits<float>::max();
+            state.progressX = bot->GetPositionX();
+            state.progressY = bot->GetPositionY();
+            state.progressZ = bot->GetPositionZ();
+            state.events.RescheduleEvent(Progress, Milliseconds(30000));
+            float distance = bot->GetDistance(source.x, source.y, source.z);
+            uint32 deadline = uint32(std::clamp(180.0f + distance / 2.0f, 300.0f, 3600.0f) * 1000.0f);
+            state.events.RescheduleEvent(Expired, Milliseconds(deadline));
         }
 
-        bool Needed(FarmSource const& source, CompanionProfessionPlan const& plan) const
+        bool Travel(char const* status)
         {
-            for (auto const& [item, quantity] : plan.missing)
-                if (quantity && (CompanionLootSources::Has(source.kind == SourceKind::Deposit ?
-                    CompanionLootSourceIndex::Kind::Gameobject : CompanionLootSourceIndex::Kind::Creature,
-                        source.loot, item) || (source.skill &&
-                        CompanionLootSources::Has(CompanionLootSourceIndex::Kind::Skinning, source.skin, item))))
+            float distance = bot->GetDistance(state.source.x, state.source.y, state.source.z);
+            if (distance + 2.0f < state.closest ||
+                bot->GetExactDist(state.progressX, state.progressY, state.progressZ) > 10.0f)
+            {
+                state.closest = distance;
+                state.progressX = bot->GetPositionX();
+                state.progressY = bot->GetPositionY();
+                state.progressZ = bot->GetPositionZ();
+                state.events.RescheduleEvent(Progress, Milliseconds(30000));
+            }
+            ObserveCompanionFarming(botAI, state.revision, status);
+            if (!MoveFarTo(WorldPosition(assignment.map, state.source.x, state.source.y, state.source.z), false) &&
+                !bot->isMoving() && !IsWaitingForLastMove(MovementPriority::MOVEMENT_NORMAL))
+                return Reject("resource_route_unavailable");
+            return true;
+        }
+
+        void RefreshPlan()
+        {
+            if (!state.planDue)
+                return;
+            state.planDue = false;
+            state.events.RescheduleEvent(PlanDue, Milliseconds(5000));
+            RestoreCompanionProfessionDefaults(botAI);
+            auto plan = PlanCompanionProfession(botAI, state.rejectedCrafts);
+            uint64 skills = 0;
+            for (uint32 skill : {SKILL_MINING, SKILL_HERBALISM, SKILL_SKINNING})
+                skills = skills * 997 + bot->GetPureSkillValue(skill);
+            if (skills != state.skills || plan.missing != state.plan.missing || plan.root != state.plan.root)
+                state.indexed = false;
+            state.skills = skills;
+            state.plan = std::move(plan);
+        }
+
+        bool Needed(uint32 loot) const
+        {
+            for (auto const& [item, quantity] : state.plan.missing)
+                if (quantity && CompanionLootSources::Has(CompanionLootSourceIndex::Kind::Gameobject, loot, item))
                     return true;
             return false;
         }
 
-        float Score(FarmSource const& source, bool needed) const
+        uint32 Tier(FarmSource const& source) const
         {
-            uint32 skill = source.skill && bot->GetPureSkillValue(source.skill) <
-                bot->GetPureMaxSkillValue(source.skill) ? bot->GetPureSkillValue(source.skill) : 0;
-            return CompanionFarm::ResourceScore(bot->GetDistance(source.x, source.y, source.z), needed,
-                skill, source.required, source.level, bot->GetLevel());
+            return CompanionFarm::GatheringTier(Needed(source.loot), bot->GetPureSkillValue(source.skill),
+                bot->GetPureMaxSkillValue(source.skill), source.required);
         }
 
         void Index()
         {
-            RestoreCompanionProfessionDefaults(botAI);
-            auto plan = PlanCompanionProfession(botAI, {});
-            std::multimap<float, FarmSource> candidates;
-            auto retain = [&](FarmSource const& source)
-            {
-                bool needed = Needed(source, plan);
-                bool skin = source.kind == SourceKind::Creature && source.skin && source.skill;
-                bool level = source.level && source.level <= bot->GetLevel() &&
-                    bot->GetLevel() - source.level <= 4 &&
-                    bot->GetLevel() < sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL);
-                if (source.kind == SourceKind::Creature && !needed && !skin && !level)
-                    return;
-                candidates.emplace(Score(source, needed), source);
-                if (candidates.size() > 512)
-                    candidates.erase(std::prev(candidates.end()));
-            };
+            state.sources.clear();
+            state.sites.clear();
+            state.facilities.clear();
             for (auto const& [spawn, data] : sObjectMgr->GetAllGOData())
             {
-                if (!AccessibleMap(data.mapid, data.phaseMask))
+                if (data.mapid != assignment.map || !(data.phaseMask & bot->GetPhaseMask()))
                     continue;
                 auto const* object = sObjectMgr->GetGameObjectTemplate(data.id);
+                if (!object)
+                    continue;
                 uint32 required = 0;
                 uint32 skill = GatherSkill(bot, object, required);
-                if (skill)
-                    retain({SourceKind::Deposit, uint32(spawn), object->GetLootId(), 0,
-                        data.posX, data.posY, data.posZ, skill, required, 0});
+                if (skill && state.sources.size() < 16384)
+                {
+                    FarmSource source{SourceKind::Deposit, uint32(spawn), object->GetLootId(), 0,
+                        data.posX, data.posY, data.posZ, skill, required};
+                    source.tier = Tier(source);
+                    if (!source.tier)
+                        continue;
+                    source.zone = bot->GetMap()->GetZoneId(bot->GetPhaseMask(), source.x, source.y, source.z);
+                    auto const* area = sAreaTableStore.LookupEntry(source.zone);
+                    if (!area || area->area_level > int32(bot->GetLevel()))
+                        continue;
+                    state.sources.push_back(source);
+                    state.sites.push_back({source.Key(), source.zone, source.skill, source.tier,
+                        source.x, source.y, source.z});
+                }
+                else if (state.facilities.size() < 4096 &&
+                    (object->type == GAMEOBJECT_TYPE_SPELL_FOCUS || object->type == GAMEOBJECT_TYPE_GUILD_BANK))
+                    state.facilities.push_back({object->type == GAMEOBJECT_TYPE_GUILD_BANK ?
+                        SourceKind::Bank : SourceKind::Workshop, uint32(spawn), 0, 0,
+                        data.posX, data.posY, data.posZ, 0, object->type == GAMEOBJECT_TYPE_SPELL_FOCUS ?
+                        object->spellFocus.focusId : 0});
             }
-            for (auto const& [spawn, data] : sObjectMgr->GetAllCreatureData())
-            {
-                if (!AccessibleMap(data.mapid, data.phaseMask))
-                    continue;
-                auto const* creature = sObjectMgr->GetCreatureTemplate(data.id);
-                if (!creature || creature->rank != CREATURE_ELITE_NORMAL || creature->maxlevel > bot->GetLevel())
-                    continue;
-                auto const* faction = sFactionTemplateStore.LookupEntry(creature->faction);
-                if (!faction || !bot->GetFactionTemplateEntry()->IsHostileTo(*faction))
-                    continue;
-                uint32 skill = creature->GetRequiredLootSkill();
-                uint32 level = creature->maxlevel;
-                // Same native threshold as LootObject::Refresh, checked again against the spawned creature.
-                uint32 required = level < 10 ? 1 : level < 20 ? (level - 10) * 10 : level * 5;
-                bool gather = bot->HasSkill(skill) && bot->GetSkillValue(skill) >= required;
-                retain({SourceKind::Creature, uint32(spawn), creature->lootid, gather ? creature->SkinLootId : 0,
-                    data.posX, data.posY, data.posZ, gather ? skill : 0, required, level});
-            }
-            for (auto const& [score, source] : candidates)
-                state.sources.push_back(source);
             state.indexed = true;
             state.events.RescheduleEvent(Retry, Milliseconds(300000));
         }
 
-        bool Select()
+        bool EnsureTracking()
         {
-            auto plan = PlanCompanionProfession(botAI, {});
-            float best = std::numeric_limits<float>::max();
-            for (auto const& source : state.sources)
-            {
-                if (state.rejected.count(source.Key()))
-                    continue;
-                bool needed = Needed(source, plan);
-                float score = Score(source, needed);
-                if (score >= best)
-                    continue;
-                best = score;
-                state.source = source;
-            }
-            if (best == std::numeric_limits<float>::max())
+            uint32 skill = state.region.skill ? state.region.skill :
+                bot->HasSkill(SKILL_MINING) ? SKILL_MINING : bot->HasSkill(SKILL_HERBALISM) ? SKILL_HERBALISM : 0;
+            uint32 spell = skill == SKILL_MINING ? 2580 : skill == SKILL_HERBALISM ? 2383 : 0;
+            if (!spell || !state.trackingDue || bot->HasAura(spell))
                 return false;
-            state.selected = true;
-            state.corpseLooted = false;
-            state.skinning = false;
-            state.closest = std::numeric_limits<float>::max();
-            state.events.RescheduleEvent(Progress, Milliseconds(30000));
-            state.progressX = bot->GetPositionX();
-            state.progressY = bot->GetPositionY();
-            state.progressZ = bot->GetPositionZ();
-            float distance = bot->GetDistance(state.source.x, state.source.y, state.source.z);
-            uint32 deadline = uint32(std::clamp(180.0f + distance / 2.0f, 300.0f, 3600.0f) * 1000.0f);
-            state.events.RescheduleEvent(Expired, Milliseconds(deadline));
-            uint32 zone = bot->GetMap()->GetZoneId(bot->GetPhaseMask(),
-                state.source.x, state.source.y, state.source.z);
-            ObserveCompanionFarming(botAI, state.revision, "destination_selected", 0, zone);
+            state.trackingDue = false;
+            state.events.RescheduleEvent(TrackingDue, Milliseconds(30000));
+            if (!bot->HasSpell(spell))
+                return false;
+            if (botAI->CanCastSpell(spell, bot) && botAI->CastSpell(spell, bot))
+            {
+                ObserveCompanionFarming(botAI, state.revision, "resource_tracking_requested");
+                return true;
+            }
+            return false;
+        }
+
+        bool SelectVisible()
+        {
+            std::list<GameObject*> objects;
+            AnyGameObjectInObjectRangeCheck check(bot, 180.0f);
+            Acore::GameObjectListSearcher<AnyGameObjectInObjectRangeCheck> search(bot, objects, check);
+            Cell::VisitObjects(bot, search, 180.0f);
+            FarmSource best;
+            ObjectGuid guid;
+            float distance = std::numeric_limits<float>::max();
+            for (GameObject* object : objects)
+            {
+                uint32 required = 0;
+                uint32 skill = GatherSkill(bot, object->GetGOInfo(), required);
+                if (!skill || !object->isSpawned() || object->getLootState() != GO_READY ||
+                    object->HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE) || !bot->CanSeeOrDetect(object))
+                    continue;
+                FarmSource source{SourceKind::Deposit, uint32(object->GetSpawnId()), object->GetGOInfo()->GetLootId(),
+                    0, object->GetPositionX(), object->GetPositionY(), object->GetPositionZ(), skill, required};
+                source.tier = Tier(source);
+                if (!source.tier || state.rejected.count(source.Key()) || !Safe(object))
+                    continue;
+                LootObject loot(bot, object->GetGUID());
+                if (loot.IsEmpty() || !loot.IsLootPossible(bot, false))
+                    continue;
+                bool claimed = false;
+                for (GroupReference* ref = bot->GetGroup()->GetFirstMember(); ref; ref = ref->next())
+                    if (Player* member = ref->GetSource(); member && member != bot && member->IsInWorld() &&
+                        member->GetMap() == bot->GetMap())
+                        if (PlayerbotAI* other = GET_PLAYERBOT_AI(member))
+                            claimed = claimed || IsCompanionGatherLoot(other, object->GetGUID());
+                if (claimed)
+                    continue;
+                float candidate = bot->GetDistance(object);
+                if (source.tier > best.tier || (source.tier == best.tier && candidate < distance))
+                {
+                    best = source;
+                    guid = object->GetGUID();
+                    distance = candidate;
+                }
+            }
+            if (guid.IsEmpty())
+                return false;
+            Start(best, guid);
+            ObserveCompanionFarming(botAI, state.revision, "resource_observed");
+            return true;
+        }
+
+        bool SelectSurvey()
+        {
+            std::vector<CompanionFarm::Site> remaining;
+            for (auto const& site : state.sites)
+                if (!state.visited.count(CompanionFarm::SurveyCell(site.x, site.y)))
+                    remaining.push_back(site);
+            auto region = CompanionFarm::ChooseRegion(remaining, bot->GetPositionX(), bot->GetPositionY(),
+                state.region.zone);
+            size_t next = CompanionFarm::NextSurvey(remaining, region, state.visited,
+                bot->GetPositionX(), bot->GetPositionY());
+            if (next == remaining.size())
+                return false;
+            if (region.zone != state.region.zone || region.skill != state.region.skill)
+            {
+                state.trackingDue = true;
+                LOG_INFO("playerbots.companion", "[FarmPlan] {} region={} skill={} value={} maximum={} areas={} tier={}",
+                    bot->GetName(), region.zone, region.skill, bot->GetPureSkillValue(region.skill),
+                    bot->GetPureMaxSkillValue(region.skill), region.coverage, region.tier);
+            }
+            state.region = region;
+            auto const& site = remaining[next];
+            FarmSource source;
+            source.kind = SourceKind::Survey;
+            source.x = site.x;
+            source.y = site.y;
+            source.z = site.z;
+            Start(source);
+            ObserveCompanionFarming(botAI, state.revision, "profession_region_selected", 0, region.zone);
+            return true;
+        }
+
+        bool SelectDefenceLoot()
+        {
+            Creature* creature = botAI->GetCreature(state.defenseTarget);
+            if (!creature || creature->IsAlive() || bot->GetDistance(creature) > 80.0f)
+                return false;
+            auto const* info = creature->GetCreatureTemplate();
+            FarmSource source{SourceKind::Creature, uint32(creature->GetSpawnId()), info->lootid, info->SkinLootId,
+                creature->GetPositionX(), creature->GetPositionY(), creature->GetPositionZ(), info->GetRequiredLootSkill()};
+            LootObject loot(bot, creature->GetGUID());
+            if (loot.IsEmpty() || !loot.IsLootPossible(bot, false) || state.rejected.count(source.Key()) || !Safe(creature))
+                return false;
+            Start(source, creature->GetGUID());
+            state.defenseTarget.Clear();
+            return true;
+        }
+
+        bool SelectWork()
+        {
+            if (!state.plan.next || !CompanionGoalAllowed(botAI, CompanionGoals::Domain::Crafting) ||
+                !CompanionFarm::WorkBudget(state.products, state.actions, state.secondary, state.plan.primary))
+                return false;
+            auto const* spell = sSpellMgr->GetSpellInfo(state.plan.next);
+            CraftRandomItemAction crafting(botAI);
+            if (!spell || bot->HasSpellCooldown(spell->Id) || !crafting.AcceptSpell(spell))
+                return false;
+            state.craftSpell = spell->Id;
+            if (botAI->CanCastSpell(spell->Id, bot))
+                return CastWork();
+            if (!spell->RequiresSpellFocus)
+                return false;
+            FarmSource const* best = nullptr;
+            float distance = std::numeric_limits<float>::max();
+            for (auto const& station : state.facilities)
+                if (station.kind == SourceKind::Workshop && station.required == spell->RequiresSpellFocus &&
+                    !state.rejected.count(station.Key()))
+                    if (float candidate = bot->GetDistance(station.x, station.y, station.z); candidate < distance)
+                    {
+                        best = &station;
+                        distance = candidate;
+                    }
+            if (!best)
+                return false;
+            Start(*best);
+            return true;
+        }
+
+        bool CastWork()
+        {
+            auto const* spell = sSpellMgr->GetSpellInfo(state.craftSpell);
+            CraftRandomItemAction crafting(botAI);
+            if (!spell || !CompanionGoalAllowed(botAI, CompanionGoals::Domain::Crafting) ||
+                !CompanionFarm::WorkBudget(state.products, state.actions, state.secondary, state.plan.primary) ||
+                !crafting.AcceptSpell(spell) || !botAI->CanCastSpell(spell->Id, bot))
+                return Reject("workshop_recipe_not_ready");
+            if (bot->isMoving())
+            {
+                bot->StopMoving();
+                return true;
+            }
+            if (bot->IsMounted())
+            {
+                bot->RemoveAurasByType(SPELL_AURA_MOUNTED);
+                return true;
+            }
+            auto const* skill = PlayerbotSpellRepository::Instance().GetSkillLine(spell->Id);
+            state.craftOutput = spell->Effects[EFFECT_0].ItemType;
+            state.craftBefore = bot->GetItemCount(state.craftOutput, false);
+            state.craftSkill = skill ? skill->SkillLine : state.plan.skill;
+            state.skillBefore = bot->GetPureSkillValue(state.craftSkill);
+            state.craftPrimary = state.plan.primary;
+            state.craftIntermediate = spell->Id != state.plan.root;
+            ClearFarmTarget(botAI, state);
+            state.awaitingCraft = botAI->CastSpell(spell->Id, bot);
+            if (!state.awaitingCraft)
+            {
+                state.rejectedCrafts.insert(spell->Id);
+                state.planDue = true;
+            }
+            ObserveCompanionFarming(botAI, state.revision, state.awaitingCraft ? "craft_requested" : "craft_refused");
+            return true;
+        }
+
+        bool FinishCraft()
+        {
+            bool completed = bot->GetItemCount(state.craftOutput, false) > state.craftBefore;
+            state.awaitingCraft = false;
+            if (completed)
+            {
+                if (!state.actions)
+                    state.events.RescheduleEvent(WorkReset, Milliseconds(300000));
+                ++state.actions;
+                if (!state.craftIntermediate)
+                    ++state.products;
+                if (!state.craftPrimary)
+                    ++state.secondary;
+                state.lastRecipe = state.craftSpell;
+                state.lastSkill = state.craftSkill;
+                state.lastSkillBefore = state.skillBefore;
+                state.lastSkillAfter = bot->GetPureSkillValue(state.craftSkill);
+                if (CompanionGoalPermitted(botAI, CompanionGoals::Domain::Equipment))
+                    botAI->DoSpecificAction("equip upgrade", Event(), true);
+            }
+            else
+                state.rejectedCrafts.insert(state.craftSpell);
+            LOG_INFO("playerbots.companion", "[FarmCraft] {} spell={} item={} created={} skill={} before={} after={}",
+                bot->GetName(), state.craftSpell, state.craftOutput, completed, state.craftSkill,
+                state.skillBefore, bot->GetPureSkillValue(state.craftSkill));
+            ObserveCompanionFarming(botAI, state.revision, completed ? "craft_confirmed" : "craft_not_created");
+            state.craftSpell = 0;
+            state.planDue = true;
+            return true;
+        }
+
+        bool SelectBank()
+        {
+            Player* master = botAI->GetMaster();
+            if (!CompanionGuildBankEnabled() || !bot->GetGuildId() || bot->GetGuildId() != master->GetGuildId() ||
+                !CompanionGoalAllowed(botAI, CompanionGoals::Domain::Guild) ||
+                !CompanionGuildBankVisitDue(bot->GetGUID()) || !HasCompanionGuildDeposit(botAI))
+                return false;
+            FarmSource const* best = nullptr;
+            float distance = std::numeric_limits<float>::max();
+            for (auto const& bank : state.facilities)
+                if (bank.kind == SourceKind::Bank && !state.rejected.count(bank.Key()))
+                    if (float candidate = bot->GetDistance(bank.x, bank.y, bank.z); candidate < distance)
+                    {
+                        best = &bank;
+                        distance = candidate;
+                    }
+            if (!best)
+                return false;
+            Start(*best);
             return true;
         }
 
@@ -482,6 +741,36 @@ namespace
             return true;
         }
     };
+}
+
+CompanionProfessionPlan GetCompanionFarmProfessionPlan(PlayerbotAI* ai)
+{
+    if (!ai || !ai->companionErrands)
+        return {};
+    auto const& state = CompanionFarmRuntime(ai);
+    return state ? state->plan : CompanionProfessionPlan{};
+}
+
+CompanionFarmWorkSnapshot GetCompanionFarmWorkSnapshot(PlayerbotAI* ai)
+{
+    CompanionFarmWorkSnapshot result;
+    if (!ai || !ai->companionErrands)
+        return result;
+    auto const& state = CompanionFarmRuntime(ai);
+    if (!state)
+        return result;
+    result.skill = state->region.skill;
+    result.region = state->region.zone;
+    result.products = state->products;
+    result.actions = state->actions;
+    result.lastRecipe = state->lastRecipe;
+    result.lastSkill = state->lastSkill;
+    result.skillBefore = state->lastSkillBefore;
+    result.skillAfter = state->lastSkillAfter;
+    uint32 spell = result.skill == SKILL_MINING ? 2580 : result.skill == SKILL_HERBALISM ? 2383 : 0;
+    result.trackingKnown = spell && ai->GetBot()->HasSpell(spell);
+    result.trackingActive = spell && ai->GetBot()->HasAura(spell);
+    return result;
 }
 
 void UpdateCompanionFarming(PlayerbotAI* ai, uint32_t elapsed)
@@ -557,15 +846,36 @@ void UpdateCompanionFarming(PlayerbotAI* ai, uint32_t elapsed)
     if (!stored)
         stored = std::make_shared<CompanionFarmingState>();
     auto& state = *stored;
+    if (bot->IsInCombat())
+        if (Unit* victim = bot->GetVictim(); victim && CompanionFarmAttackAllowed(ai, victim))
+            state.defenseTarget = victim->GetGUID();
     state.events.Update(elapsed);
     while (uint32 event = state.events.ExecuteEvent())
         if (event == Decision)
             state.ready = true;
+        else if (event == PlanDue)
+            state.planDue = true;
+        else if (event == TrackingDue)
+            state.trackingDue = true;
+        else if (event == BankDone)
+        {
+            state.bankPending = false;
+            state.planDue = true;
+            state.indexed = false;
+        }
+        else if (event == WorkReset)
+        {
+            state.products = state.actions = state.secondary = 0;
+            state.planDue = true;
+        }
         else if (event == Retry)
         {
             state.indexed = false;
+            state.planDue = true;
             state.sources.clear();
             state.rejected.clear();
+            state.visited.clear();
+            state.rejectedCrafts.clear();
         }
         else if ((event == Progress || event == Expired) && state.selected)
         {
@@ -575,6 +885,8 @@ void UpdateCompanionFarming(PlayerbotAI* ai, uint32_t elapsed)
                 continue;
             }
             state.rejected.insert(state.source.Key());
+            if (state.source.kind == SourceKind::Survey)
+                state.visited.insert(CompanionFarm::SurveyCell(state.source.x, state.source.y));
             ClearFarmTarget(ai, state);
             ObserveCompanionFarming(ai, state.revision, "resource_unreachable_or_timed_out");
         }

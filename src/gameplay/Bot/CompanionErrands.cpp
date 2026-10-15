@@ -970,6 +970,8 @@ std::shared_ptr<CompanionFarmingState>& CompanionFarmRuntime(PlayerbotAI* ai)
 
 CompanionProfessionPlan GetCompanionProfessionPlan(PlayerbotAI* ai)
 {
+    if (IsCompanionFarming(ai))
+        return GetCompanionFarmProfessionPlan(ai);
     return ai && ai->companionErrands ? ai->companionErrands->professionPlan : CompanionProfessionPlan{};
 }
 

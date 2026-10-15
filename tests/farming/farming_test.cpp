@@ -1,5 +1,7 @@
 #include "CompanionFarmDialogue.h"
 #include "CompanionGoalStore.h"
+#include "CompanionFarmRegionPolicy.h"
+#include "CompanionProfessions.h"
 #include <algorithm>
 #include <cassert>
 #include <chrono>
@@ -15,7 +17,9 @@ using uint8 = uint8_t;
 using uint32 = uint32_t;
 using uint64 = uint64_t;
 using Milliseconds = std::chrono::milliseconds;
-constexpr int BOT_STATE_NON_COMBAT = 0, SKILL_SKINNING = 393;
+constexpr int BOT_STATE_NON_COMBAT = 0, SKILL_SKINNING = 393, SKILL_MINING = 186, SKILL_HERBALISM = 182;
+constexpr int GAMEOBJECT_TYPE_GUILD_BANK = 34;
+struct GameObject { float x = 0; } bankObject;
 struct ObjectGuid
 {
     uint32 value = 0;
@@ -56,6 +60,8 @@ struct Unit
     Unit* victim = nullptr;
     Player* owner = nullptr;
     bool combatWithBot = false;
+    bool hostile = true;
+    bool IsHostileTo(Player*) const { return hostile; }
     ObjectGuid GetGUID() const { return guid; }
     Unit* GetVictim() { return victim; }
     Player* GetCharmerOrOwnerPlayerOrPlayerItself() { return owner; }
@@ -70,6 +76,10 @@ struct Player : Unit
     uint32 map = 0, zone = 85, phase = 1;
     float x = 50, y = 60, z = 10;
     bool world = true, alive = true, combat = false, teleport = false, taxi = false, skin = false;
+    bool moving = false, canUseBank = true;
+    uint32 guild = 1;
+    std::map<uint32, uint32> skills, itemCounts;
+    std::set<uint32> spells, auras;
     int stops = 0, interrupts = 0;
     bool IsInWorld() const { return world; }
     bool IsAlive() const { return alive; }
@@ -89,10 +99,20 @@ struct Player : Unit
     float GetPositionY() const { return y; }
     float GetPositionZ() const { return z; }
     float GetDistance(Player* other) const { return std::abs(x-other->x); }
+    float GetDistance(GameObject* other) const { return std::abs(x-other->x); }
     Session* GetSession() { return &session; }
     Group* GetGroup() { return group; }
     std::string GetName() const { return "any-companion"; }
     bool HasSkill(int skill) const { return skill == SKILL_SKINNING && skin; }
+    uint32 GetPureSkillValue(uint32 skill) { return skills[skill]; }
+    uint32 GetGuildId() const { return guild; }
+    uint32 GetItemCount(uint32 item, bool) { return itemCounts[item]; }
+    bool HasSpell(uint32 spell) const { return spells.count(spell); }
+    bool HasAura(uint32 spell) const { return auras.count(spell); }
+    bool isMoving() const { return moving; }
+    bool IsNonMeleeSpellCast(bool) const { return false; }
+    bool GetTradeData() const { return false; }
+    bool GetGameObjectIfCanInteractWith(ObjectGuid, int) const { return canUseBank; }
     void StopMoving() { ++stops; }
     void InterruptNonMeleeSpells(bool) { ++interrupts; }
     Motion* GetMotionMaster() { return &motion; }
@@ -122,12 +142,18 @@ struct PlayerbotAI
     std::vector<Item*> items;
     std::shared_ptr<CompanionFarmingState> runtime;
     int cancelled = 0, changed = 0, training = 0;
+    int equips = 0, casts = 0;
+    bool castAccepted = true;
     PlayerbotAI() { bot.ai = this; bot.group = master.group = &group; bot.guid.value = 2; bot.owner = &bot; }
     Player* GetBot() { return &bot; }
     Player* GetMaster() { return &master; }
     Context* GetAiObjectContext() { return &context; }
     auto const& GetInventoryItems() { return items; }
     void ChangeStrategy(char const*, int) { ++changed; }
+    bool CanCastSpell(uint32, Player*) const { return castAccepted; }
+    bool CastSpell(uint32, Player*) { ++casts; return castAccepted; }
+    void DoSpecificAction(char const*, auto, bool) { ++equips; }
+    GameObject* GetGameObject(ObjectGuid) { return &bankObject; }
 };
 bool IsCompanionInventoryManaged(PlayerbotAI* ai) { return ai && ai->managed; }
 std::shared_ptr<CompanionFarmingState>& CompanionFarmRuntime(PlayerbotAI* ai) { return ai->runtime; }
@@ -155,6 +181,27 @@ namespace
 #include "state.inc"
 #include "farm_helpers.inc"
 #include "farm_update.inc"
+struct Event { };
+bool CompanionGoalPermitted(PlayerbotAI*, CompanionGoals::Domain) { return true; }
+bool CompanionGoalAllowed(PlayerbotAI*, CompanionGoals::Domain) { return true; }
+struct FarmWorkFixture
+{
+    PlayerbotAI* botAI;
+    Player* bot;
+    CompanionFarmingState& state;
+#include "work_finish.inc"
+#include "tracking.inc"
+};
+struct Enabled { bool load() const { return true; } } enabled;
+bool BankAccess(PlayerbotAI* ai, uint64 _farmRevision)
+{
+    Player* player = ai->GetBot();
+    Player* master = ai->GetMaster();
+    ObjectGuid _bank{9};
+    auto blocked = [](char const*) { return false; };
+#include "bank_access.inc"
+    return true;
+}
 
 struct PBC_EventItem { std::vector<uint32> respondingChars, silentCharGuids; };
 enum class PBC_LogLevel { PBC_DEBUG };
@@ -222,6 +269,10 @@ int main(int argc, char** argv)
     ai.master.combat = true;
     UpdateCompanionFarming(&ai, 1000);
     assert(IsCompanionFarming(&ai)); // Owner distance, map and combat do not cancel the job.
+    assert(BankAccess(&ai, GetCompanionFarmAssignment(&ai).revision));
+    ai.bot.canUseBank = false;
+    assert(!BankAccess(&ai, GetCompanionFarmAssignment(&ai).revision));
+    ai.bot.canUseBank = true;
     groupBots = {&ai.bot};
     PBC_EventItem quest;
     assert(!PBC_RollGroupBotsIntoEvent(quest, &ai.master, 100, "quest", true));
@@ -249,6 +300,7 @@ int main(int argc, char** argv)
     assert(CompanionFarmAttackAllowed(&ai, &attacker));
     auto& state = *ai.runtime;
     state.target = neutral.guid;
+    assert(!CompanionFarmAttackAllowed(&ai, &neutral)); // A selected target never authorizes an attack.
     state.selected = state.awaitingLoot = true;
     state.before = 3;
     Item materials{5};
@@ -273,6 +325,31 @@ int main(int argc, char** argv)
     assert(FinishCompanionFarmLoot(&ai, neutral.guid));
     assert(!state.selected && GetCompanionFarmAssignment(&ai).harvested == 2);
 
+    FarmWorkFixture work{&ai, &ai.bot, state};
+    ai.bot.spells.insert(2580);
+    state.trackingDue = true;
+    state.region.skill = SKILL_MINING;
+    assert(work.EnsureTracking() && ai.casts == 1);
+    state.trackingDue = true;
+    ai.bot.auras.insert(2580);
+    assert(!work.EnsureTracking() && ai.casts == 1); // No repeated cast of an active tracking aura.
+    state.craftSpell = 2657;
+    state.craftSkill = SKILL_MINING;
+    state.skillBefore = 7;
+    ai.bot.skills[SKILL_MINING] = 8;
+    state.craftOutput = 2840;
+    state.craftBefore = 0;
+    state.craftIntermediate = true;
+    state.craftPrimary = true;
+    ai.bot.itemCounts[2840] = 1;
+    assert(work.FinishCraft());
+    assert(state.actions == 1 && state.products == 0 && state.lastSkillAfter == 8 && ai.equips == 1);
+    assert(state.lastSkillBefore == 7 && GetCompanionFarmAssignment(&ai).status == "craft_confirmed");
+    state.craftBefore = 1;
+    state.craftSpell = 2657;
+    assert(work.FinishCraft());
+    assert(state.actions == 1 && state.rejectedCrafts.count(2657)); // Refused cast creates no success.
+
     state.target = neutral.guid;
     state.selected = state.awaitingLoot = true;
     ai.context.target.value.guid = neutral.guid;
@@ -280,6 +357,7 @@ int main(int argc, char** argv)
     recall.mode = Mode::Returning;
     recall.status = "return_requested";
     assert(SetCompanionFarmAssignment(&ai, recall));
+    assert(!BankAccess(&ai, recall.revision)); // A queued independent visit cannot survive the recall.
     assert(restart.Load(path));
     assert(restart.Books.at("owner:bot").farming.mode == Mode::Returning);
     assert(restart.Books.at("owner:bot").farming.destinationZone == 3433);

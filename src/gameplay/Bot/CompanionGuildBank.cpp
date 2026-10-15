@@ -4,6 +4,7 @@
  * or (at your option) any later version.
  */
 #include "CompanionGuildBank.h"
+#include "CompanionFarming.h"
 #include "CompanionGuildBankStore.h"
 #include "CompanionErrands.h"
 #include "CompanionGoals.h"
@@ -555,8 +556,8 @@ namespace
     class BankOperation : public PlayerbotOperation
     {
     public:
-        BankOperation(ObjectGuid character, ObjectGuid owner, ObjectGuid bank, bool depositOnly)
-            : _character(character), _owner(owner), _bank(bank), _depositOnly(depositOnly) { }
+        BankOperation(ObjectGuid character, ObjectGuid owner, ObjectGuid bank, bool depositOnly, uint64 farmRevision)
+            : _character(character), _owner(owner), _bank(bank), _depositOnly(depositOnly), _farmRevision(farmRevision) { }
 
         ObjectGuid GetBotGuid() const override { return _character; }
         std::string GetName() const override { return "Companion guild bank sharing"; }
@@ -573,20 +574,26 @@ namespace
                 ObserveCompanionGoal(ai, CompanionGoals::Domain::Guild, CompanionGoals::State::Opportunity, reason);
                 return false;
             };
-            if (!enabled.load() || !ai || !CompanionGoalAllowed(ai, CompanionGoals::Domain::Guild) || !master || !player->IsInWorld() || !master->IsInWorld() ||
+            bool independent = ai && IsCompanionFarming(ai);
+            if (_farmRevision && (!independent || GetCompanionFarmAssignment(ai).revision != _farmRevision))
+                return blocked("farm_assignment_changed");
+            if (!enabled.load() || !ai || !CompanionGoalAllowed(ai, CompanionGoals::Domain::Guild) ||
+                !master || !player->IsInWorld() ||
                 ai->GetMaster() != master || !IsCompanionInventoryManaged(ai) ||
-                player->IsInCombat() || master->IsInCombat() || !player->IsAlive() || !master->IsAlive() ||
+                player->IsInCombat() || !player->IsAlive() ||
                 player->GetGroup() != master->GetGroup() || !player->GetGroup() ||
                 player->GetGuildId() != master->GetGuildId() || !player->GetGuildId() ||
-                player->GetMap() != master->GetMap() || player->GetTradeData() ||
-                player->IsBeingTeleported() || master->IsBeingTeleported() ||
+                player->GetTradeData() || player->IsBeingTeleported() ||
                 !player->GetSession() || !master->GetSession() ||
                 player->GetSession()->IsLoggingOut() || master->GetSession()->IsLoggingOut() ||
-                player->IsNonMeleeSpellCast(false) || master->isMoving() || player->isMoving())
+                player->IsNonMeleeSpellCast(false) || player->isMoving())
                 return blocked("guild_prerequisites_changed");
+            if (!independent && (!master->IsInWorld() || master->IsInCombat() || !master->IsAlive() ||
+                player->GetMap() != master->GetMap() || master->IsBeingTeleported() || master->isMoving()))
+                return blocked("owner_not_ready_for_shared_visit");
             GameObject* bank = ai->GetGameObject(_bank);
             if (!bank || !player->GetGameObjectIfCanInteractWith(_bank, GAMEOBJECT_TYPE_GUILD_BANK) ||
-                master->GetDistance(bank) > 30.0f)
+                (!independent && master->GetDistance(bank) > 30.0f))
                 return blocked("guild_bank_not_accessible");
             Guild* guild = sGuildMgr->GetGuildById(player->GetGuildId());
             uint64 now = uint64(std::time(nullptr));
@@ -663,6 +670,7 @@ namespace
         ObjectGuid _owner;
         ObjectGuid _bank;
         bool _depositOnly;
+        uint64 _farmRevision;
     };
 
     class BankWorldScript : public WorldScript
@@ -726,7 +734,8 @@ bool QueueCompanionGuildBank(PlayerbotAI* ai, ObjectGuid bank, bool depositOnly)
     if (!CompanionGuildBankEnabled() || !IsCompanionInventoryManaged(ai) || !CompanionGoalAllowed(ai, CompanionGoals::Domain::Guild))
         return false;
     return PlayerbotWorldThreadProcessor::instance().QueueOperation(
-        std::make_unique<BankOperation>(ai->GetBot()->GetGUID(), ai->GetMaster()->GetGUID(), bank, depositOnly));
+        std::make_unique<BankOperation>(ai->GetBot()->GetGUID(), ai->GetMaster()->GetGUID(), bank, depositOnly,
+            IsCompanionFarming(ai) ? GetCompanionFarmAssignment(ai).revision : 0));
 }
 
 bool CompanionGuildBankHasProduct(uint32 guild, uint32 item)

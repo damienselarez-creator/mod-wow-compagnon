@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.16)
+project(companion_profession_regions LANGUAGES CXX)
+enable_testing()
+add_executable(farm_regions_test farm_regions_test.cpp)
+target_compile_features(farm_regions_test PRIVATE cxx_std_17)
+target_include_directories(farm_regions_test PRIVATE ../../src/gameplay/Bot)
+add_test(NAME profession_rank_region_coverage_and_defensive_work COMMAND farm_regions_test)

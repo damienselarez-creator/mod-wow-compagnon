@@ -281,6 +281,14 @@ std::string CompanionGoalsContext(Player* bot)
         {"confirmed_harvests", farm.harvested}};
     if (auto const* area = sAreaTableStore.LookupEntry(farm.destinationZone))
         facts["farming"]["destination_name"] = PlayerbotAI::GetLocalizedAreaName(area);
+    if (farm.mode == CompanionFarm::Mode::Working)
+    {
+        auto work = GetCompanionFarmWorkSnapshot(ai);
+        facts["farming"]["work"] = {{"gathering_skill", work.skill}, {"tracking_known", work.trackingKnown},
+            {"tracking_active", work.trackingActive}, {"confirmed_craft_actions", work.actions},
+            {"finished_products", work.products}, {"last_recipe", work.lastRecipe},
+            {"last_skill", work.lastSkill}, {"skill_before", work.skillBefore}, {"skill_after", work.skillAfter}};
+    }
     auto project = GetCompanionProfessionPlan(ai);
     facts["profession_project"] = {{"target_recipe", project.root}, {"next_recipe", project.next},
         {"next_skill", project.skill}, {"next_is_primary", project.primary},
@@ -325,7 +333,10 @@ std::string CompanionGoalsContext(Player* bot)
         "Only confirmed_operations attest completed native actions; travelling/pending are intentions. "
         "Never invent bag names, vendor prices, purchases, learned spells or completed projects. "
         "The profession project is a bounded plan, not a completed craft or a discovered deposit. "
-        "Independent farming selects accessible resources suited to profession needs and progression or level. "
+        "Independent farming chooses a region by profession rank, material needs and resource coverage. "
+        "Survey points are potential areas, not observed or guaranteed spawns. Tracking is active only when verified. "
+        "The companion never initiates fights while farming; it defends itself, then resumes its work. "
+        "It can transform and craft known recipes at real workshops, equip useful products and share permitted surplus. "
         "It can leave its starting zone on the same continent; returning cancels that work. "
         "A farming assignment does not prove a harvest: use its status and confirmed_harvests. "
         "Next work can be a secondary activity while the main target waits; its materials and result are distinct. "
