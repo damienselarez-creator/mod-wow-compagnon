@@ -103,6 +103,7 @@ struct Player
     std::vector<std::pair<uint32, uint32>> defaultsRestored;
     uint32 GetPureSkillValue(uint32 id) const
     { auto it = skillValues.find(id); return it == skillValues.end() ? 0 : it->second; }
+    uint32 GetPureMaxSkillValue(uint32) const { return 450; }
     void learnSkillRewardedSpells(uint32 id, uint32 value) { defaultsRestored.emplace_back(id, value); }
     auto const& GetSpellMap() const { return spells; }
 };
@@ -363,6 +364,9 @@ int main()
     human.distance = 100;
     skillUp = true;
     assert(action.GetSpellPriority(&recipe) == 10); // Bounded practice using owned materials.
+    self.skillValues[164] = 450;
+    assert(action.GetSpellPriority(&recipe) == 0); // Training the next rank precedes more practice at the cap.
+    self.skillValues[164] = 1;
     self.counts[4] = 1;
     assert(action.GetSpellPriority(&recipe) == 10); // Bounded practice can continue beyond one pending product.
     self.counts[4] = 3;

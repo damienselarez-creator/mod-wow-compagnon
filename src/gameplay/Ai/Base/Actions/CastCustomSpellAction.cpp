@@ -455,10 +455,12 @@ uint32 CraftRandomItemAction::GetSpellPriority(SpellInfo const* spellInfo)
         bool tradable = item->Bonding == NO_BIND || item->Bonding == BIND_WHEN_EQUIPPED ||
             item->Bonding == BIND_WHEN_USE;
         auto const* profession = PlayerbotSpellRepository::Instance().GetSkillLine(spellInfo->Id);
+        bool canProgress = profession &&
+            bot->GetPureSkillValue(profession->SkillLine) < bot->GetPureMaxSkillValue(profession->SkillLine) &&
+            ItemUsageValue::SpellGivesSkillUp(spellInfo->Id, bot);
         bool practice = tradable && profession && CompanionErrands::IsPrimary(profession->SkillLine) &&
             item->Quality <= ITEM_QUALITY_UNCOMMON && bot->GetItemCount(item->ItemId, true) < 3 &&
-            !CompanionGuildBankHasProduct(bot->GetGuildId(), item->ItemId) &&
-            ItemUsageValue::SpellGivesSkillUp(spellInfo->Id, bot);
+            !CompanionGuildBankHasProduct(bot->GetGuildId(), item->ItemId) && canProgress;
         if (!tradable || bot->GetItemCount(item->ItemId, true) ||
             CompanionGuildBankHasProduct(bot->GetGuildId(), item->ItemId))
             return practice ? 10 : 0;
@@ -470,7 +472,7 @@ uint32 CraftRandomItemAction::GetSpellPriority(SpellInfo const* spellInfo)
                         CompanionCraftUseful(member, item))
                         return 50;
         // One outstanding practice batch, using owned reagents; no grey-recipe grinding.
-        if (item->Quality <= ITEM_QUALITY_UNCOMMON && ItemUsageValue::SpellGivesSkillUp(spellInfo->Id, bot))
+        if (item->Quality <= ITEM_QUALITY_UNCOMMON && canProgress)
             return 10;
         return 0;
     }

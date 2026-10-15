@@ -220,6 +220,10 @@ std::string CompanionGoalsContext(Player* bot)
     auto project = GetCompanionProfessionPlan(ai);
     facts["profession_project"] = {{"target_recipe", project.root}, {"next_recipe", project.next},
         {"skill", project.skill}, {"primary", project.primary}, {"materials_for_recipe", project.materialsFor}};
+    for (auto const& [field, id] : {std::pair{"target_item", project.root}, {"next_item", project.next}})
+        if (auto const* spell = sSpellMgr->GetSpellInfo(id))
+            if (auto const* item = sObjectMgr->GetItemTemplate(spell->Effects[EFFECT_0].ItemType))
+                facts["profession_project"][field] = {{"id", item->ItemId}, {"name", item->Name1}};
     facts["profession_project"]["missing_materials"] = pbc_json::array();
     for (auto const& [item, quantity] : project.missing)
         if (auto const* proto = sObjectMgr->GetItemTemplate(item))
