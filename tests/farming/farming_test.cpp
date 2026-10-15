@@ -141,6 +141,7 @@ CompanionGoals::Book* Find(Player*, bool create = false)
     return create ? &history.Books["owner:bot"] : nullptr;
 }
 #define LOG_INFO(...) ((void)0)
+void ObserveCompanionFarming(PlayerbotAI*, uint64_t, std::string const&, uint32_t = 0);
 #include "assignment.inc"
 namespace
 {
