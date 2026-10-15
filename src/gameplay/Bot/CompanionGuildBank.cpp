@@ -556,7 +556,7 @@ namespace
     class BankOperation : public PlayerbotOperation
     {
     public:
-        BankOperation(ObjectGuid character, ObjectGuid owner, ObjectGuid bank, bool depositOnly, uint64 farmRevision)
+        BankOperation(ObjectGuid character, ObjectGuid owner, ObjectGuid bank, bool depositOnly, uint64 farmRevision = 0)
             : _character(character), _owner(owner), _bank(bank), _depositOnly(depositOnly), _farmRevision(farmRevision) { }
 
         ObjectGuid GetBotGuid() const override { return _character; }

@@ -260,6 +260,9 @@ struct PlayerbotOperation
     virtual std::string GetName() const = 0;
     virtual bool Execute() = 0;
 };
+bool IsCompanionFarming(PlayerbotAI*) { return false; }
+struct FarmAssignment { uint64 revision = 0; };
+FarmAssignment GetCompanionFarmAssignment(PlayerbotAI*) { return {}; }
 #include "bank.inc"
 
 int main()

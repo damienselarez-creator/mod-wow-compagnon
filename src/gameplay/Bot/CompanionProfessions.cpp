@@ -39,6 +39,7 @@ CompanionProfessionPlan PlanCompanionProfession(PlayerbotAI* ai, std::set<uint32
         auto const* spell = sSpellMgr->GetSpellInfo(id);
         auto const* skill = PlayerbotSpellRepository::Instance().GetSkillLine(id);
         if (!spell || !skill || !IsProfessionSkill(skill->SkillLine) || !bot->HasSkill(skill->SkillLine) ||
+            skill->MinSkillLineRank > bot->GetPureSkillValue(skill->SkillLine) ||
             known->State == PLAYERSPELL_REMOVED || !known->Active || rejected.count(id) || bot->HasSpellCooldown(id) ||
             spell->Effects[EFFECT_0].Effect != SPELL_EFFECT_CREATE_ITEM ||
             !spell->Effects[EFFECT_0].ItemType)

@@ -414,6 +414,7 @@ bool CraftRandomItemAction::AcceptSpell(SpellInfo const* spellInfo)
         auto const& known = bot->GetSpellMap();
         auto found = known.find(spellInfo->Id);
         return skill && IsProfessionSkill(skill->SkillLine) && bot->HasSkill(skill->SkillLine) &&
+            skill->MinSkillLineRank <= bot->GetPureSkillValue(skill->SkillLine) &&
             found != known.end() && found->second->State != PLAYERSPELL_REMOVED && found->second->Active;
     }
     return spellInfo->ReagentCount[EFFECT_0] > 0 && spellInfo->SchoolMask == 0;

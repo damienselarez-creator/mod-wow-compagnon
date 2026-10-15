@@ -161,7 +161,7 @@ struct ItemUsageValue
     static std::string GetConsumableType(ItemTemplate const*, uint32) { return "healing potion"; }
     static bool SpellGivesSkillUp(uint32, Player*) { return skillUp; }
 };
-struct SkillRecord { uint32 SkillLine = 164; };
+struct SkillRecord { uint32 SkillLine = 164, MinSkillLineRank = 0; };
 struct PlayerbotSpellRepository
 {
     SkillRecord line;
@@ -230,6 +230,12 @@ void TestProfessionPlans()
     self.counts[10] = 8;
     auto plan = PlanCompanionProfession(&ai, {});
     assert(plan.root == 502 && plan.next == 500 && plan.primary && plan.missing.empty());
+    repository.lines[502].MinSkillLineRank = 40;
+    self.skillValues[164] = 1;
+    assert(PlanCompanionProfession(&ai, {}).root != 502); // An incorrectly retained recipe cannot bypass rank.
+    self.skillValues[164] = 40;
+    assert(PlanCompanionProfession(&ai, {}).root == 502);
+    repository.lines[502].MinSkillLineRank = 0;
     self.counts[5] = 0;
     self.counts[6] = 3;
     plan = PlanCompanionProfession(&ai, {});
@@ -304,6 +310,12 @@ int main()
     ai.context.usages[1] = ITEM_USAGE_EQUIP;
     friendAi.context.usages[1] = ITEM_USAGE_EQUIP;
     assert(action.AcceptSpell(&recipe));
+    auto& minimum = PlayerbotSpellRepository::Instance().line.MinSkillLineRank;
+    minimum = 40;
+    assert(!action.AcceptSpell(&recipe));
+    self.skillValues[164] = 40;
+    assert(action.AcceptSpell(&recipe));
+    minimum = 0;
     recipe.SchoolMask = 1;
     assert(action.AcceptSpell(&recipe)); // Physical profession spells remain eligible.
     ai.managed = false; assert(!action.AcceptSpell(&recipe));
