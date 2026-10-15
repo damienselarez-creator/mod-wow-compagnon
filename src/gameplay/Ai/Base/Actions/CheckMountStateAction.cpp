@@ -150,7 +150,7 @@ bool CheckMountStateAction::Execute(Event /*event*/)
 
 bool CheckMountStateAction::isUseful()
 {
-    if (IsCompanionGathering(botAI) ||
+    if (IsCompanionGathering(botAI) || HasCompanionCraftPlan(botAI) ||
         (IsCompanionInventoryManaged(botAI) && bot->IsNonMeleeSpellCast(false)))
         return false;
     // Not useful when:
