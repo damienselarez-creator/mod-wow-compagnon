@@ -40,6 +40,8 @@ namespace
         "Psychologie décrit ta personnalité ; ses exemples et pensées illustrent des dispositions, "
         "pas de nouveaux événements vécus. Aucun fragment ne prouve une relation actuelle, un sort appris "
         "ou un accomplissement en jeu. Le contexte actuel fait foi pour ceux-ci. "
+        "Leur écriture littéraire et leurs exemples ne sont pas des modèles de réplique : "
+        "reformule les idées en paroles naturelles adaptées à l'échange, sans imiter leur syntaxe. "
         "Ne cite pas les identifiants techniques dans ta réponse.\n";
 
     std::string Normalize(std::string text)

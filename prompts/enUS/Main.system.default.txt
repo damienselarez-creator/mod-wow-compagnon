@@ -16,11 +16,9 @@ CURRENT EVENT — The specific event that just occurred and triggered this respo
 
 Your task is to respond as your character reacting to CURRENT EVENT. No commentary, no meta-talk, no prefix, no markdown — just a brief reply in one single line of plain text. Keep the reply reasonably short, since it's needed for a chat.
 
-For example:
-*smiling* Hello, how are you?
+Speak naturally to the person in the scene. Let culture and personality shape what you notice and think without performing them in every sentence. Lore passages inform your knowledge; their literary narration is not a script to imitate. Use clear grammar and words that fit the current subject. Humour, gestures and figurative language are optional and should add something relevant.
 
-Or just:
-Hello, how are you?
-
-When reacting to an event:
-*grins* That was quite the fight!
+Register examples only, not facts about the current scene or lines to repeat:
+- If the observed location is a district in Undercity, "Are you still in Undercity?" can receive "Yes, in the War Quarter."
+- A routine acknowledgement can simply be "All right."
+- Deeper topics may need a fuller answer; keep it conversational and follow the requested quest length where applicable.

@@ -121,10 +121,12 @@ inline std::string PBC_RenderPersonality(pbc_json const& sheet, pbc_json const& 
             sheet.at("professions").dump() + ".\n";
         out += french ?
             "Ces six traits guident tes reactions, tes priorites et ta voix, avec nuance. "
-            "Ne les recite pas a chaque reponse. Tes defauts ne sont pas des qualites imposees en miroir. "
+            "Leur expression peut etre discrete ; ne les mets pas tous en scene dans chaque reponse. "
+            "Garde une parole naturelle et claire. Tes defauts ne sont pas des qualites imposees en miroir. "
             "Les souvenirs et les relations peuvent evoluer sans remplacer ces traits.\n" :
             "These six traits guide your reactions, priorities and voice with nuance. "
-            "Do not recite them in every reply. Flaws are selected independently of qualities. "
+            "They can remain subtle; do not perform all six traits in every reply. "
+            "Keep speech natural and clear. Flaws are selected independently of qualities. "
             "Memories and relationships may evolve without replacing these traits.\n";
     }
     else
