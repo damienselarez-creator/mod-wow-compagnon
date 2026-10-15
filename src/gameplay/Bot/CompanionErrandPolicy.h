@@ -93,6 +93,21 @@ namespace CompanionErrands
 
     constexpr float GatherRadius = 100.0f;
 
+    inline float SearchRadius(bool resting, bool requested)
+    {
+        return resting || requested ? 180.0f : GatherRadius;
+    }
+
+    inline bool GatherReturn(bool movingMaster, float botDistance, float nodeDistance)
+    {
+        return botDistance > 220.0f || nodeDistance > 220.0f || (movingMaster && nodeDistance > 120.0f);
+    }
+
+    inline float GatherScore(float distance, bool needed)
+    {
+        return distance - (needed ? 250.0f : 0.0f);
+    }
+
     inline bool HerbWithinLeash(float botToHerb, float masterToHerb, float botToMaster)
     {
         return botToHerb <= GatherRadius && masterToHerb <= GatherRadius && botToMaster <= 40.0f;

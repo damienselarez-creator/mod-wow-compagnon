@@ -2,6 +2,7 @@
 #include "CompanionGoalDialogue.h"
 #include "CompanionGoalStore.h"
 #include "CompanionErrands.h"
+#include "CompanionProfessions.h"
 #include "Bag.h"
 #include "Config.h"
 #include "EventMap.h"
@@ -216,6 +217,19 @@ std::string CompanionGoalsContext(Player* bot)
                 free += bag->GetFreeSlots();
         }
     facts["general_free"] = free;
+    auto project = GetCompanionProfessionPlan(ai);
+    facts["profession_project"] = {{"target_recipe", project.root}, {"next_recipe", project.next},
+        {"skill", project.skill}, {"primary", project.primary}, {"materials_for_recipe", project.materialsFor}};
+    facts["profession_project"]["missing_materials"] = pbc_json::array();
+    for (auto const& [item, quantity] : project.missing)
+        if (auto const* proto = sObjectMgr->GetItemTemplate(item))
+            facts["profession_project"]["missing_materials"].push_back(
+                {{"item", item}, {"name", proto->Name1}, {"quantity", quantity}});
+    facts["professions"] = pbc_json::array();
+    for (uint32 skill : {164u, 165u, 171u, 182u, 186u, 197u, 202u, 333u, 393u, 755u, 773u, 129u, 185u, 356u})
+        if (bot->HasSkill(skill))
+            facts["professions"].push_back({{"skill", skill}, {"value", bot->GetPureSkillValue(skill)},
+                {"maximum", bot->GetPureMaxSkillValue(skill)}});
     facts["goals"] = pbc_json::object();
     {
         std::lock_guard<std::mutex> lock(goalsMutex);
@@ -240,6 +254,8 @@ std::string CompanionGoalsContext(Player* bot)
         "A missing/false requested flag means a request has not been saved. If goal_history_ready or last_request_saved is false, say the plan could not be saved. "
         "Only confirmed_operations attest completed native actions; travelling/pending are intentions. "
         "Never invent bag names, vendor prices, purchases, learned spells or completed projects. "
+        "The profession project is a bounded plan, not a completed craft or a discovered deposit. "
+        "Missing materials are current shortages for that plan; do not invent their source or an expedition. "
         "A zero required_money means no verified quote yet, not a free purchase. "
         "When deferred/quiet, accept the constraint and continue the adventure without asking for money again. "
         "Forbidden means do not perform this activity until a new explicit request. "

@@ -1,4 +1,5 @@
 #include "CompanionErrands.h"
+#include "CompanionErrandPolicy.h"
 #include "CompanionGuildBank.h"
 #include "SelfbotInventory.h"
 /*
@@ -453,9 +454,14 @@ uint32 CraftRandomItemAction::GetSpellPriority(SpellInfo const* spellInfo)
         // Keep one pending batch for the group; do not recreate goods awaiting delivery.
         bool tradable = item->Bonding == NO_BIND || item->Bonding == BIND_WHEN_EQUIPPED ||
             item->Bonding == BIND_WHEN_USE;
+        auto const* profession = PlayerbotSpellRepository::Instance().GetSkillLine(spellInfo->Id);
+        bool practice = tradable && profession && CompanionErrands::IsPrimary(profession->SkillLine) &&
+            item->Quality <= ITEM_QUALITY_UNCOMMON && bot->GetItemCount(item->ItemId, true) < 3 &&
+            !CompanionGuildBankHasProduct(bot->GetGuildId(), item->ItemId) &&
+            ItemUsageValue::SpellGivesSkillUp(spellInfo->Id, bot);
         if (!tradable || bot->GetItemCount(item->ItemId, true) ||
             CompanionGuildBankHasProduct(bot->GetGuildId(), item->ItemId))
-            return 0;
+            return practice ? 10 : 0;
         if (Group* group = bot->GetGroup())
             for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
                 if (Player* member = ref->GetSource())

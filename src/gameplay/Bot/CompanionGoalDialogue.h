@@ -46,7 +46,8 @@ namespace CompanionGoals
             domain = Domain::Mount;
         else if (any({"minage", "miner", "herboristerie", "recolte", "recolter", "mining", "herbalism", "gather", "gathering", "farm", "farmer"}))
             domain = Domain::Gathering;
-        else if (any({"forge", "forger", "fabriquer", "fabrication", "artisanat", "craft", "crafting", "blacksmithing"}))
+        else if (any({"forge", "forger", "fabriquer", "fabrication", "artisanat", "fondre", "fonte", "lingots",
+            "craft", "crafting", "blacksmithing", "smelt", "smelting"}))
             domain = Domain::Crafting;
         else if (any({"coffre", "guilde", "guild", "guild bank"}))
             domain = Domain::Guild;
@@ -66,7 +67,7 @@ namespace CompanionGoals
         else if (any({"reprends", "tu peux recommencer", "resume", "you may resume"}))
             directive = Directive::Resume;
         else if (any({"achete", "acheter", "achetes", "apprends", "va voir", "occupe toi", "forger",
-            "fabrique", "fabriquer", "recolte", "recolter", "mine", "miner", "repare", "vends",
+            "fabrique", "fabriquer", "fondre", "fonds", "recolte", "recolter", "mine", "miner", "repare", "vends", "smelt",
             "debrouille toi", "repartis", "depense", "buy", "learn", "go to", "craft", "gather", "repair", "sell", "handle it"}))
             directive = Directive::Request;
         else

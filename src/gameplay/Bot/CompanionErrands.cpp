@@ -7,6 +7,8 @@
 #include "CompanionEquipment.h"
 #include "CompanionInventoryPolicy.h"
 #include "CompanionConsumables.h"
+#include "CompanionProfessions.h"
+#include "CompanionLootSources.h"
 #include "StatsWeightCalculator.h"
 #include "CompanionVocation.h"
 #include "CastCustomSpellAction.h"
@@ -903,6 +905,9 @@ struct CompanionErrandState
     uint64 storageAttemptSignature = 0;
     bool guildDepositOnly = false;
     bool craftDue = true;
+    bool professionDue = true;
+    bool professionDefaultsChecked = false;
+    CompanionProfessionPlan professionPlan;
     bool townRest = false;
     bool restWaiting = false;
     uint64 progressionSignature = 0;
@@ -912,6 +917,11 @@ struct CompanionErrandState
     uint64 goalRevision = 0;
     uint32 observedMoney = 0;
     uint32 crafts = 0;
+    uint32 craftActions = 0;
+    uint32 secondaryCrafts = 0;
+    uint32 craftSkill = 0;
+    uint32 craftSkillBefore = 0;
+    bool craftPrimary = false;
     bool craftIntermediate = false;
     uint32 craftSpell = 0;
     uint32 craftOutput = 0;
@@ -944,6 +954,11 @@ struct CompanionErrandState
     std::set<uint32> rejectedSupplyVendors;
     std::set<ObjectGuid> rejectedHerbs;
 };
+
+CompanionProfessionPlan GetCompanionProfessionPlan(PlayerbotAI* ai)
+{
+    return ai && ai->companionErrands ? ai->companionErrands->professionPlan : CompanionProfessionPlan{};
+}
 
 CompanionTrainingSnapshot GetCompanionTrainingSnapshot(ObjectGuid guid)
 {
@@ -1055,6 +1070,7 @@ void NotifyCompanionInventoryChanged(PlayerbotAI* ai)
     state.bagInventoryDue = true;
     state.inventoryDue = true;
     state.townDue = true;
+    state.professionDue = true;
 }
 
 void FinishCompanionInventoryStorage(PlayerbotAI* ai, bool retry)
@@ -1097,7 +1113,10 @@ namespace
             if (state.kind == Errand::Herb)
                 state.rejectedHerbs.insert(state.target);
             if (state.kind == Errand::Craft)
+            {
                 state.rejectedCrafts.insert(state.craftSpell);
+                state.professionDue = true;
+            }
         }
         if (state.kind != Errand::None)
         {
@@ -1508,6 +1527,8 @@ void RequestCompanionTraining(PlayerbotAI* ai)
     state.paused = false;
     state.townDue = true;
     state.ready = true;
+    state.professionDue = true;
+    state.professionDefaultsChecked = false;
     state.rejectedTrainers.clear();
     state.rejectedSupplyVendors.clear();
     state.rejectedBagVendors.clear();
@@ -1567,8 +1588,15 @@ void UpdateCompanionErrands(PlayerbotAI* ai, uint32 elapsed)
         {
             case Decision: state.ready = true; break;
             case InventoryScan: state.inventoryDue = true; break;
-            case CraftCooldown: state.craftDue = true; break;
-            case CraftReset: state.crafts = 0; break;
+            case CraftCooldown: state.craftDue = true; state.townDue = true; break;
+            case CraftReset:
+                state.crafts = 0;
+                state.craftActions = 0;
+                state.secondaryCrafts = 0;
+                state.craftDue = true;
+                state.professionDue = true;
+                state.townDue = true;
+                break;
             case TownScan: state.townDue = true; break;
             case HerbScan: state.herbDue = true; break;
             case TownRest:
@@ -1593,6 +1621,7 @@ void UpdateCompanionErrands(PlayerbotAI* ai, uint32 elapsed)
                 state.rejectedSupplyVendors.clear();
                 state.rejectedHerbs.clear();
                 state.rejectedCrafts.clear();
+                state.professionDue = true;
                 state.events.ScheduleEvent(ClearRejected, Milliseconds(300000));
                 break;
             case MountRetry:
@@ -1626,11 +1655,11 @@ void UpdateCompanionErrands(PlayerbotAI* ai, uint32 elapsed)
         ((state.kind == Errand::Trainer || state.kind == Errand::PoisonVendor || state.kind == Errand::Bags ||
             state.kind == Errand::ProfessionVendor || state.kind == Errand::MountVendor ||
             state.kind == Errand::EquipmentVendor || state.kind == Errand::Craft || state.kind == Errand::BagVendor) &&
-            (!InTown(master) || master->GetZoneId() != state.zone ||
+            ((state.kind != Errand::Craft && !InTown(master)) || master->GetZoneId() != state.zone ||
             (state.settlement ? Settlement(master) != state.settlement :
                 master->GetDistance(state.x, state.y, state.z) > TownRadius))) ||
-        (state.kind == Errand::Herb && (bot->GetDistance(master) > 120.0f ||
-            master->GetDistance(state.x, state.y, state.z) > 120.0f)))
+        (state.kind == Errand::Herb && CompanionErrands::GatherReturn(master->isMoving(),
+            bot->GetDistance(master), master->GetDistance(state.x, state.y, state.z))))
         CancelCompanionErrands(ai, true);
 }
 
@@ -1643,7 +1672,8 @@ bool IsCompanionErrandActive(PlayerbotAI* ai)
 bool HasCompanionCraftPlan(PlayerbotAI* ai)
 {
     return ai && ai->companionErrands && ai->companionErrands->kind == Errand::Craft &&
-        !ai->companionErrands->awaitingCraft && ai->companionErrands->crafts < 5;
+        !ai->companionErrands->awaitingCraft && ai->companionErrands->crafts < 5 &&
+        ai->companionErrands->craftActions < 24;
 }
 
 bool IsCompanionGathering(PlayerbotAI* ai)
@@ -1705,6 +1735,12 @@ bool CompanionErrandAction::Execute(Event)
             ObserveCompanionGoal(botAI, GoalDomain::Talents, after ? GoalState::Opportunity : GoalState::Done,
                 after ? "talent_path_or_prerequisite_missing" : "talent_points_spent", 0, before - after);
         }
+        if (!state.professionDefaultsChecked)
+        {
+            RestoreCompanionProfessionDefaults(botAI);
+            state.professionDefaultsChecked = true;
+            state.professionDue = true;
+        }
         uint64 signature = InventorySignature(botAI);
         uint64 progression = bot->GetSpellMap().size();
         for (uint32 skill : {uint32(SKILL_BLACKSMITHING), uint32(SKILL_LEATHERWORKING), uint32(SKILL_ALCHEMY),
@@ -1718,6 +1754,7 @@ bool CompanionErrandAction::Execute(Event)
         if (state.progressionSignature != progression)
         {
             state.progressionSignature = progression;
+            state.professionDue = true;
             state.rejectedTrainers.clear();
             state.rejectedLessons.clear();
             state.rejectedCrafts.clear();
@@ -1735,6 +1772,7 @@ bool CompanionErrandAction::Execute(Event)
         if (state.inventorySignature != signature)
         {
             state.inventorySignature = signature;
+            state.professionDue = true;
             state.rejectedCrafts.clear();
             state.craftDue = true;
             state.townDue = true;
@@ -1785,6 +1823,11 @@ bool CompanionErrandAction::Execute(Event)
 
     if (state.kind == Errand::None)
     {
+        if (state.professionDue)
+        {
+            state.professionPlan = PlanCompanionProfession(botAI, state.rejectedCrafts);
+            state.professionDue = false;
+        }
         state.owner = master->GetGUID();
         state.map = bot->GetMapId();
         state.zone = master->GetZoneId();
@@ -1815,7 +1858,8 @@ bool CompanionErrandAction::Execute(Event)
         {
             state.townDue = false;
             state.events.RescheduleEvent(TownScan, Milliseconds(60000));
-            if (InTown(master) && (state.townRest || GetCompanionNarrativeFocus(bot->GetGUID()) != "normal" ||
+            if ((InTown(master) || state.townRest) &&
+                (state.townRest || GetCompanionNarrativeFocus(bot->GetGUID()) != "normal" ||
                 CompanionGoalRequested(botAI, GoalDomain::Bags) || CompanionGoalRequested(botAI, GoalDomain::Maintenance) ||
                 CompanionGoalRequested(botAI, GoalDomain::Supplies) || CompanionGoalRequested(botAI, GoalDomain::Mount) ||
                 CompanionGoalRequested(botAI, GoalDomain::Equipment) || CompanionGoalRequested(botAI, GoalDomain::Crafting) ||
@@ -1847,6 +1891,8 @@ bool CompanionErrandAction::Execute(Event)
                 GoalDomain selectedGoal = GoalDomain::Count;
                 for (auto const& [spawn, data] : sObjectMgr->GetAllCreatureData())
                 {
+                    if (!InTown(master))
+                        break;
                     if (data.mapid != state.map || !(data.phaseMask & bot->GetPhaseMask()))
                         continue;
                     auto const* creature = sObjectMgr->GetCreatureTemplate(data.id);
@@ -1961,22 +2007,20 @@ bool CompanionErrandAction::Execute(Event)
                 }
                 if (state.kind == Errand::None && cleanup != CompanionInventory::Step::Deposit &&
                     CompanionGoalAllowed(botAI, GoalDomain::Crafting) &&
-                    18000.0 - CompanionGoalPriority(botAI, GoalDomain::Crafting) < best && state.craftDue && state.crafts < 5 &&
-                    !master->isMoving() && !bot->isMoving() && !bot->IsMounted() &&
+                    14000.0 - CompanionGoalPriority(botAI, GoalDomain::Crafting) < best && state.craftDue &&
+                    CompanionCraftBudgetAvailable(state.crafts, state.craftActions, state.secondaryCrafts,
+                        state.professionPlan.primary) && !master->isMoving() &&
                     !bot->IsNonMeleeSpellCast(false) && bot->GetDistance(master) < 30.0f && HasBagRoom(bot))
                 {
                     state.craftDue = false;
                     state.events.RescheduleEvent(CraftCooldown, Milliseconds(30000));
                     CraftRandomItemAction crafting(botAI);
                     uint32 priority = 0;
-                    for (auto const& [id, known] : bot->GetSpellMap())
+                    for (uint32 id : {state.professionPlan.next})
                     {
                         auto const* spell = sSpellMgr->GetSpellInfo(id);
-                        if (!spell || known->State == PLAYERSPELL_REMOVED || !known->Active ||
+                        if (!spell || !bot->HasSpell(id) ||
                             state.rejectedCrafts.count(id) || !crafting.AcceptSpell(spell))
-                            continue;
-                        uint32 rank = crafting.GetSpellPriority(spell);
-                        if (!rank || rank <= priority)
                             continue;
                         GameObject* focus = nullptr;
                         if (!botAI->CanCastSpell(id, bot))
@@ -2000,8 +2044,11 @@ bool CompanionErrandAction::Execute(Event)
                             if (!focus)
                                 continue;
                         }
-                        priority = rank;
-                        state.craftIntermediate = rank == 60;
+                        priority = 1;
+                        state.craftIntermediate = id != state.professionPlan.root;
+                        auto const* skill = PlayerbotSpellRepository::Instance().GetSkillLine(id);
+                        state.craftSkill = skill ? skill->SkillLine : state.professionPlan.skill;
+                        state.craftPrimary = state.professionPlan.primary;
                         state.craftSpell = id;
                         state.craftOutput = spell->Effects[EFFECT_0].ItemType;
                         state.target = focus ? focus->GetGUID() : ObjectGuid::Empty;
@@ -2062,21 +2109,24 @@ bool CompanionErrandAction::Execute(Event)
                 bot->GetDistance(master) <= 40.0f)
             {
                 state.target.Clear();
-                float best = CompanionErrands::GatherRadius;
+                float radius = CompanionErrands::SearchRadius(state.townRest,
+                    CompanionGoalRequested(botAI, GoalDomain::Gathering));
+                float best = std::numeric_limits<float>::max();
                 std::list<GameObject*> nodes;
-                AnyGameObjectInObjectRangeCheck check(bot, best);
+                AnyGameObjectInObjectRangeCheck check(bot, radius);
                 Acore::GameObjectListSearcher<AnyGameObjectInObjectRangeCheck> search(bot, nodes, check);
-                Cell::VisitObjects(bot, search, best);
+                Cell::VisitObjects(bot, search, radius);
                 for (GameObject* herb : nodes)
                 {
+                    if (!herb)
+                        continue;
                     ObjectGuid guid = herb->GetGUID();
-                    if (!herb || state.rejectedHerbs.count(guid) || !bot->CanSeeOrDetect(herb) ||
+                    if (state.rejectedHerbs.count(guid) || !bot->CanSeeOrDetect(herb) ||
                         herb->HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE) ||
                         (herb->HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_INTERACT_COND) && !herb->ActivateToQuest(bot)) ||
                         herb->GetGoState() != GO_STATE_READY ||
                         !herb->isSpawned() || herb->getLootState() != GO_READY ||
-                        !CompanionErrands::HerbWithinLeash(bot->GetDistance(herb), master->GetDistance(herb),
-                            bot->GetDistance(master)) || bot->GetDistance(herb) >= best ||
+                        bot->GetDistance(herb) > radius || master->GetDistance(herb) > radius ||
                         !bot->IsWithinLOSInMap(herb))
                         continue;
                     LootObject loot(bot, guid);
@@ -2092,7 +2142,15 @@ bool CompanionErrandAction::Execute(Event)
                                 claimed = claimed || IsCompanionGatherLoot(other, guid);
                     if (claimed)
                         continue;
-                    best = bot->GetDistance(herb);
+                    bool needed = false;
+                    for (auto const& [item, quantity] : state.professionPlan.missing)
+                        if (quantity && CompanionLootSources::Has(CompanionLootSourceIndex::Kind::Gameobject,
+                            herb->GetGOInfo()->GetLootId(), item))
+                            needed = true;
+                    float score = CompanionErrands::GatherScore(bot->GetDistance(herb), needed);
+                    if (score >= best)
+                        continue;
+                    best = score;
                     state.target = guid;
                     state.x = herb->GetPositionX();
                     state.y = herb->GetPositionY();
@@ -2131,15 +2189,22 @@ bool CompanionErrandAction::Execute(Event)
             }
             else
             {
-                ++state.crafts;
+                ++state.craftActions;
+                if (!state.craftIntermediate)
+                    ++state.crafts;
+                if (!state.craftPrimary)
+                    ++state.secondaryCrafts;
                 ObserveCompanionGoal(botAI, GoalDomain::Crafting, state.craftIntermediate ? GoalState::Pending : GoalState::Done,
                     state.craftIntermediate ? "intermediate_created" : "product_created", 0, 1);
                 state.goal = GoalDomain::Count;
-                if (state.crafts == 1)
+                if (state.craftActions == 1)
                     state.events.RescheduleEvent(CraftReset, Milliseconds(300000));
                 state.inventoryDue = true;
-                LOG_INFO("playerbots.companion", "[Craft] {} spell={} item={} completed={}",
-                    bot->GetName(), state.craftSpell, state.craftOutput, state.crafts);
+                state.professionDue = true;
+                state.events.RescheduleEvent(CraftCooldown, Milliseconds(5000));
+                LOG_INFO("playerbots.companion", "[Craft] {} spell={} item={} completed={} skill={} before={} after={}",
+                    bot->GetName(), state.craftSpell, state.craftOutput, state.crafts, state.craftSkill,
+                    state.craftSkillBefore, bot->GetPureSkillValue(state.craftSkill));
             }
             Returning(botAI);
             return true;
@@ -2147,10 +2212,21 @@ bool CompanionErrandAction::Execute(Event)
         if (GameObject* station = botAI->GetGameObject(state.target))
             if (bot->GetDistance(station) > INTERACTION_DISTANCE - 1.0f)
             {
+                float distance = bot->GetDistance(station);
+                if (distance + 2.0f < state.closest)
+                {
+                    state.closest = distance;
+                    state.events.RescheduleEvent(Progress, Milliseconds(30000));
+                }
                 MoveTo(state.map, state.x, state.y, state.z, false, false, true, true);
                 return true;
             }
         bot->StopMoving();
+        if (bot->IsMounted())
+        {
+            bot->RemoveAurasByType(SPELL_AURA_MOUNTED);
+            return true;
+        }
         CraftRandomItemAction crafting(botAI);
         auto const* spell = sSpellMgr->GetSpellInfo(state.craftSpell);
         if (!spell || !crafting.isUseful() || !crafting.AcceptSpell(spell) ||
@@ -2160,6 +2236,7 @@ bool CompanionErrandAction::Execute(Event)
             return false;
         }
         state.craftBefore = bot->GetItemCount(state.craftOutput, false);
+        state.craftSkillBefore = bot->GetPureSkillValue(state.craftSkill);
         state.awaitingCraft = botAI->CastSpell(state.craftSpell, bot);
         if (!state.awaitingCraft)
             StopTrip(botAI, true);
@@ -2380,6 +2457,8 @@ bool CompanionErrandAction::Execute(Event)
             if (learned)
             {
                 ++state.learned;
+                state.professionDefaultsChecked = false;
+                state.professionDue = true;
                 ObserveCompanionGoal(botAI, state.goal, GoalState::Verifying, "lesson_confirmed", 0, 1);
                 if (auto const* info = sSpellMgr->GetSpellInfo(state.pendingLesson))
                     botAI->TellMaster("J'ai appris " + ChatHelper::FormatSpell(info));

@@ -10,6 +10,10 @@
 #include <map>
 #include <string>
 #include <vector>
+#include "CompanionErrandPolicy.h"
+#include "CompanionProfessions.h"
+#include "CompanionGoalPolicy.h"
+#include "ProfessionPlan.h"
 
 using uint8 = uint8_t;
 using uint16 = uint16_t;
@@ -21,8 +25,10 @@ constexpr uint32 ITEM_CLASS_CONSUMABLE = 0, ITEM_CLASS_CONTAINER = 1, ITEM_CLASS
 constexpr uint32 MAX_SPELL_REAGENTS = 8, NO_BIND = 0, BIND_WHEN_EQUIPPED = 2, BIND_WHEN_USE = 3;
 constexpr uint32 POWER_MANA = 0, BIND_WHEN_PICKED_UP = 1, PLAYERSPELL_REMOVED = 1;
 constexpr uint32 ITEM_QUALITY_UNCOMMON = 2, ITEM_CLASS_TRADE_GOODS = 7;
+constexpr uint32 SKILL_MINING = 186, SKILL_HERBALISM = 182;
 enum ItemUsage { ITEM_USAGE_NONE, ITEM_USAGE_EQUIP, ITEM_USAGE_REPLACE, ITEM_USAGE_AMMO,
     ITEM_USAGE_QUEST, ITEM_USAGE_SKILL, ITEM_USAGE_USE };
+struct Player;
 struct ItemTemplate
 {
     uint32 ItemId = 0, Class = 0, BagFamily = 0, ContainerSlots = 0, Bonding = 0;
@@ -40,7 +46,12 @@ struct Bag : Item { uint32 GetBagSize() const { return proto->ContainerSlots; } 
 struct SpellInfo
 {
     uint32 Id = 0;
-    struct EffectData { uint32 Effect = SPELL_EFFECT_CREATE_ITEM, ItemType = 0; } Effects[1];
+    struct EffectData
+    {
+        uint32 Effect = SPELL_EFFECT_CREATE_ITEM, ItemType = 0;
+        int32 output = 1;
+        int32 CalcValue(Player*) const { return output; }
+    } Effects[1];
     uint32 ReagentCount[MAX_SPELL_REAGENTS] = {1}, SchoolMask = 0;
     int32 Reagent[MAX_SPELL_REAGENTS] = {1000};
     uint32 Totem[2]{}, TotemCategory[2]{};
@@ -86,6 +97,11 @@ struct Player
     float GetDistance(Player* other) const { return other->distance; }
     bool HasItemTotemCategory(uint32) const { return false; }
     bool HasSkill(uint32) const { return profession; }
+    std::map<uint32, uint32> skillValues;
+    std::vector<std::pair<uint32, uint32>> defaultsRestored;
+    uint32 GetPureSkillValue(uint32 id) const
+    { auto it = skillValues.find(id); return it == skillValues.end() ? 0 : it->second; }
+    void learnSkillRewardedSpells(uint32 id, uint32 value) { defaultsRestored.emplace_back(id, value); }
     auto const& GetSpellMap() const { return spells; }
 };
 struct GroupReference
@@ -108,6 +124,8 @@ struct Context
 };
 struct PlayerbotAI
 {
+    Player* player = nullptr;
+    Player* GetBot() const { return player; }
     Context context;
     bool managed = true;
     Context* GetAiObjectContext() { return &context; }
@@ -144,8 +162,10 @@ struct SkillRecord { uint32 SkillLine = 164; };
 struct PlayerbotSpellRepository
 {
     SkillRecord line;
+    std::map<uint32, SkillRecord> lines;
     static PlayerbotSpellRepository& Instance() { static PlayerbotSpellRepository r; return r; }
-    auto GetSkillLine(uint32) const { return &line; }
+    SkillRecord const* GetSkillLine(uint32 id) const
+    { auto it = lines.find(id); return it == lines.end() ? &line : &it->second; }
 };
 bool IsProfessionSkill(uint32) { return true; }
 struct CraftRandomItemAction
@@ -158,6 +178,94 @@ struct CraftRandomItemAction
     uint32 GetSpellPriority(SpellInfo const*);
 };
 #include "production_crafting.inc"
+bool professionAllowed = true;
+bool CompanionGoalAllowed(PlayerbotAI*, CompanionGoals::Domain) { return professionAllowed; }
+bool CompanionGoalPermitted(PlayerbotAI*, CompanionGoals::Domain) { return professionAllowed; }
+#include "production_professions.inc"
+
+void TestProfessionPlans()
+{
+    Player self;
+    PlayerbotAI ai;
+    ai.player = &self;
+    self.ai = &ai;
+    KnownSpell known;
+    auto& repository = PlayerbotSpellRepository::Instance();
+    repository.lines.clear();
+    spellMgr.spells.clear();
+    bankStock = false;
+    skillUp = false;
+    for (uint32 id : {500u, 501u, 502u, 503u})
+        self.spells[id] = &known;
+    objectMgr.items[5] = {5, ITEM_CLASS_TRADE_GOODS}; // Ore.
+    objectMgr.items[6] = {6, ITEM_CLASS_TRADE_GOODS}; // Bars.
+    objectMgr.items[7] = {7, ITEM_CLASS_TRADE_GOODS}; // Two components per cast.
+    objectMgr.items[8] = {8, ITEM_CLASS_ARMOR};
+    objectMgr.items[9] = {9, ITEM_CLASS_CONSUMABLE};
+    auto recipe = [&](uint32 id, uint32 output, uint32 reagent, uint32 count, uint32 skill)
+    {
+        SpellInfo spell;
+        spell.Id = id;
+        spell.Effects[0].ItemType = output;
+        spell.Reagent[0] = reagent;
+        spell.ReagentCount[0] = count;
+        spellMgr.spells[id] = spell;
+        repository.lines[id] = {skill};
+    };
+    recipe(500, 6, 5, 2, SKILL_MINING);
+    recipe(501, 7, 6, 1, 164);
+    spellMgr.spells[501].Effects[0].output = 2;
+    recipe(502, 8, 7, 3, 164);
+    spellMgr.spells[502].Reagent[1] = 6;
+    spellMgr.spells[502].ReagentCount[1] = 1;
+    recipe(503, 9, 10, 1, 129);
+    ai.context.usages[8] = ITEM_USAGE_EQUIP;
+    ai.context.usages[9] = ITEM_USAGE_USE;
+    self.counts[5] = 6;
+    self.counts[10] = 8;
+    auto plan = PlanCompanionProfession(&ai, {});
+    assert(plan.root == 502 && plan.next == 500 && plan.primary && plan.missing.empty());
+    self.counts[5] = 0;
+    self.counts[6] = 3;
+    plan = PlanCompanionProfession(&ai, {});
+    assert(plan.root == 502 && plan.next == 501); // Replan from current stock, not a stale queue.
+    self.counts[6] = 1;
+    self.counts[7] = 4;
+    plan = PlanCompanionProfession(&ai, {});
+    assert(plan.root == 502 && plan.next == 502);
+    self.counts[6] = self.counts[7] = 0;
+    plan = PlanCompanionProfession(&ai, {});
+    assert(plan.next == 503 && !plan.primary && plan.materialsFor == 502);
+    assert(plan.missing.at(5) == 6); // Search ore, not imaginary purchased bars.
+    assert(!plan.missing.count(6) && !plan.missing.count(7));
+    self.counts[10] = 0;
+    plan = PlanCompanionProfession(&ai, {});
+    assert(plan.root == 502 && !plan.next && plan.missing.at(5) == 6);
+    self.counts[5] = 6;
+    plan = PlanCompanionProfession(&ai, {500});
+    assert(plan.next != 500); // A failed native recipe is not retried in a tight loop.
+    known.Active = false;
+    assert(!PlanCompanionProfession(&ai, {}).root);
+    known.Active = true;
+    professionAllowed = false;
+    assert(!PlanCompanionProfession(&ai, {}).root);
+    RestoreCompanionProfessionDefaults(&ai);
+    assert(self.defaultsRestored.empty());
+    professionAllowed = true;
+    self.skillValues[164] = 1;
+    RestoreCompanionProfessionDefaults(&ai);
+    assert(!self.defaultsRestored.empty() && self.defaultsRestored.front() == std::make_pair(164u, 1u));
+    assert(CompanionCraftBudgetAvailable(4, 23, 2, true));
+    assert(!CompanionCraftBudgetAvailable(4, 23, 2, false));
+    assert(!CompanionCraftBudgetAvailable(5, 1, 0, true));
+    assert(!CompanionCraftBudgetAvailable(0, 24, 0, true));
+    assert(CompanionErrands::SearchRadius(false, false) == 100.0f);
+    assert(CompanionErrands::SearchRadius(true, false) == 180.0f);
+    assert(CompanionErrands::GatherReturn(true, 80.0f, 121.0f));
+    assert(!CompanionErrands::GatherReturn(false, 180.0f, 180.0f));
+    assert(CompanionErrands::GatherReturn(false, 221.0f, 180.0f));
+    assert(CompanionErrands::GatherScore(170.0f, true) < CompanionErrands::GatherScore(10.0f, false));
+}
 
 void SortSpells(std::vector<std::pair<uint32, std::pair<uint32, Player*>>>& spellList, bool strictPriority)
 {
@@ -249,7 +357,9 @@ int main()
     skillUp = true;
     assert(action.GetSpellPriority(&recipe) == 10); // Bounded practice using owned materials.
     self.counts[4] = 1;
-    assert(action.GetSpellPriority(&recipe) == 0); // One pending batch prevents manufacturing junk repeatedly.
+    assert(action.GetSpellPriority(&recipe) == 10); // Bounded practice can continue beyond one pending product.
+    self.counts[4] = 3;
+    assert(action.GetSpellPriority(&recipe) == 0); // Still no unlimited production of obsolete gear.
     self.counts[4] = 0;
     objectMgr.items[4].Quality = 4;
     assert(action.GetSpellPriority(&recipe) == 0); // No expensive practice product.
@@ -285,6 +395,7 @@ int main()
     SortSpells(candidates, true);
     assert(candidates[0].first == 1 && candidates[1].first == 9999);
     SortSpells(candidates, false); assert(candidates[0].first == 10000);
+    TestProfessionPlans();
     std::cout << "PASS: production crafting usefulness, self before group, learned recipes, "
         "caps, binding, priority sort\n";
 }
