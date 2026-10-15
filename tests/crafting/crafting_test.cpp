@@ -172,6 +172,8 @@ struct CraftRandomItemAction
 {
     PlayerbotAI* botAI;
     Player* bot;
+    explicit CraftRandomItemAction(PlayerbotAI* ai, Player* player = nullptr)
+        : botAI(ai), bot(player ? player : ai->GetBot()) { }
     bool UseStrictPriority() const;
     bool isUseful();
     bool AcceptSpell(SpellInfo const*);
