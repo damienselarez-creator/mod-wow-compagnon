@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include "CompanionActivityPolicy.h"
+#include "CompanionErrandPolicy.h"
 
 using uint32 = uint32_t;
 using uint64 = uint64_t;
@@ -45,12 +46,14 @@ struct CompanionErrandState
     uint64 goalRevision = 0;
     uint32 observedMoney = 100;
     uint32 pendingLesson = 0, learned = 0, reserve = 0, crafts = 0;
+    uint32 craftActions = 0, secondaryCrafts = 0;
     uint32 spawn = 42, owner = 1, map = 1, zone = 1, settlement = 1;
     float x = 0, y = 0, z = 0;
     bool townDue = false, herbDue = false, inventoryDue = false, ready = false;
     bool paused = false, craftDue = false, warnedBags = false, mountDue = false, verificationDue = false;
     bool townRest = false, restWaiting = false;
     bool bagInventoryDue = false;
+    bool professionDue = false, professionDefaultsChecked = false;
     std::set<uint32> rejectedTrainers, rejectedSupplyVendors, rejectedBagVendors, rejectedVendors;
     std::set<uint32> failedSales, rejectedLessons, rejectedHerbs, rejectedCrafts;
 };

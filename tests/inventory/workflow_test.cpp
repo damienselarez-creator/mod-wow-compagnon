@@ -163,6 +163,7 @@ struct Player
 struct CompanionErrandState
 {
     bool townDue = false, inventoryDue = false, bagInventoryDue = false;
+    bool professionDue = false;
     uint64 storageAttemptSignature = 0;
     std::set<ObjectGuid> failedSales;
 };
