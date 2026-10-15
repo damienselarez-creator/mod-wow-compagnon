@@ -300,6 +300,8 @@ namespace
             }
             WorldObject* object = state.source.kind == SourceKind::Creature ?
                 static_cast<WorldObject*>(botAI->GetCreature(state.target)) :
+                state.source.kind == SourceKind::Deposit ?
+                static_cast<WorldObject*>(botAI->GetGameObject(state.target)) :
                 static_cast<WorldObject*>(ObjectAccessor::GetSpawnedGameObjectByDBGUID(assignment.map,
                     state.source.spawn));
             float distance = object ? bot->GetDistance(object) :
