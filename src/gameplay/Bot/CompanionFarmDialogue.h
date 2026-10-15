@@ -11,20 +11,22 @@ namespace CompanionFarm
     {
         using PBCVocationPolicy::Has;
         auto words = PBCVocationPolicy::Words(message);
-        if (PBCVocationPolicy::Hesitation(words) || message.find('"') != std::string::npos ||
+        if (message.find('"') != std::string::npos ||
             message.find("«") != std::string::npos || Has(words, "exemple") || Has(words, "example") ||
             Has(words, "si") || Has(words, "if"))
             return Intent::None;
         if (Has(words, "ou en es tu avec le farming") || Has(words, "tu en es ou du farming") ||
             Has(words, "tu farmes") || Has(words, "how is the farming") || Has(words, "are you farming"))
             return Intent::Status;
-        if (Has(words, "quand") || Has(words, "when") || Has(words, "pourquoi") || Has(words, "why") ||
+        if (PBCVocationPolicy::Hesitation(words) || Has(words, "quand") || Has(words, "when") ||
+            Has(words, "pourquoi") || Has(words, "why") ||
             Has(words, "comment") || Has(words, "how"))
             return Intent::None;
         for (auto phrase : {"reviens", "reviens avec moi", "reviens me rejoindre", "rejoins moi", "suis moi",
             "reviens pres de moi", "viens avec moi", "on repart ensemble", "arrete de farmer",
             "arret du farming", "stop farming", "come back to me", "come with me", "follow me",
-            "on repart a l aventure", "retour a l aventure"})
+            "on repart a l aventure", "retour a l aventure", "revenir avec moi", "tu peux me rejoindre",
+            "peux tu me rejoindre"})
             if (Has(words, phrase) && !Has(words, "pas") && !Has(words, "not") && !Has(words, "ne"))
                 return Intent::Return;
         bool farming = Has(words, "farmer") || Has(words, "farming") || Has(words, "farm") ||
