@@ -142,6 +142,8 @@ CompanionProfessionPlan PlanCompanionProfession(PlayerbotAI* ai, std::set<uint32
         {
             ready.missing = result.missing;
             ready.materialsFor = result.materialsFor;
+            if (!ready.primary && result.primary)
+                ready.root = result.root; // Secondary work must not complete the pending primary project.
         }
         return ready;
     }

@@ -219,8 +219,10 @@ std::string CompanionGoalsContext(Player* bot)
     facts["general_free"] = free;
     auto project = GetCompanionProfessionPlan(ai);
     facts["profession_project"] = {{"target_recipe", project.root}, {"next_recipe", project.next},
-        {"skill", project.skill}, {"primary", project.primary}, {"materials_for_recipe", project.materialsFor}};
-    for (auto const& [field, id] : {std::pair{"target_item", project.root}, {"next_item", project.next}})
+        {"next_skill", project.skill}, {"next_is_primary", project.primary},
+        {"materials_for_recipe", project.materialsFor}};
+    for (auto const& [field, id] : {std::pair{"target_item", project.root}, {"next_item", project.next},
+        {"materials_for_item", project.materialsFor}})
         if (auto const* spell = sSpellMgr->GetSpellInfo(id))
             if (auto const* item = sObjectMgr->GetItemTemplate(spell->Effects[EFFECT_0].ItemType))
                 facts["profession_project"][field] = {{"id", item->ItemId}, {"name", item->Name1}};
@@ -259,6 +261,7 @@ std::string CompanionGoalsContext(Player* bot)
         "Only confirmed_operations attest completed native actions; travelling/pending are intentions. "
         "Never invent bag names, vendor prices, purchases, learned spells or completed projects. "
         "The profession project is a bounded plan, not a completed craft or a discovered deposit. "
+        "Next work can be a secondary activity while the main target waits; its materials and result are distinct. "
         "Missing materials are current shortages for that plan; do not invent their source or an expedition. "
         "A zero required_money means no verified quote yet, not a free purchase. "
         "When deferred/quiet, accept the constraint and continue the adventure without asking for money again. "

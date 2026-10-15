@@ -240,7 +240,7 @@ void TestProfessionPlans()
     assert(plan.root == 502 && plan.next == 502);
     self.counts[6] = self.counts[7] = 0;
     plan = PlanCompanionProfession(&ai, {});
-    assert(plan.next == 503 && !plan.primary && plan.materialsFor == 502);
+    assert(plan.root == 502 && plan.next == 503 && !plan.primary && plan.materialsFor == 502);
     assert(plan.missing.at(5) == 6); // Search ore, not imaginary purchased bars.
     assert(!plan.missing.count(6) && !plan.missing.count(7));
     self.counts[10] = 0;
