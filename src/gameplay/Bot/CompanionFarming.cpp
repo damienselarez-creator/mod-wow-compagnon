@@ -167,7 +167,7 @@ bool CompanionFarmAttackAllowed(PlayerbotAI* ai, Unit* target)
 
 void CancelCompanionFarmRuntime(PlayerbotAI* ai)
 {
-    if (!IsCompanionInventoryManaged(ai))
+    if (!IsCompanionInventoryManaged(ai) || !ai->companionErrands)
         return;
     auto& stored = CompanionFarmRuntime(ai);
     if (!stored)

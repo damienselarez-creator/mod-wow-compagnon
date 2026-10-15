@@ -962,6 +962,7 @@ std::shared_ptr<CompanionFarmingState>& CompanionFarmRuntime(PlayerbotAI* ai)
     if (!ai->companionErrands)
     {
         ai->companionErrands = std::make_shared<CompanionErrandState>();
+        ai->companionErrands->reserve = ai->GetBot()->GetMoney() / 5;
         ai->companionErrands->events.ScheduleEvent(ClearRejected, Milliseconds(300000));
     }
     return ai->companionErrands->farming;

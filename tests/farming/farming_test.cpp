@@ -117,7 +117,7 @@ struct PlayerbotAI
 {
     Player bot, master;
     Group group;
-    bool managed = true;
+    bool managed = true, companionErrands = true;
     Context context;
     std::vector<Item*> items;
     std::shared_ptr<CompanionFarmingState> runtime;
