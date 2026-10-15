@@ -13,7 +13,8 @@ class Unit;
 struct CompanionFarmingState;
 CompanionFarm::Assignment GetCompanionFarmAssignment(PlayerbotAI* ai);
 bool SetCompanionFarmAssignment(PlayerbotAI* ai, CompanionFarm::Assignment const& assignment);
-void ObserveCompanionFarming(PlayerbotAI* ai, uint64_t revision, std::string const& status, uint32_t harvested = 0);
+void ObserveCompanionFarming(PlayerbotAI* ai, uint64_t revision, std::string const& status,
+    uint32_t harvested = 0, uint32_t destinationZone = 0);
 bool IsCompanionFarming(PlayerbotAI* ai);
 bool IsCompanionReturningFromFarm(PlayerbotAI* ai);
 bool CompanionFarmAttackAllowed(PlayerbotAI* ai, Unit* target);

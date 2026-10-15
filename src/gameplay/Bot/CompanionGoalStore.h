@@ -38,7 +38,7 @@ public:
                         goal.target, goal.confirmed});
                 auto const& farm = book.farming;
                 characters[key] = {{"goals", goals}, {"farming", {uint8_t(farm.mode), farm.map, farm.zone,
-                    farm.x, farm.y, farm.z, farm.status, farm.harvested, farm.revision}}};
+                    farm.x, farm.y, farm.z, farm.status, farm.harvested, farm.revision, farm.destinationZone}}};
             }
             auto temporary = Path;
             temporary += ".tmp";
@@ -113,7 +113,7 @@ public:
                 if (character.contains("farming"))
                 {
                     auto const& farm = character.at("farming");
-                    if (!farm.is_array() || (farm.size() != 8 && farm.size() != 9) || !farm[0].is_number_unsigned() ||
+                    if (!farm.is_array() || farm.size() < 8 || farm.size() > 10 || !farm[0].is_number_unsigned() ||
                         farm[0].get<uint64_t>() > uint64_t(CompanionFarm::Mode::Returning) ||
                         !farm[6].is_string())
                         return false;
@@ -126,11 +126,17 @@ public:
                     book.farming = {CompanionFarm::Mode(farm[0].get<uint8_t>()), farm[1].get<uint32_t>(),
                         farm[2].get<uint32_t>(), farm[3].get<float>(), farm[4].get<float>(), farm[5].get<float>(),
                         farm[6].get<std::string>(), farm[7].get<uint32_t>()};
-                    if (farm.size() == 9)
+                    if (farm.size() >= 9)
                     {
                         if (!farm[8].is_number_unsigned())
                             return false;
                         book.farming.revision = farm[8].get<uint64_t>();
+                    }
+                    if (farm.size() == 10)
+                    {
+                        if (!farm[9].is_number_unsigned() || farm[9].get<uint64_t>() > UINT32_MAX)
+                            return false;
+                        book.farming.destinationZone = farm[9].get<uint32_t>();
                     }
                     if (!book.farming.Valid())
                         return false;

@@ -136,6 +136,8 @@ bool SetCompanionFarmAssignment(PlayerbotAI* ai, CompanionFarm::Assignment const
     auto previous = *book;
     book->farming = assignment;
     ++book->farming.revision;
+    if (assignment.mode == CompanionFarm::Mode::Working && assignment.status == "start_requested")
+        book->Apply(CompanionGoals::Domain::Gathering, CompanionGoals::Directive::Resume, Now());
     book->topic = CompanionGoals::Domain::Gathering;
     book->topicUntil = Now() + 600;
     ++book->revision;
@@ -147,13 +149,18 @@ bool SetCompanionFarmAssignment(PlayerbotAI* ai, CompanionFarm::Assignment const
     return false;
 }
 
-void ObserveCompanionFarming(PlayerbotAI* ai, uint64_t revision, std::string const& status, uint32_t harvested)
+void ObserveCompanionFarming(PlayerbotAI* ai, uint64_t revision, std::string const& status,
+    uint32_t harvested, uint32_t destinationZone)
 {
     std::lock_guard<std::mutex> lock(goalsMutex);
     auto* book = ai ? Find(ai->GetBot()) : nullptr;
-    if (!book || book->farming.revision != revision || (book->farming.status == status && !harvested))
+    if (!book || book->farming.revision != revision ||
+        (book->farming.status == status && !harvested &&
+            (!destinationZone || destinationZone == book->farming.destinationZone)))
         return;
     book->farming.status = status;
+    if (destinationZone)
+        book->farming.destinationZone = destinationZone;
     book->farming.harvested = uint32_t(std::min<uint64_t>(UINT32_MAX,
         uint64_t(book->farming.harvested) + harvested));
     history.Dirty = true;
@@ -270,7 +277,10 @@ std::string CompanionGoalsContext(Player* bot)
     auto farm = GetCompanionFarmAssignment(ai);
     facts["farming"] = {{"mode", farm.mode == CompanionFarm::Mode::Working ? "independent" :
         farm.mode == CompanionFarm::Mode::Returning ? "returning" : "following"},
-        {"status", farm.status}, {"zone", farm.zone}, {"confirmed_harvests", farm.harvested}};
+        {"status", farm.status}, {"departure_zone", farm.zone}, {"destination_zone", farm.destinationZone},
+        {"confirmed_harvests", farm.harvested}};
+    if (auto const* area = sAreaTableStore.LookupEntry(farm.destinationZone))
+        facts["farming"]["destination_name"] = PlayerbotAI::GetLocalizedAreaName(area);
     auto project = GetCompanionProfessionPlan(ai);
     facts["profession_project"] = {{"target_recipe", project.root}, {"next_recipe", project.next},
         {"next_skill", project.skill}, {"next_is_primary", project.primary},
@@ -315,7 +325,8 @@ std::string CompanionGoalsContext(Player* bot)
         "Only confirmed_operations attest completed native actions; travelling/pending are intentions. "
         "Never invent bag names, vendor prices, purchases, learned spells or completed projects. "
         "The profession project is a bounded plan, not a completed craft or a discovered deposit. "
-        "Independent farming stays in its starting zone, even when the owner leaves; returning cancels that work. "
+        "Independent farming selects accessible resources suited to profession needs and progression or level. "
+        "It can leave its starting zone on the same continent; returning cancels that work. "
         "A farming assignment does not prove a harvest: use its status and confirmed_harvests. "
         "Next work can be a secondary activity while the main target waits; its materials and result are distinct. "
         "Missing materials are current shortages for that plan; do not invent their source or an expedition. "
@@ -338,12 +349,6 @@ bool PBC_CompanionGoalChat(Player* player, Player* bot, std::string const& messa
             return true;
         if (farmIntent == CompanionFarm::Intent::Start)
         {
-            if (!CompanionGoalPermitted(ai, Domain::Gathering))
-            {
-                assignment.status = "start_blocked_by_location_or_directive";
-                SetCompanionFarmAssignment(ai, assignment);
-                return true;
-            }
             assignment = {CompanionFarm::Mode::Working, 0, 0, 0, 0, 0, "start_requested", 0, assignment.revision};
         }
         else

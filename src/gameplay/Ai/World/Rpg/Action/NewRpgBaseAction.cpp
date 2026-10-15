@@ -37,7 +37,7 @@
 #include "TravelMgr.h"
 #include "G3D/Vector2.h"
 
-bool NewRpgBaseAction::MoveFarTo(WorldPosition dest)
+bool NewRpgBaseAction::MoveFarTo(WorldPosition dest, bool teleportRecovery)
 {
     if (dest == WorldPosition())
         return false;
@@ -103,7 +103,7 @@ bool NewRpgBaseAction::MoveFarTo(WorldPosition dest)
     }
     else if (++botAI->rpgInfo.stuckAttempts >= 5 && GetMSTimeDiffToNow(botAI->rpgInfo.stuckTs) >= stuckTime)
     {
-        if (IsSelfBot(botAI->GetBot()))
+        if (!teleportRecovery || IsSelfBot(botAI->GetBot()))
             return false;
 
         // No meaningful progress toward dest for `stuckTime`: fall

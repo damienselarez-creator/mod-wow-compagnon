@@ -141,7 +141,7 @@ CompanionGoals::Book* Find(Player*, bool create = false)
     return create ? &history.Books["owner:bot"] : nullptr;
 }
 #define LOG_INFO(...) ((void)0)
-void ObserveCompanionFarming(PlayerbotAI*, uint64_t, std::string const&, uint32_t = 0);
+void ObserveCompanionFarming(PlayerbotAI*, uint64_t, std::string const&, uint32_t = 0, uint32_t = 0);
 #include "assignment.inc"
 namespace
 {
@@ -166,6 +166,12 @@ int main(int argc, char** argv)
         "quand vas tu farmer ?", "tu vas farmer ?"})
         assert(Parse(text) == Intent::None);
 
+    assert(Parse("how is the farming ?") == Intent::Status);
+    assert(ResourceScore(500, false, 75, 75, 0, 15) < ResourceScore(100, false, 75, 1, 0, 15));
+    assert(ResourceScore(1000, true, 75, 1, 0, 15) < ResourceScore(100, false, 75, 75, 0, 15));
+    assert(ResourceScore(100, false, 0, 0, 15, 15) < ResourceScore(100, false, 0, 0, 5, 15));
+    assert(ResourceScore(100, false, 75, 50, 0, 15) < ResourceScore(2000, false, 75, 50, 0, 15));
+
     auto path = std::filesystem::absolute(argv[1]);
     std::filesystem::remove(path);
     assert(history.Load(path));
@@ -185,6 +191,8 @@ int main(int argc, char** argv)
     UpdateCompanionFarming(&ai, 1000);
     auto assigned = GetCompanionFarmAssignment(&ai);
     assert(assigned.map == 0 && assigned.zone == 85 && assigned.x == 50 && assigned.status == "searching");
+    ObserveCompanionFarming(&ai, assigned.revision, "destination_selected", 0, 3433);
+    assert(GetCompanionFarmAssignment(&ai).destinationZone == 3433);
     ai.master.map = 1;
     ai.master.x = 9000;
     ai.master.combat = true;

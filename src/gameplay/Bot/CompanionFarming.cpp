@@ -15,10 +15,13 @@
 #include "LootAction.h"
 #include "LootObjectStack.h"
 #include "MotionMaster.h"
+#include "NewRpgBaseAction.h"
 #include "Playerbots.h"
+#include "World.h"
 #include "pbc_companion_language.h"
 #include <algorithm>
 #include <limits>
+#include <map>
 #include <set>
 
 namespace
@@ -32,6 +35,7 @@ namespace
         uint32 loot = 0;
         uint32 skin = 0;
         float x = 0, y = 0, z = 0;
+        uint32 skill = 0, required = 0, level = 0;
         uint64 Key() const { return (uint64(kind) << 32) | spawn; }
     };
 
@@ -54,7 +58,7 @@ namespace
             !bot->GetTransport() && !bot->GetVehicle() && !bot->InBattleground() && !bot->GetMap()->IsDungeon();
     }
 
-    uint32 GatherSkill(Player* bot, GameObjectTemplate const* object)
+    uint32 GatherSkill(Player* bot, GameObjectTemplate const* object, uint32& required)
     {
         auto const* lock = object && object->type == GAMEOBJECT_TYPE_CHEST ?
             sLockStore.LookupEntry(object->GetLockId()) : nullptr;
@@ -66,7 +70,10 @@ namespace
                 uint32 skill = SkillByLockType(LockType(lock->Index[index]));
                 if ((skill == SKILL_MINING || skill == SKILL_HERBALISM) && bot->HasSkill(skill) &&
                     bot->GetSkillValue(skill) >= lock->Skill[index] && bot->HasSpell(skill == SKILL_MINING ? 2575 : 2366))
+                {
+                    required = lock->Skill[index];
                     return skill;
+                }
             }
         return 0;
     }
@@ -102,6 +109,7 @@ struct CompanionFarmingState
     bool corpseLooted = false;
     bool skinning = false;
     float closest = std::numeric_limits<float>::max();
+    float progressX = 0, progressY = 0, progressZ = 0;
     uint32 before = 0;
     ObjectGuid target;
     FarmSource source;
@@ -204,10 +212,10 @@ bool FinishCompanionFarmLoot(PlayerbotAI* ai, ObjectGuid guid)
 
 namespace
 {
-    class FarmingAction : public MovementAction
+    class FarmingAction : public NewRpgBaseAction
     {
     public:
-        explicit FarmingAction(PlayerbotAI* ai) : MovementAction(ai, "independent companion farming"),
+        explicit FarmingAction(PlayerbotAI* ai) : NewRpgBaseAction(ai, "independent companion farming"),
             state(*CompanionFarmRuntime(ai)), assignment(GetCompanionFarmAssignment(ai)) { }
 
         bool Execute(Event) override
@@ -244,9 +252,13 @@ namespace
                 static_cast<WorldObject*>(ObjectAccessor::GetSpawnedCreatureByDBGUID(assignment.map, state.source.spawn));
             float distance = object ? bot->GetDistance(object) :
                 bot->GetDistance(state.source.x, state.source.y, state.source.z);
-            if (distance + 2.0f < state.closest)
+            if (distance + 2.0f < state.closest ||
+                bot->GetExactDist(state.progressX, state.progressY, state.progressZ) > 10.0f)
             {
                 state.closest = distance;
+                state.progressX = bot->GetPositionX();
+                state.progressY = bot->GetPositionY();
+                state.progressZ = bot->GetPositionZ();
                 state.events.RescheduleEvent(Progress, Milliseconds(30000));
             }
             if (!object || distance > 25.0f)
@@ -254,7 +266,9 @@ namespace
                 if (!object && distance < 15.0f)
                     return Reject("resource_not_spawned");
                 ObserveCompanionFarming(botAI, state.revision, "travelling_to_resource");
-                MoveTo(assignment.map, state.source.x, state.source.y, state.source.z, false, false, true, true);
+                if (!MoveFarTo(WorldPosition(assignment.map, state.source.x, state.source.y, state.source.z), false) &&
+                    !bot->isMoving() && !IsWaitingForLastMove(MovementPriority::MOVEMENT_NORMAL))
+                    return Reject("resource_route_unavailable");
                 return true;
             }
             if (!bot->CanSeeOrDetect(object) || !bot->IsWithinLOSInMap(object) || !Safe(object))
@@ -344,33 +358,60 @@ namespace
             return true;
         }
 
-        bool Near(uint32 map, uint32 phase, float x, float y, float z) const
+        bool AccessibleMap(uint32 map, uint32 phase) const
         {
-            float dx = x - assignment.x, dy = y - assignment.y;
-            return map == assignment.map && (phase & bot->GetPhaseMask()) &&
-                dx * dx + dy * dy < 25000000.0f &&
-                bot->GetMap()->GetZoneId(bot->GetPhaseMask(), x, y, z) == assignment.zone;
+            return map == assignment.map && (phase & bot->GetPhaseMask());
+        }
+
+        bool Needed(FarmSource const& source, CompanionProfessionPlan const& plan) const
+        {
+            for (auto const& [item, quantity] : plan.missing)
+                if (quantity && (CompanionLootSources::Has(source.kind == SourceKind::Deposit ?
+                    CompanionLootSourceIndex::Kind::Gameobject : CompanionLootSourceIndex::Kind::Creature,
+                        source.loot, item) || (bot->HasSkill(SKILL_SKINNING) &&
+                        CompanionLootSources::Has(CompanionLootSourceIndex::Kind::Skinning, source.skin, item))))
+                    return true;
+            return false;
+        }
+
+        float Score(FarmSource const& source, bool needed) const
+        {
+            return CompanionFarm::ResourceScore(bot->GetDistance(source.x, source.y, source.z), needed,
+                source.skill ? bot->GetSkillValue(source.skill) : 0, source.required, source.level, bot->GetLevel());
         }
 
         void Index()
         {
             RestoreCompanionProfessionDefaults(botAI);
+            auto plan = PlanCompanionProfession(botAI, {});
+            std::multimap<float, FarmSource> candidates;
+            auto retain = [&](FarmSource const& source)
+            {
+                bool needed = Needed(source, plan);
+                bool skin = source.kind == SourceKind::Creature && source.skin && bot->HasSkill(SKILL_SKINNING);
+                bool level = source.level && source.level <= bot->GetLevel() &&
+                    bot->GetLevel() - source.level <= 4 &&
+                    bot->GetLevel() < sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL);
+                if (source.kind == SourceKind::Creature && !needed && !skin && !level)
+                    return;
+                candidates.emplace(Score(source, needed), source);
+                if (candidates.size() > 512)
+                    candidates.erase(std::prev(candidates.end()));
+            };
             for (auto const& [spawn, data] : sObjectMgr->GetAllGOData())
             {
-                if (state.sources.size() >= 2048)
-                    break;
-                if (!Near(data.mapid, data.phaseMask, data.posX, data.posY, data.posZ))
+                if (!AccessibleMap(data.mapid, data.phaseMask))
                     continue;
                 auto const* object = sObjectMgr->GetGameObjectTemplate(data.id);
-                if (GatherSkill(bot, object))
-                    state.sources.push_back({SourceKind::Deposit, uint32(spawn), object->GetLootId(), 0,
-                        data.posX, data.posY, data.posZ});
+                uint32 required = 0;
+                uint32 skill = GatherSkill(bot, object, required);
+                if (skill)
+                    retain({SourceKind::Deposit, uint32(spawn), object->GetLootId(), 0,
+                        data.posX, data.posY, data.posZ, skill, required, 0});
             }
             for (auto const& [spawn, data] : sObjectMgr->GetAllCreatureData())
             {
-                if (state.sources.size() >= 4096)
-                    break;
-                if (!Near(data.mapid, data.phaseMask, data.posX, data.posY, data.posZ))
+                if (!AccessibleMap(data.mapid, data.phaseMask))
                     continue;
                 auto const* creature = sObjectMgr->GetCreatureTemplate(data.id);
                 if (!creature || creature->rank != CREATURE_ELITE_NORMAL || creature->maxlevel > bot->GetLevel())
@@ -378,9 +419,11 @@ namespace
                 auto const* faction = sFactionTemplateStore.LookupEntry(creature->faction);
                 if (!faction || !bot->GetFactionTemplateEntry()->IsHostileTo(*faction))
                     continue;
-                state.sources.push_back({SourceKind::Creature, uint32(spawn), creature->lootid, creature->skinlootid,
-                    data.posX, data.posY, data.posZ});
+                retain({SourceKind::Creature, uint32(spawn), creature->lootid, creature->SkinLootId,
+                    data.posX, data.posY, data.posZ, 0, 0, creature->maxlevel});
             }
+            for (auto const& [score, source] : candidates)
+                state.sources.push_back(source);
             state.indexed = true;
             state.events.RescheduleEvent(Retry, Milliseconds(300000));
         }
@@ -393,16 +436,8 @@ namespace
             {
                 if (state.rejected.count(source.Key()))
                     continue;
-                bool needed = false;
-                for (auto const& [item, quantity] : plan.missing)
-                    if (quantity && (CompanionLootSources::Has(source.kind == SourceKind::Deposit ?
-                        CompanionLootSourceIndex::Kind::Gameobject : CompanionLootSourceIndex::Kind::Creature,
-                            source.loot, item) || (bot->HasSkill(SKILL_SKINNING) &&
-                            CompanionLootSources::Has(CompanionLootSourceIndex::Kind::Skinning, source.skin, item))))
-                        needed = true;
-                if (source.kind == SourceKind::Creature && !needed && !(source.skin && bot->HasSkill(SKILL_SKINNING)))
-                    continue;
-                float score = bot->GetDistance(source.x, source.y, source.z) - (needed ? 1000.0f : 0.0f);
+                bool needed = Needed(source, plan);
+                float score = Score(source, needed);
                 if (score >= best)
                     continue;
                 best = score;
@@ -415,7 +450,15 @@ namespace
             state.skinning = false;
             state.closest = std::numeric_limits<float>::max();
             state.events.RescheduleEvent(Progress, Milliseconds(30000));
-            state.events.RescheduleEvent(Expired, Milliseconds(300000));
+            state.progressX = bot->GetPositionX();
+            state.progressY = bot->GetPositionY();
+            state.progressZ = bot->GetPositionZ();
+            float distance = bot->GetDistance(state.source.x, state.source.y, state.source.z);
+            uint32 deadline = uint32(std::clamp(180.0f + distance / 2.0f, 300.0f, 3600.0f) * 1000.0f);
+            state.events.RescheduleEvent(Expired, Milliseconds(deadline));
+            uint32 zone = bot->GetMap()->GetZoneId(bot->GetPhaseMask(),
+                state.source.x, state.source.y, state.source.z);
+            ObserveCompanionFarming(botAI, state.revision, "destination_selected", 0, zone);
             return true;
         }
 

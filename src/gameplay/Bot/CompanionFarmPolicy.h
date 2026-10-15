@@ -21,6 +21,7 @@ namespace CompanionFarm
         std::string status = "following";
         uint32_t harvested = 0;
         uint64_t revision = 0;
+        uint32_t destinationZone = 0;
 
         bool Valid() const
         {
@@ -29,5 +30,14 @@ namespace CompanionFarm
         }
     };
 
+    inline float ResourceScore(float distance, bool needed, uint32_t skill, uint32_t required,
+        uint32_t creatureLevel, uint32_t level)
+    {
+        float progress = skill && required <= skill && skill - required < 100 ?
+            1500.0f * (1.0f - float(skill - required) / 100.0f) : 0.0f;
+        if (creatureLevel && creatureLevel <= level && level - creatureLevel <= 4)
+            progress = 1000.0f - 150.0f * (level - creatureLevel);
+        return distance - (needed ? 5000.0f : 0.0f) - progress;
+    }
 }
 #endif
