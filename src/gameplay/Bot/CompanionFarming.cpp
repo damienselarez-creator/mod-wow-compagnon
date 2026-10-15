@@ -45,7 +45,7 @@ namespace
             return false;
         Player* master = ai->GetMaster();
         Player* bot = ai->GetBot();
-        return master->IsInWorld() && master->GetSession() && bot->GetSession() &&
+        return master->GetSession() && bot->GetSession() &&
             !master->GetSession()->IsLoggingOut() &&
             master->GetSession()->GetAccountId() == bot->GetSession()->GetAccountId() &&
             master->GetGroup() && master->GetGroup() == bot->GetGroup();
@@ -376,8 +376,10 @@ namespace
 
         float Score(FarmSource const& source, bool needed) const
         {
+            uint32 skill = source.skill && bot->GetPureSkillValue(source.skill) <
+                bot->GetPureMaxSkillValue(source.skill) ? bot->GetPureSkillValue(source.skill) : 0;
             return CompanionFarm::ResourceScore(bot->GetDistance(source.x, source.y, source.z), needed,
-                source.skill ? bot->GetSkillValue(source.skill) : 0, source.required, source.level, bot->GetLevel());
+                skill, source.required, source.level, bot->GetLevel());
         }
 
         void Index()
@@ -537,7 +539,8 @@ void UpdateCompanionFarming(PlayerbotAI* ai, uint32_t elapsed)
     }
     if (assignment.mode == CompanionFarm::Mode::Returning)
     {
-        if (FarmSafe(bot) && master->IsAlive() && bot->GetMap() == master->GetMap() &&
+        if (FarmSafe(bot) && master->IsInWorld() && !master->IsBeingTeleported() && master->IsAlive() &&
+            bot->GetMap() == master->GetMap() &&
             (bot->GetPhaseMask() & master->GetPhaseMask()) && bot->GetDistance(master) < 12.0f)
         {
             assignment.mode = CompanionFarm::Mode::Follow;

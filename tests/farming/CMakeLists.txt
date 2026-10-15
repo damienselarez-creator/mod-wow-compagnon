@@ -16,6 +16,8 @@ extract("bool IsCompanionFarming" "\nnamespace\n{\n    class FarmingAction" "far
 extract("void UpdateCompanionFarming" "bool ExecuteCompanionFarming" "farm_update.inc")
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/../../src/gameplay/Bot/CompanionGoals.cpp" source)
 extract("CompanionFarm::Assignment GetCompanionFarmAssignment" "bool CompanionGoalAllowed" "assignment.inc")
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/../../src/narrative/events/pbc_event_dispatch.cpp" source)
+extract("bool PBC_RollGroupBotsIntoEvent(" "// PBC_RollBotsWithPenalty" "reactions.inc")
 add_executable(farming_test farming_test.cpp)
 target_compile_features(farming_test PRIVATE cxx_std_20)
 target_include_directories(farming_test PRIVATE "${CMAKE_CURRENT_BINARY_DIR}" ../../src/gameplay/Bot

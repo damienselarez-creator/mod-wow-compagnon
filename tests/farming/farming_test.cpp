@@ -7,6 +7,7 @@
 #include <limits>
 #include <memory>
 #include <mutex>
+#include <random>
 #include <set>
 #include <vector>
 
@@ -20,6 +21,7 @@ struct ObjectGuid
     uint32 value = 0;
     bool operator==(ObjectGuid const&) const = default;
     bool IsEmpty() const { return !value; }
+    uint32 GetCounter() const { return value; }
     void Clear() { value = 0; }
 };
 struct EventMap
@@ -47,6 +49,7 @@ struct Session
 struct Motion { int clears = 0; void Clear() { ++clears; } };
 struct Group { };
 struct Player;
+struct PlayerbotAI;
 struct Unit
 {
     ObjectGuid guid;
@@ -60,6 +63,7 @@ struct Unit
 };
 struct Player : Unit
 {
+    PlayerbotAI* ai = nullptr;
     Session session;
     Group* group = nullptr;
     Motion motion;
@@ -118,7 +122,7 @@ struct PlayerbotAI
     std::vector<Item*> items;
     std::shared_ptr<CompanionFarmingState> runtime;
     int cancelled = 0, changed = 0, training = 0;
-    PlayerbotAI() { bot.group = master.group = &group; bot.guid.value = 2; bot.owner = &bot; }
+    PlayerbotAI() { bot.ai = this; bot.group = master.group = &group; bot.guid.value = 2; bot.owner = &bot; }
     Player* GetBot() { return &bot; }
     Player* GetMaster() { return &master; }
     Context* GetAiObjectContext() { return &context; }
@@ -152,6 +156,24 @@ namespace
 #include "farm_helpers.inc"
 #include "farm_update.inc"
 
+struct PBC_EventItem { std::vector<uint32> respondingChars, silentCharGuids; };
+enum class PBC_LogLevel { PBC_DEBUG };
+#define PBC_Log(...) ((void)0)
+#define GET_PLAYERBOT_AI(player) ((player)->ai)
+std::vector<Player*> groupBots;
+std::vector<Player*> PBC_FindGroupBots(Player*) { return groupBots; }
+bool PBC_IsActiveSelfbot(Player*) { return false; }
+std::mt19937 rng;
+auto& PBC_GetRNG() { return rng; }
+bool PBC_RollChance(uint32 chance) { return chance == 100; }
+uint32 PBC_SnapshotCharacter(Player* player) { return player->GetGUID().GetCounter(); }
+void PBC_RollBotsWithPenalty(PBC_EventItem& event, std::vector<Player*> const& bots, uint32 chance, char const*)
+{
+    for (Player* bot : bots)
+        if (PBC_RollChance(chance)) event.respondingChars.push_back(bot->GetGUID().GetCounter());
+}
+#include "reactions.inc"
+
 int main(int argc, char** argv)
 {
     assert(argc == 2);
@@ -176,10 +198,12 @@ int main(int argc, char** argv)
     std::filesystem::remove(path);
     assert(history.Load(path));
     PlayerbotAI ai;
+    Find(&ai.bot, true)->Apply(CompanionGoals::Domain::Gathering, CompanionGoals::Directive::Forbid, 900);
     auto order = GetCompanionFarmAssignment(&ai);
     order.mode = Mode::Working;
     order.status = "start_requested";
     assert(SetCompanionFarmAssignment(&ai, order));
+    assert(Find(&ai.bot)->Permitted(CompanionGoals::Domain::Gathering, 1000));
     assert(!SetCompanionFarmAssignment(&ai, order)); // A stale order cannot overwrite a new one.
     CompanionGoalStore restart;
     assert(restart.Load(path));
@@ -198,6 +222,25 @@ int main(int argc, char** argv)
     ai.master.combat = true;
     UpdateCompanionFarming(&ai, 1000);
     assert(IsCompanionFarming(&ai)); // Owner distance, map and combat do not cancel the job.
+    groupBots = {&ai.bot};
+    PBC_EventItem quest;
+    assert(!PBC_RollGroupBotsIntoEvent(quest, &ai.master, 100, "quest", true));
+    assert(quest.respondingChars.empty()); // A detached worker does not comment on the owner's quests.
+    ai.master.world = false;
+    ai.master.teleport = true;
+    UpdateCompanionFarming(&ai, 1000);
+    assert(IsCompanionFarming(&ai)); // Loading a new map is not owner logout.
+    ai.master.world = true;
+    ai.master.teleport = false;
+    ai.runtime->selected = true;
+    ai.runtime->target.value = 21;
+    ai.runtime->events.RescheduleEvent(Progress, Milliseconds(1));
+    ai.bot.combat = true;
+    UpdateCompanionFarming(&ai, 1);
+    assert(ai.runtime->selected); // A fight suspends the travel watchdog.
+    ai.bot.combat = false;
+    UpdateCompanionFarming(&ai, 30000);
+    assert(!ai.runtime->selected && ai.runtime->target.IsEmpty());
     Unit neutral, attacker;
     neutral.guid.value = 9;
     attacker.guid.value = 10;
@@ -236,6 +279,9 @@ int main(int argc, char** argv)
     recall.mode = Mode::Returning;
     recall.status = "return_requested";
     assert(SetCompanionFarmAssignment(&ai, recall));
+    assert(restart.Load(path));
+    assert(restart.Books.at("owner:bot").farming.mode == Mode::Returning);
+    assert(restart.Books.at("owner:bot").farming.destinationZone == 3433);
     ObserveCompanionFarming(&ai, assigned.revision, "stale_gathering", 10);
     assert(GetCompanionFarmAssignment(&ai).status == "return_requested");
     assert(!IsCompanionFarmLoot(&ai, neutral.guid));
@@ -256,6 +302,8 @@ int main(int argc, char** argv)
     UpdateCompanionFarming(&ai, 1000);
     assert(GetCompanionFarmAssignment(&ai).mode == Mode::Follow);
     assert(GetCompanionFarmAssignment(&ai).status == "returned");
+    assert(PBC_RollGroupBotsIntoEvent(quest, &ai.master, 100, "quest", true));
+    assert(quest.respondingChars.size() == 1);
     UpdateCompanionFarming(&ai, 1000);
     assert(!ai.runtime);
 

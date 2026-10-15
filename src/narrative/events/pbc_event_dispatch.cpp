@@ -3,6 +3,8 @@
 #include "pbc_character.h"
 #include "pbc_vocation.h"
 #include "CompanionGoals.h"
+#include "CompanionFarming.h"
+#include "Playerbots.h"
 #include "pbc_database.h"
 #include "pbc_utils.h"
 #include "pbc_locales.h"
@@ -201,6 +203,7 @@ bool PBC_RollGroupBotsIntoEvent(PBC_EventItem& ev, Player* player,
     auto bots = PBC_FindGroupBots(player);
     if (PBC_IsActiveSelfbot(player))
         bots.push_back(player);
+    std::erase_if(bots, [](Player* bot) { return IsCompanionFarming(GET_PLAYERBOT_AI(bot)); });
     if (bots.empty()) return false;
 
     std::shuffle(bots.begin(), bots.end(), PBC_GetRNG());
