@@ -39,7 +39,7 @@ CompanionProfessionPlan PlanCompanionProfession(PlayerbotAI* ai, std::set<uint32
         auto const* spell = sSpellMgr->GetSpellInfo(id);
         auto const* skill = PlayerbotSpellRepository::Instance().GetSkillLine(id);
         if (!spell || !skill || !IsProfessionSkill(skill->SkillLine) || !bot->HasSkill(skill->SkillLine) ||
-            known->State == PLAYERSPELL_REMOVED || !known->Active || rejected.count(id) ||
+            known->State == PLAYERSPELL_REMOVED || !known->Active || rejected.count(id) || bot->HasSpellCooldown(id) ||
             spell->Effects[EFFECT_0].Effect != SPELL_EFFECT_CREATE_ITEM ||
             !spell->Effects[EFFECT_0].ItemType)
             continue;
@@ -87,8 +87,24 @@ CompanionProfessionPlan PlanCompanionProfession(PlayerbotAI* ai, std::set<uint32
     uint32 readyBest = 0;
     double readyCost = 0;
     CompanionProfessionPlan ready;
+    std::vector<SelfbotCraft::Recipe const*> roots;
     for (auto const& recipe : recipes)
+        if (scores.count(recipe.spell))
+            roots.push_back(&recipe);
+    std::sort(roots.begin(), roots.end(), [&scores](auto const* left, auto const* right)
     {
+        if (scores[left->spell] != scores[right->spell])
+            return scores[left->spell] > scores[right->spell];
+        if (left->reagents.size() != right->reagents.size())
+            return left->reagents.size() < right->reagents.size();
+        return left->spell < right->spell;
+    });
+    uint32 tested = 0;
+    for (auto const* root : roots)
+    {
+        if (++tested > 64)
+            break;
+        auto const& recipe = *root;
         auto score = scores.find(recipe.spell);
         if (score == scores.end())
             continue;

@@ -61,6 +61,8 @@ int main(int argc, char** argv)
     assert(smelting && smelting->domain == Domain::Crafting && smelting->directive == Directive::Request);
     auto smeltEnglish = Parse("smelt your ore", Domain::Count);
     assert(smeltEnglish && smeltEnglish->domain == Domain::Crafting);
+    auto prospect = Parse("cherche des filons", Domain::Count);
+    assert(prospect && prospect->domain == Domain::Gathering && prospect->directive == Directive::Request);
     auto english = Parse("could you buy bigger bags?", Domain::Count);
     assert(english && english->directive == Directive::Request);
     auto postpone = Parse("not now", Domain::Mount);

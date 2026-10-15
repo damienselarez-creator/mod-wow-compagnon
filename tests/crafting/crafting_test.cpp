@@ -98,6 +98,8 @@ struct Player
     bool HasItemTotemCategory(uint32) const { return false; }
     bool HasSkill(uint32) const { return profession; }
     std::map<uint32, uint32> skillValues;
+    std::set<uint32> cooldowns;
+    bool HasSpellCooldown(uint32 id) const { return cooldowns.count(id); }
     std::vector<std::pair<uint32, uint32>> defaultsRestored;
     uint32 GetPureSkillValue(uint32 id) const
     { auto it = skillValues.find(id); return it == skillValues.end() ? 0 : it->second; }
@@ -246,6 +248,9 @@ void TestProfessionPlans()
     self.counts[5] = 6;
     plan = PlanCompanionProfession(&ai, {500});
     assert(plan.next != 500); // A failed native recipe is not retried in a tight loop.
+    self.cooldowns.insert(500);
+    assert(PlanCompanionProfession(&ai, {}).next != 500);
+    self.cooldowns.clear();
     known.Active = false;
     assert(!PlanCompanionProfession(&ai, {}).root);
     known.Active = true;
